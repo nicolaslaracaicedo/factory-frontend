@@ -337,7 +337,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
 
             <form className="mt-4 space-y-4" onSubmit={submitForm}>
               <section className="grid gap-4 sm:grid-cols-2">
-                <Field label="Rol (id)" htmlFor="id_rol">
+                <Field label="Rol" htmlFor="id_rol">
                   <Input
                     id="id_rol"
                     type="number"
