@@ -3,12 +3,29 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Edit, PlusCircle, Power, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  flexRender,
+  type Column,
+  type ColumnDef,
+  type ColumnFiltersState,
+  type SortingState,
+} from "@tanstack/react-table";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { Truck, Search, ChevronLeft, ChevronRight, Edit3, Power, Plus, X, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, Check, MoreVertical, Phone, Mail, MapPin, Shield } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/src/components/ui/dropdown-menu";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
-import { Select } from "@/src/components/ui/select";
-import { Textarea } from "@/src/components/ui/textarea";
 import type {
   Proveedor,
   ProveedorFormInput,
@@ -17,6 +34,7 @@ import type {
 } from "@/src/modules/providers/types/provider.types";
 import { toProveedorFormInput } from "@/src/modules/providers/utils/provider-payload.utils";
 import { providerService } from "@/src/modules/providers/services/provider.service";
+import { Loader } from "@/src/components/ui/loader";
 
 const initialForm: ProveedorFormInput = {
   tipo_identificacion: "",
@@ -28,57 +46,156 @@ const initialForm: ProveedorFormInput = {
 };
 
 const estadoFilters = ["TODOS", "ACTIVO", "INACTIVO"] as const;
-
 type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface ProvidersPanelProps {
   showPanel?: boolean;
 }
 
+function SortIcon({ column }: { column: Column<Proveedor> }) {
+  const sorted = column.getIsSorted();
+  if (sorted === "asc") return <ArrowUp size={11} className="ml-1 text-sky-500" />;
+  if (sorted === "desc") return <ArrowDown size={11} className="ml-1 text-sky-500" />;
+  return <ChevronsUpDown size={11} className="ml-1 text-slate-300" />;
+}
+
 export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
-  const [tiposIdentificacion, setTiposIdentificacion] = useState<
-    TipoIdentificacion[]
-  >([]);
+  const [tiposIdentificacion, setTiposIdentificacion] = useState<TipoIdentificacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingTipos, setLoadingTipos] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState<EstadoFiltro>("ACTIVO");
+  const [filter, setFilter] = useState<EstadoFiltro>("TODOS");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Proveedor | null>(null);
   const [form, setForm] = useState<ProveedorFormInput>(initialForm);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const filteredLabel = useMemo(() => {
-    if (filter === "TODOS") return "Todos";
-    if (filter === "ACTIVO") return "Activos";
-    return "Inactivos";
-  }, [filter]);
+  // Columnas para react-table
+  const columns = useMemo<ColumnDef<Proveedor>[]>(() => [
+    {
+      accessorKey: "razon_social",
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Proveedor
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => (
+        <div className="flex flex-col gap-0.5">
+          <div className="font-semibold text-slate-900">{row.original.razon_social}</div>
+          <div className="text-slate-500 text-xs">{row.original.direccion || "-"}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "identificacion",
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Identificación
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => (
+        <div className="flex flex-col gap-0.5">
+          <div className="font-medium text-slate-800">{row.original.identificacion}</div>
+          <div className="text-slate-500 text-xs">{getTipoLabel(row.original.tipo_identificacion)}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Contacto
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => (
+        <div className="flex flex-col gap-0.5">
+          <div className="text-slate-800">{row.original.email || "-"}</div>
+          <div className="text-slate-500 text-xs">{row.original.telefono || "-"}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "estado",
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Estado
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => (
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+          row.getValue("estado") === "INACTIVO"
+            ? "bg-rose-100 text-rose-700"
+            : "bg-emerald-100 text-emerald-700"
+        }`}>
+          {row.getValue("estado") || "ACTIVO"}
+        </span>
+      ),
+    },
+    {
+      id: "acciones",
+      header: () => null,
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors focus:outline-none">
+                <MoreVertical size={16} strokeWidth={2.5} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                <Edit3 size={14} className="mr-2" />
+                Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleEstado(row.original)}>
+                <Power size={14} className="mr-2" />
+                {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
+  ], []);
 
-  const filteredProveedores = useMemo(() => {
-    let result = proveedores;
-    if (searchTerm) {
-      const lower = searchTerm.toLowerCase();
-      result = result.filter(p => 
-        p.razon_social?.toLowerCase().includes(lower) || 
-        p.identificacion?.toLowerCase().includes(lower) ||
-        p.email?.toLowerCase().includes(lower)
-      );
-    }
-    return result;
-  }, [proveedores, searchTerm]);
-
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(filteredProveedores.length / itemsPerPage) || 1;
-  const paginatedProveedores = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredProveedores.slice(start, start + itemsPerPage);
-  }, [filteredProveedores, currentPage]);
+  const table = useReactTable({
+    data: proveedores,
+    columns,
+    state: { globalFilter, columnFilters, sorting },
+    onGlobalFilterChange: setGlobalFilter,
+    onColumnFiltersChange: setColumnFilters,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
+  });
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [filter, searchTerm]);
+    if (filter === "TODOS") setColumnFilters([]);
+    else setColumnFilters([{ id: "estado", value: filter }]);
+  }, [filter]);
 
   const getTipoLabel = (codigo: string) => {
     const tipo = tiposIdentificacion.find((item) => item.codigo === codigo);
@@ -202,208 +319,365 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Buscar proveedor..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-[180px]">
-            <Select value={filter} onChange={(event) => setFilter(event.target.value as EstadoFiltro)}>
-              {estadoFilters.map((estado) => (
-                <option key={estado} value={estado}>
-                  {estado === "TODOS" ? "Todos" : estado}
-                </option>
-              ))}
-            </Select>
+      {/* Toolbar Principal */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Búsqueda global y Filtros */}
+        <div className="flex flex-1 items-center gap-2 min-w-[280px] max-w-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <input
+              type="text"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Buscar proveedor..."
+              className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-200 bg-white shadow-none text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all hover:bg-slate-50/50"
+            />
+            {globalFilter && (
+              <button
+                onClick={() => setGlobalFilter("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
-          <Button onClick={openCreate}>
-            <PlusCircle className="mr-2 h-4 w-4" />
+          
+          {/* Botón Filtros */}
+          <Button 
+            variant="secondary" 
+            className={`h-9 shadow-none text-xs px-3 shrink-0 border-slate-200 ${showFilters ? "bg-slate-100 hover:bg-slate-200" : "bg-white hover:bg-slate-50"}`}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <ListFilter size={15} className="mr-1.5" />
+            {showFilters ? "Ocultar filtros" : "Filtros"}
+          </Button>
+        </div>
+
+        {/* Botón nuevo — empujado al extremo derecho */}
+        <div className="ml-auto">
+          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+            <Plus size={15} className="mr-1.5" />
             Nuevo proveedor
           </Button>
         </div>
       </div>
 
+      {/* Panel de Filtros Expandible */}
+      {showFilters && (
+        <div className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg animate-in slide-in-from-top-2 fade-in duration-200">
+          <div className="text-xs font-medium text-slate-500 mr-1">Filtrar por:</div>
+          
+          {/* Filtro estado */}
+          <SelectPrimitive.Root value={filter} onValueChange={(val) => setFilter(val as EstadoFiltro)}>
+            <SelectPrimitive.Trigger className="inline-flex h-8 min-w-[140px] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-none transition-all hover:bg-slate-50 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200 data-[state=open]:border-sky-400 data-[state=open]:ring-2 data-[state=open]:ring-sky-200">
+              <SelectPrimitive.Value placeholder="Todos los estados" />
+              <SelectPrimitive.Icon>
+                <ChevronDown size={14} className="text-slate-400" />
+              </SelectPrimitive.Icon>
+            </SelectPrimitive.Trigger>
+            <SelectPrimitive.Portal>
+              <SelectPrimitive.Content className="relative z-50 min-w-[140px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2" position="popper" sideOffset={4}>
+                <SelectPrimitive.Viewport className="p-1">
+                  {estadoFilters.map((estado) => (
+                    <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                    </SelectPrimitive.Item>
+                  ))}
+                </SelectPrimitive.Viewport>
+              </SelectPrimitive.Content>
+            </SelectPrimitive.Portal>
+          </SelectPrimitive.Root>
+
+          {/* Ordenar por */}
+          <SelectPrimitive.Root value={sorting[0]?.id || "none"} onValueChange={(val) => {
+            setSorting(val !== "none" ? [{ id: val, desc: false }] : []);
+          }}>
+            <SelectPrimitive.Trigger className="inline-flex h-8 min-w-[140px] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-none transition-all hover:bg-slate-50 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200 data-[state=open]:border-sky-400 data-[state=open]:ring-2 data-[state=open]:ring-sky-200">
+              <div className="flex items-center gap-2 text-slate-600">
+                <SelectPrimitive.Value placeholder="Ordenar por..." />
+              </div>
+              <SelectPrimitive.Icon>
+                <ChevronDown size={14} className="text-slate-400" />
+              </SelectPrimitive.Icon>
+            </SelectPrimitive.Trigger>
+            <SelectPrimitive.Portal>
+              <SelectPrimitive.Content className="relative z-50 min-w-[140px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2" position="popper" sideOffset={4}>
+                <SelectPrimitive.Viewport className="p-1">
+                  <SelectPrimitive.Item value="none" className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                    <SelectPrimitive.ItemText>Ordenar por...</SelectPrimitive.ItemText>
+                  </SelectPrimitive.Item>
+                  <SelectPrimitive.Item value="razon_social" className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                    <SelectPrimitive.ItemText>Nombre</SelectPrimitive.ItemText>
+                  </SelectPrimitive.Item>
+                  <SelectPrimitive.Item value="identificacion" className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                    <SelectPrimitive.ItemText>Identificación</SelectPrimitive.ItemText>
+                  </SelectPrimitive.Item>
+                </SelectPrimitive.Viewport>
+              </SelectPrimitive.Content>
+            </SelectPrimitive.Portal>
+          </SelectPrimitive.Root>
+        </div>
+      )}
+
+      {/* Estado vacío o Tabla */}
       {loading ? (
-        <p className="mt-4 text-sm text-slate-500">Cargando proveedores...</p>
-      ) : filteredProveedores.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white/60 p-8 text-center">
+        <Loader label="Cargando proveedores" className="mt-8" />
+      ) : table.getFilteredRowModel().rows.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+          <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+            <Truck size={24} className="text-slate-400" />
+          </div>
           <p className="text-sm text-slate-600">No hay proveedores para este filtro.</p>
-          <Button className="mt-3" onClick={openCreate}>
+          <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
+            <Plus size={15} className="mr-1.5" />
             Registrar proveedor
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Proveedor</th>
-                <th className="px-4 py-3">Identificacion</th>
-                <th className="px-4 py-3">Contacto</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedProveedores.map((proveedor) => (
-                <tr key={proveedor.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-slate-800">{proveedor.razon_social}</p>
-                    <p className="text-xs text-slate-500">{proveedor.direccion || "-"}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-slate-700">{proveedor.identificacion}</p>
-                    <p className="text-xs text-slate-500">
-                      {getTipoLabel(proveedor.tipo_identificacion)}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-slate-700">{proveedor.email || "-"}</p>
-                    <p className="text-xs text-slate-500">{proveedor.telefono || "-"}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      proveedor.estado === "INACTIVO"
-                        ? "bg-rose-100 text-rose-700"
-                        : "bg-emerald-100 text-emerald-700"
-                    }`}>
-                      {proveedor.estado || "ACTIVO"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="secondary" onClick={() => openEdit(proveedor)}>
-                        <Edit className="mr-1 h-4 w-4" />
-                        Editar
-                      </Button>
-                      <Button variant="ghost" onClick={() => toggleEstado(proveedor)}>
-                        <Power className="mr-1 h-4 w-4" />
-                        {proveedor.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
-              <span className="text-sm text-slate-500">
-                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredProveedores.length)} de {filteredProveedores.length}
+        <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">
+          {/* Tabla con react-table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="px-4 py-3 whitespace-nowrap text-xs text-slate-500"
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3 align-top">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer Minimalista (Paginación) */}
+          <div className="flex items-center justify-between px-4 py-2 border-t border-slate-100 bg-white">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span>Filas:</span>
+              <SelectPrimitive.Root value={table.getState().pagination.pageSize.toString()} onValueChange={(val) => table.setPageSize(Number(val))}>
+                <SelectPrimitive.Trigger className="inline-flex h-7 min-w-[60px] items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 shadow-none transition-all hover:bg-slate-50 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-200">
+                  <SelectPrimitive.Value />
+                  <SelectPrimitive.Icon>
+                    <ChevronDown size={12} className="text-slate-400" />
+                  </SelectPrimitive.Icon>
+                </SelectPrimitive.Trigger>
+                <SelectPrimitive.Portal>
+                  <SelectPrimitive.Content className="relative z-50 min-w-[60px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2" position="popper" sideOffset={4}>
+                    <SelectPrimitive.Viewport className="p-1">
+                      {[10, 20, 50].map((pageSize) => (
+                        <SelectPrimitive.Item key={pageSize} value={pageSize.toString()} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                          <SelectPrimitive.ItemText>{pageSize}</SelectPrimitive.ItemText>
+                        </SelectPrimitive.Item>
+                      ))}
+                    </SelectPrimitive.Viewport>
+                  </SelectPrimitive.Content>
+                </SelectPrimitive.Portal>
+              </SelectPrimitive.Root>
+              <span className="text-slate-300 ml-1">·</span>
+              <span className="tabular-nums font-medium text-slate-600">
+                Total: {table.getFilteredRowModel().rows.length} registros
               </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                  Anterior
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Siguiente
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </div>
             </div>
-          )}
+            
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span className="px-2 text-xs text-slate-500 font-medium tabular-nums">
+                {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+              </span>
+              <button
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[2px]" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <Dialog.Title className="text-lg font-semibold text-slate-900">
-              {editing ? "Editar proveedor" : "Nuevo proveedor"}
-            </Dialog.Title>
-            <Dialog.Description className="mt-1 text-sm text-slate-600">
-              {editing
-                ? "Actualiza los datos comerciales del proveedor."
-                : "Registra un nuevo proveedor para tus compras."}
-            </Dialog.Description>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Content 
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+          >
+            {/* Header con icono y título */}
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                  <Truck className="h-6 w-6 text-app-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Dialog.Title className="text-xl font-semibold text-slate-900">
+                    {editing ? "Editar proveedor" : "Crear nuevo proveedor"}
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    {editing
+                      ? "Actualiza los datos comerciales del proveedor registrado."
+                      : "Registra un nuevo proveedor para gestionar compras, facturas y documentos de retención."}
+                  </Dialog.Description>
+                </div>
+              </div>
+            </div>
 
-            <form className="mt-4 space-y-4" onSubmit={submitForm}>
-              <section className="grid gap-4 sm:grid-cols-2">
-                <Field label="Tipo identificacion" htmlFor="tipo_identificacion">
-                  <Select
-                    id="tipo_identificacion"
-                    value={form.tipo_identificacion}
-                    onChange={(event) => updateField("tipo_identificacion", event.target.value)}
-                    disabled={loadingTipos}
-                  >
-                    {loadingTipos ? (
-                      <option value="">Cargando...</option>
-                    ) : (
-                      tiposIdentificacion.map((option) => (
-                        <option key={option.codigo} value={option.codigo}>
-                          {option.nombre || option.codigo}
-                        </option>
-                      ))
-                    )}
-                  </Select>
-                </Field>
+            {/* Formulario */}
+            <form className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]" onSubmit={submitForm}>
+              {/* SECCIÓN: Información comercial */}
+              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Información comercial</h3>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Tipo de identificación" htmlFor="tipo_identificacion">
+                    <SelectPrimitive.Root 
+                      value={form.tipo_identificacion || undefined} 
+                      onValueChange={(val) => updateField("tipo_identificacion", val)}
+                      disabled={loadingTipos}
+                    >
+                      <SelectPrimitive.Trigger 
+                        id="tipo_identificacion"
+                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                      >
+                        <SelectPrimitive.Value placeholder={loadingTipos ? "Cargando..." : "Selecciona un tipo..."} />
+                        <SelectPrimitive.Icon>
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </SelectPrimitive.Icon>
+                      </SelectPrimitive.Trigger>
+                      <SelectPrimitive.Portal>
+                        <SelectPrimitive.Content 
+                          className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                          position="popper"
+                          sideOffset={4}
+                        >
+                          <SelectPrimitive.Viewport className="p-1">
+                            {tiposIdentificacion.map((option) => (
+                              <SelectPrimitive.Item 
+                                key={option.codigo}
+                                value={option.codigo}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                              >
+                                <SelectPrimitive.ItemText>{option.nombre || option.codigo}</SelectPrimitive.ItemText>
+                              </SelectPrimitive.Item>
+                            ))}
+                          </SelectPrimitive.Viewport>
+                        </SelectPrimitive.Content>
+                      </SelectPrimitive.Portal>
+                    </SelectPrimitive.Root>
+                  </Field>
 
-                <Field label="Identificacion" htmlFor="identificacion">
-                  <Input
-                    id="identificacion"
-                    inputMode="numeric"
-                    value={form.identificacion}
-                    onChange={(event) => updateField("identificacion", event.target.value)}
-                    disabled={Boolean(editing)}
-                  />
-                </Field>
+                  <Field label="Identificación" htmlFor="identificacion">
+                    <Input
+                      id="identificacion"
+                      inputMode="numeric"
+                      value={form.identificacion}
+                      onChange={(event) => updateField("identificacion", event.target.value)}
+                      disabled={Boolean(editing)}
+                      className="bg-white shadow-none placeholder:text-slate-300"
+                      placeholder="Ej: 1712345678"
+                    />
+                  </Field>
 
-                <Field label="Razon social" htmlFor="razon_social">
-                  <Input
-                    id="razon_social"
-                    value={form.razon_social}
-                    onChange={(event) => updateField("razon_social", event.target.value)}
-                  />
-                </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="Razón social" htmlFor="razon_social">
+                      <Input
+                        id="razon_social"
+                        value={form.razon_social}
+                        onChange={(event) => updateField("razon_social", event.target.value)}
+                        className="bg-white shadow-none placeholder:text-slate-300"
+                        placeholder="Nombre o razón social del proveedor"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </div>
 
-                <Field label="Telefono" htmlFor="telefono">
-                  <Input
-                    id="telefono"
-                    value={form.telefono}
-                    onChange={(event) => updateField("telefono", event.target.value)}
-                  />
-                </Field>
+              {/* SECCIÓN: Información de contacto */}
+              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Phone className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Información de contacto</h3>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Teléfono" htmlFor="telefono">
+                    <Input
+                      id="telefono"
+                      value={form.telefono}
+                      onChange={(event) => updateField("telefono", event.target.value)}
+                      className="bg-white shadow-none placeholder:text-slate-300"
+                      placeholder="0991234567"
+                    />
+                  </Field>
 
-                <Field label="Correo electronico" htmlFor="email">
-                  <Input
-                    id="email"
-                    type="email"
-                    value={form.email}
-                    onChange={(event) => updateField("email", event.target.value)}
-                  />
-                </Field>
-              </section>
+                  <Field label="Correo electrónico" htmlFor="email">
+                    <Input
+                      id="email"
+                      type="email"
+                      value={form.email}
+                      onChange={(event) => updateField("email", event.target.value)}
+                      className="bg-white shadow-none placeholder:text-slate-300"
+                      placeholder="proveedor@empresa.com"
+                    />
+                  </Field>
 
-              <Field label="Direccion" htmlFor="direccion">
-                <Textarea
-                  id="direccion"
-                  value={form.direccion}
-                  onChange={(event) => updateField("direccion", event.target.value)}
-                />
-              </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="Dirección" htmlFor="direccion">
+                      <Input
+                        id="direccion"
+                        value={form.direccion}
+                        onChange={(event) => updateField("direccion", event.target.value)}
+                        className="bg-white shadow-none placeholder:text-slate-300"
+                        placeholder="Av. Principal 123, Ciudad"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="secondary" type="button" onClick={() => setModalOpen(false)}>
+              {/* Botones de acción */}
+              <div className="flex justify-end gap-3 pt-2">
+                <Button 
+                  variant="secondary" 
+                  type="button" 
+                  onClick={() => setModalOpen(false)}
+                  className="h-10 px-4"
+                >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={saving}>
-                  {saving ? "Guardando..." : "Guardar"}
+                <Button 
+                  type="submit" 
+                  disabled={saving}
+                  className="h-10 px-4"
+                >
+                  {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear proveedor"}
                 </Button>
               </div>
             </form>

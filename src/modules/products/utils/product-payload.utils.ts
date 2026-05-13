@@ -49,7 +49,16 @@ const normalizeProducto = (value: UnknownRecord): Producto => ({
   precio: toNumber(value.precio, 0),
   tiene_ice: toBoolean(value.tiene_ice),
   porcentaje_ice: toNumber(value.porcentaje_ice, 0),
+  codigo_ice: toText(value.codigo_ice, ""),
+  tiene_irbpnr: toBoolean(value.tiene_irbpnr),
+  valor_unitario_irbpnr: toNumber(value.valor_unitario_irbpnr, 0),
   estado: toText(value.estado, ""),
+  // Campos enriquecidos opcionales del backend
+  grupo_nombre: toText(value.grupo_nombre, "") || undefined,
+  iva_nombre: toText(value.iva_nombre, "") || undefined,
+  iva_codigo: toText(value.iva_codigo, "") || undefined,
+  iva_porcentaje: value.iva_porcentaje !== undefined ? toNumber(value.iva_porcentaje, 0) : undefined,
+  porcentaje_iva: value.porcentaje_iva !== undefined ? toNumber(value.porcentaje_iva, 0) : undefined,
 });
 
 export const normalizeProductosResponse = (payload: unknown): ProductosResponse => {
@@ -84,4 +93,7 @@ export const toProductoFormInput = (producto: Producto): ProductoFormInput => ({
   precio: producto.precio ?? 0,
   tiene_ice: producto.tiene_ice ?? false,
   porcentaje_ice: producto.porcentaje_ice ?? 0,
+  codigo_ice: producto.codigo_ice ?? "",
+  tiene_irbpnr: producto.tiene_irbpnr ?? false,
+  valor_unitario_irbpnr: producto.valor_unitario_irbpnr ?? 0.02,
 });

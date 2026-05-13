@@ -3,11 +3,29 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Eye, PlusCircle, Power, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  flexRender,
+  type ColumnDef,
+  type ColumnFiltersState,
+  type SortingState,
+} from "@tanstack/react-table";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { Eye, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Hash, Building2, FileType, Globe } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/src/components/ui/dropdown-menu";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
-import { Select } from "@/src/components/ui/select";
 import type {
   SecuencialFormInput,
   SecuencialItem,
@@ -18,6 +36,7 @@ import { emissionPointService } from "@/src/modules/emission-points/services/emi
 import type { PuntoEmision } from "@/src/modules/emission-points/types/emission-point.types";
 import { ambienteService } from "@/src/modules/ambiente/services/ambiente.service";
 import type { AmbienteItem } from "@/src/modules/ambiente/types/ambiente.types";
+import { Loader } from "@/src/components/ui/loader";
 
 const initialForm: SecuencialFormInput = {
   id_punto_emision: 0,
@@ -114,40 +133,172 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
     void loadSecuenciales();
   }, [filter, puntoFilter]);
 
-  const filteredSecuenciales = useMemo(() => {
-    let result = secuenciales;
-    if (searchTerm) {
-      const lower = searchTerm.toLowerCase();
-      result = result.filter(s =>
-        getPuntoLabel(s.id_punto_emision)?.toLowerCase().includes(lower) ||
-        getTipoLabel(s.tipo_documento)?.toLowerCase().includes(lower) ||
-        getAmbienteLabel(s.ambiente)?.toLowerCase().includes(lower)
-      );
-    }
-    return result;
-  }, [secuenciales, searchTerm]);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(filteredSecuenciales.length / itemsPerPage) || 1;
-  const paginatedSecuenciales = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredSecuenciales.slice(start, start + itemsPerPage);
-  }, [filteredSecuenciales, currentPage]);
+  const getPuntoLabel = (id: number) => {
+    const punto = puntos.find((item) => item.id === id);
+    if (!punto) return "-";
+    return `${punto.codigo} - ${punto.descripcion}`;
+  };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filter, puntoFilter, searchTerm]);
+  const getTipoLabel = (codigo: string) => {
+    const tipo = tiposDocumento.find((item) => item.codigo === codigo);
+    if (!tipo) return codigo || "-";
+    return tipo.nombre || tipo.descripcion || codigo;
+  };
+
+  const getAmbienteLabel = (id: number) => {
+    const ambiente = ambientes.find((item) => item.id === id);
+    if (!ambiente) return id ? String(id) : "-";
+    return ambiente.nombre || ambiente.codigo || String(ambiente.id);
+  };
+
+  function SortIcon({ column }: { column: any }) {
+    const sorted = column.getIsSorted();
+    if (sorted === "asc") return <ArrowUp size={11} className="ml-1 text-sky-500" />;
+    if (sorted === "desc") return <ArrowDown size={11} className="ml-1 text-sky-500" />;
+    return <ChevronsUpDown size={11} className="ml-1 text-slate-300" />;
+  }
+
+  const columns = useMemo<ColumnDef<SecuencialItem>[]>(() => [
+    {
+      id: "punto",
+      accessorFn: (row) => getPuntoLabel(row.id_punto_emision),
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Punto
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => (
+        <span className="font-semibold text-slate-800">
+          {row.original.est_nombre || getPuntoLabel(row.original.id_punto_emision)}
+        </span>
+      ),
+    },
+    {
+      id: "tipo_documento",
+      accessorFn: (row) => getTipoLabel(row.tipo_documento),
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Tipo
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => (
+        <span className="text-slate-700">{getTipoLabel(row.original.tipo_documento)}</span>
+      ),
+    },
+    {
+      id: "ambiente",
+      accessorFn: (row) => getAmbienteLabel(row.ambiente),
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Ambiente
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => (
+        <span className="text-slate-700">{row.original.ambiente_nombre || getAmbienteLabel(row.original.ambiente)}</span>
+      ),
+    },
+    {
+      accessorKey: "secuencial",
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Secuencial
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => (
+        <span className="text-slate-700">{row.original.secuencial || "-"}</span>
+      ),
+    },
+    {
+      accessorKey: "estado",
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Estado
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => (
+        <span
+          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+            row.original.estado === "INACTIVO"
+              ? "bg-rose-100 text-rose-700"
+              : "bg-emerald-100 text-emerald-700"
+          }`}
+        >
+          {row.original.estado || "ACTIVO"}
+        </span>
+      ),
+    },
+    {
+      id: "acciones",
+      header: () => null,
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors focus:outline-none">
+                <MoreVertical size={16} strokeWidth={2.5} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openDetail(row.original)}>
+                <Eye size={14} className="mr-2" />
+                Ver
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleEstado(row.original)}>
+                <Power size={14} className="mr-2" />
+                {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
+  ], [puntos, tiposDocumento, ambientes]);
+
+  const table = useReactTable({
+    data: secuenciales,
+    columns,
+    state: { globalFilter, columnFilters, sorting },
+    onGlobalFilterChange: setGlobalFilter,
+    onColumnFiltersChange: setColumnFilters,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
+  });
 
   const openCreate = () => {
     if (!canCreate) {
       toast.error("No hay catálogos disponibles para crear un secuencial.");
       return;
     }
-    setForm({
-      id_punto_emision: puntos[0]?.id ?? 0,
-      tipo_documento: tiposDocumento[0]?.codigo ?? "",
-      ambiente: ambientes[0]?.id ?? 0,
-    });
+    setForm(initialForm);
     setModalOpen(true);
   };
 
@@ -216,23 +367,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
     }
   };
 
-  const getPuntoLabel = (id: number) => {
-    const punto = puntos.find((item) => item.id === id);
-    if (!punto) return "-";
-    return `${punto.codigo} - ${punto.descripcion}`;
-  };
 
-  const getTipoLabel = (codigo: string) => {
-    const tipo = tiposDocumento.find((item) => item.codigo === codigo);
-    if (!tipo) return codigo || "-";
-    return tipo.nombre || tipo.descripcion || codigo;
-  };
-
-  const getAmbienteLabel = (id: number) => {
-    const ambiente = ambientes.find((item) => item.id === id);
-    if (!ambiente) return id ? String(id) : "-";
-    return ambiente.nombre || ambiente.codigo || String(ambiente.id);
-  };
 
   const detailData = detail ?? detailPreview;
 
@@ -240,206 +375,363 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Buscar secuencial..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      {/* Toolbar Principal */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Búsqueda global y Filtros */}
+        <div className="flex flex-1 items-center gap-2 min-w-[280px] max-w-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <input
+              type="text"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Buscar secuencial..."
+              className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-200 bg-white shadow-none text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all hover:bg-slate-50/50"
+            />
+            {globalFilter && (
+              <button
+                onClick={() => setGlobalFilter("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+          
+          {/* Botón Filtros */}
+          <Button 
+            variant="secondary" 
+            className={`h-9 shadow-none text-xs px-3 shrink-0 border-slate-200 ${showFilters ? "bg-slate-100 hover:bg-slate-200" : "bg-white hover:bg-slate-50"}`}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <ListFilter size={15} className="mr-1.5" />
+            {showFilters ? "Ocultar filtros" : "Filtros"}
+          </Button>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-[180px]">
-            <Select value={filter} onChange={(event) => setFilter(event.target.value as EstadoFiltro)}>
-              {estadoFilters.map((estado) => (
-                <option key={estado} value={estado}>
-                  {estado === "TODOS" ? "Todos" : estado}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="min-w-[200px]">
-            <Select
-              value={String(puntoFilter)}
-              onChange={(event) => setPuntoFilter(Number(event.target.value))}
-              disabled={loadingCatalogs}
-            >
-              <option value="0">Todos los puntos</option>
-              {puntos.map((punto) => (
-                <option key={punto.id} value={punto.id}>
-                  {punto.codigo} - {punto.descripcion}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Button onClick={openCreate} disabled={!canCreate}>
-            <PlusCircle className="mr-2 h-4 w-4" />
+
+        {/* Botón nuevo — empujado al extremo derecho */}
+        <div className="ml-auto">
+          <Button onClick={openCreate} disabled={!canCreate} className="h-9 shadow-none whitespace-nowrap">
+            <Plus size={15} className="mr-1.5" />
             Nuevo secuencial
           </Button>
         </div>
       </div>
 
+      {/* Panel de Filtros Expandible */}
+      {showFilters && (
+        <div className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg animate-in slide-in-from-top-2 fade-in duration-200">
+          <div className="text-xs font-medium text-slate-500 mr-1">Filtrar por:</div>
+          
+          {/* Filtro estado (API) */}
+          <SelectPrimitive.Root value={filter} onValueChange={(val) => setFilter(val as EstadoFiltro)}>
+            <SelectPrimitive.Trigger className="inline-flex h-8 min-w-[140px] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-none transition-all hover:bg-slate-50 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200 data-[state=open]:border-sky-400 data-[state=open]:ring-2 data-[state=open]:ring-sky-200">
+              <SelectPrimitive.Value placeholder="Todos los estados" />
+              <SelectPrimitive.Icon>
+                <ChevronDown size={14} className="text-slate-400" />
+              </SelectPrimitive.Icon>
+            </SelectPrimitive.Trigger>
+            <SelectPrimitive.Portal>
+              <SelectPrimitive.Content className="relative z-50 min-w-[140px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2" position="popper" sideOffset={4}>
+                <SelectPrimitive.Viewport className="p-1">
+                  {estadoFilters.map((estado) => (
+                    <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                    </SelectPrimitive.Item>
+                  ))}
+                </SelectPrimitive.Viewport>
+              </SelectPrimitive.Content>
+            </SelectPrimitive.Portal>
+          </SelectPrimitive.Root>
+
+          {/* Filtro Punto Emisión (API) */}
+          <SelectPrimitive.Root value={String(puntoFilter)} onValueChange={(val) => setPuntoFilter(Number(val))}>
+            <SelectPrimitive.Trigger className="inline-flex h-8 min-w-[180px] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-none transition-all hover:bg-slate-50 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200 data-[state=open]:border-sky-400 data-[state=open]:ring-2 data-[state=open]:ring-sky-200">
+              <SelectPrimitive.Value placeholder="Todos los puntos" />
+              <SelectPrimitive.Icon>
+                <ChevronDown size={14} className="text-slate-400" />
+              </SelectPrimitive.Icon>
+            </SelectPrimitive.Trigger>
+            <SelectPrimitive.Portal>
+              <SelectPrimitive.Content className="relative z-50 min-w-[180px] max-h-60 overflow-y-auto overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2" position="popper" sideOffset={4}>
+                <SelectPrimitive.Viewport className="p-1">
+                  <SelectPrimitive.Item value="0" className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                    <SelectPrimitive.ItemText>Todos los puntos</SelectPrimitive.ItemText>
+                  </SelectPrimitive.Item>
+                  {puntos.map((punto) => (
+                    <SelectPrimitive.Item key={punto.id} value={String(punto.id)} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                      <SelectPrimitive.ItemText>{punto.codigo} - {punto.descripcion}</SelectPrimitive.ItemText>
+                    </SelectPrimitive.Item>
+                  ))}
+                </SelectPrimitive.Viewport>
+              </SelectPrimitive.Content>
+            </SelectPrimitive.Portal>
+          </SelectPrimitive.Root>
+        </div>
+      )}
+
+      {/* Tabla */}
       {loading ? (
-        <p className="mt-4 text-sm text-slate-500">Cargando secuenciales...</p>
-      ) : filteredSecuenciales.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white/60 p-8 text-center">
+        <Loader label="Cargando secuenciales" className="mt-8" />
+      ) : table.getFilteredRowModel().rows.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+          <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+            <FileText size={24} className="text-slate-400" />
+          </div>
           <p className="text-sm text-slate-600">No hay secuenciales para este filtro.</p>
-          <Button className="mt-3" onClick={openCreate} disabled={!canCreate}>
-            Crear secuencial
+          <Button onClick={openCreate} disabled={!canCreate} className="mt-3 h-9 shadow-none">
+            <Plus size={15} className="mr-1.5" /> Crear secuencial
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Punto</th>
-                <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3">Ambiente</th>
-                <th className="px-4 py-3">Secuencial</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedSecuenciales.map((item) => (
-                <tr key={item.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-slate-800">
-                      {getPuntoLabel(item.id_punto_emision)}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-slate-700">{getTipoLabel(item.tipo_documento)}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-slate-700">{getAmbienteLabel(item.ambiente)}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-slate-700">{item.secuencial || "-"}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        item.estado === "INACTIVO"
-                          ? "bg-rose-100 text-rose-700"
-                          : "bg-emerald-100 text-emerald-700"
-                      }`}
-                    >
-                      {item.estado || "ACTIVO"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="secondary" onClick={() => openDetail(item)}>
-                        <Eye className="mr-1 h-4 w-4" />
-                        Ver
-                      </Button>
-                      <Button variant="ghost" onClick={() => toggleEstado(item)}>
-                        <Power className="mr-1 h-4 w-4" />
-                        {item.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
-              <span className="text-sm text-slate-500">
-                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredSecuenciales.length)} de {filteredSecuenciales.length}
+        <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="px-4 py-3 whitespace-nowrap text-xs text-slate-500"
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3 align-top">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between px-4 py-2 border-t border-slate-100 bg-white">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span>Filas:</span>
+              <SelectPrimitive.Root value={table.getState().pagination.pageSize.toString()} onValueChange={(val) => table.setPageSize(Number(val))}>
+                <SelectPrimitive.Trigger className="inline-flex h-7 min-w-[60px] items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 shadow-none transition-all hover:bg-slate-50 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-200">
+                  <SelectPrimitive.Value />
+                  <SelectPrimitive.Icon>
+                    <ChevronDown size={12} className="text-slate-400" />
+                  </SelectPrimitive.Icon>
+                </SelectPrimitive.Trigger>
+                <SelectPrimitive.Portal>
+                  <SelectPrimitive.Content className="relative z-50 min-w-[60px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2" position="popper" sideOffset={4}>
+                    <SelectPrimitive.Viewport className="p-1">
+                      {[10, 20, 50].map((pageSize) => (
+                        <SelectPrimitive.Item key={pageSize} value={pageSize.toString()} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                          <SelectPrimitive.ItemText>{pageSize}</SelectPrimitive.ItemText>
+                        </SelectPrimitive.Item>
+                      ))}
+                    </SelectPrimitive.Viewport>
+                  </SelectPrimitive.Content>
+                </SelectPrimitive.Portal>
+              </SelectPrimitive.Root>
+              <span className="text-slate-300 ml-1">·</span>
+              <span className="tabular-nums font-medium text-slate-600">
+                Total: {table.getFilteredRowModel().rows.length} registros
               </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                  Anterior
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Siguiente
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </div>
             </div>
-          )}
+            
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span className="px-2 text-xs text-slate-500 font-medium tabular-nums">
+                {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+              </span>
+              <button
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[2px]" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <Dialog.Title className="text-lg font-semibold text-slate-900">
-              Nuevo secuencial
-            </Dialog.Title>
-            <Dialog.Description className="mt-1 text-sm text-slate-600">
-              Configura el punto, el tipo de documento y el ambiente.
-            </Dialog.Description>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Content 
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+          >
+            {/* Header con icono y título */}
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                  <Hash className="h-6 w-6 text-app-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Dialog.Title className="text-xl font-semibold text-slate-900">
+                    Crear nuevo secuencial
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    Configura el punto de emisión, tipo de documento y ambiente para generar números de documentos electrónicos.
+                  </Dialog.Description>
+                </div>
+              </div>
+            </div>
 
-            <form className="mt-4 space-y-4" onSubmit={submitForm}>
-              <Field label="Punto de emisión" htmlFor="id_punto_emision">
-                <Select
-                  id="id_punto_emision"
-                  value={String(form.id_punto_emision)}
-                  onChange={(event) =>
-                    updateField("id_punto_emision", Number(event.target.value))
-                  }
-                  disabled={loadingCatalogs}
+            {/* Formulario */}
+            <form className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]" onSubmit={submitForm}>
+              {/* SECCIÓN: Configuración del secuencial */}
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Configuración del secuencial</h3>
+                </div>
+                <div className="space-y-4">
+                  <Field label="Punto de emisión" htmlFor="id_punto_emision">
+                    <SelectPrimitive.Root 
+                      value={form.id_punto_emision === 0 ? undefined : form.id_punto_emision.toString()} 
+                      onValueChange={(val) => updateField("id_punto_emision", Number(val))}
+                      disabled={loadingCatalogs}
+                    >
+                      <SelectPrimitive.Trigger 
+                        id="id_punto_emision"
+                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                      >
+                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un punto de emisión..."} />
+                        <SelectPrimitive.Icon>
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </SelectPrimitive.Icon>
+                      </SelectPrimitive.Trigger>
+                      <SelectPrimitive.Portal>
+                        <SelectPrimitive.Content 
+                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                          position="popper"
+                          sideOffset={4}
+                        >
+                          <SelectPrimitive.Viewport className="p-1">
+                            {puntos.map((punto) => (
+                              <SelectPrimitive.Item 
+                                key={punto.id}
+                                value={punto.id.toString()}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                              >
+                                <SelectPrimitive.ItemText>{punto.codigo} - {punto.descripcion}</SelectPrimitive.ItemText>
+                              </SelectPrimitive.Item>
+                            ))}
+                          </SelectPrimitive.Viewport>
+                        </SelectPrimitive.Content>
+                      </SelectPrimitive.Portal>
+                    </SelectPrimitive.Root>
+                  </Field>
+
+                  <Field label="Tipo de documento" htmlFor="tipo_documento">
+                    <SelectPrimitive.Root 
+                      value={form.tipo_documento || undefined} 
+                      onValueChange={(val) => updateField("tipo_documento", val)}
+                      disabled={loadingCatalogs}
+                    >
+                      <SelectPrimitive.Trigger 
+                        id="tipo_documento"
+                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                      >
+                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un tipo de documento..."} />
+                        <SelectPrimitive.Icon>
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </SelectPrimitive.Icon>
+                      </SelectPrimitive.Trigger>
+                      <SelectPrimitive.Portal>
+                        <SelectPrimitive.Content 
+                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                          position="popper"
+                          sideOffset={4}
+                        >
+                          <SelectPrimitive.Viewport className="p-1">
+                            {tiposDocumento.map((tipo) => (
+                              <SelectPrimitive.Item 
+                                key={tipo.codigo}
+                                value={tipo.codigo}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                              >
+                                <SelectPrimitive.ItemText>{tipo.nombre || tipo.descripcion || tipo.codigo}</SelectPrimitive.ItemText>
+                              </SelectPrimitive.Item>
+                            ))}
+                          </SelectPrimitive.Viewport>
+                        </SelectPrimitive.Content>
+                      </SelectPrimitive.Portal>
+                    </SelectPrimitive.Root>
+                  </Field>
+
+                  <Field label="Ambiente SRI" htmlFor="ambiente">
+                    <SelectPrimitive.Root 
+                      value={form.ambiente === 0 ? undefined : form.ambiente.toString()} 
+                      onValueChange={(val) => updateField("ambiente", Number(val))}
+                      disabled={loadingCatalogs}
+                    >
+                      <SelectPrimitive.Trigger 
+                        id="ambiente"
+                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                      >
+                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un ambiente..."} />
+                        <SelectPrimitive.Icon>
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </SelectPrimitive.Icon>
+                      </SelectPrimitive.Trigger>
+                      <SelectPrimitive.Portal>
+                        <SelectPrimitive.Content 
+                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                          position="popper"
+                          sideOffset={4}
+                        >
+                          <SelectPrimitive.Viewport className="p-1">
+                            {ambientes.map((ambiente) => (
+                              <SelectPrimitive.Item 
+                                key={ambiente.id}
+                                value={ambiente.id.toString()}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                              >
+                                <SelectPrimitive.ItemText>{ambiente.nombre || ambiente.codigo || ambiente.id}</SelectPrimitive.ItemText>
+                              </SelectPrimitive.Item>
+                            ))}
+                          </SelectPrimitive.Viewport>
+                        </SelectPrimitive.Content>
+                      </SelectPrimitive.Portal>
+                    </SelectPrimitive.Root>
+                  </Field>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex justify-end gap-3 pt-2">
+                <Button 
+                  variant="secondary" 
+                  type="button" 
+                  onClick={() => setModalOpen(false)}
+                  className="h-10 px-4"
                 >
-                  {puntos.map((punto) => (
-                    <option key={punto.id} value={punto.id}>
-                      {punto.codigo} - {punto.descripcion}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <Field label="Tipo de documento" htmlFor="tipo_documento">
-                <Select
-                  id="tipo_documento"
-                  value={form.tipo_documento}
-                  onChange={(event) => updateField("tipo_documento", event.target.value)}
-                  disabled={loadingCatalogs}
-                >
-                  {tiposDocumento.map((tipo) => (
-                    <option key={tipo.codigo} value={tipo.codigo}>
-                      {tipo.nombre || tipo.descripcion || tipo.codigo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <Field label="Ambiente" htmlFor="ambiente">
-                <Select
-                  id="ambiente"
-                  value={String(form.ambiente)}
-                  onChange={(event) => updateField("ambiente", Number(event.target.value))}
-                  disabled={loadingCatalogs}
-                >
-                  {ambientes.map((ambiente) => (
-                    <option key={ambiente.id} value={ambiente.id}>
-                      {ambiente.nombre || ambiente.codigo || ambiente.id}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="secondary" type="button" onClick={() => setModalOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={saving}>
-                  {saving ? "Guardando..." : "Guardar"}
+                <Button 
+                  type="submit" 
+                  disabled={saving}
+                  className="h-10 px-4"
+                >
+                  {saving ? "Guardando..." : "Crear secuencial"}
                 </Button>
               </div>
             </form>
@@ -459,7 +751,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
             </Dialog.Description>
 
             {detailLoading ? (
-              <p className="mt-4 text-sm text-slate-500">Cargando detalle...</p>
+              <Loader label="Cargando detalle" className="mt-4 min-h-[100px]" />
             ) : detailData ? (
               <dl className="mt-4 grid gap-3 text-sm">
                 <div>

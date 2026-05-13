@@ -67,8 +67,9 @@ export const normalizeCompanyResponse = (payload: unknown): CompanyResponse => {
   const source = toRecord(raw.data ?? raw.empresa ?? raw.company ?? raw);
 
   const company: Company = {
+    id: toNumber(source.id, 0) || undefined,
     ruc: toText(source.ruc, ""),
-    identificacion: toText(source.identificacion ?? source.cedula, ""),
+    identificacion: toText(source.identificacion ?? source.cedula ?? source.ruc, ""),
     logo: toProxyLogoUrl(
       toText(
         source.logo ??
@@ -97,6 +98,15 @@ export const normalizeCompanyResponse = (payload: unknown): CompanyResponse => {
     rimpe: toBoolean(source.rimpe),
     regimen: toText(source.regimen, ""),
     ambiente: toNumber(source.ambiente, 1),
+    estado: toText(source.estado, ""),
+    created_at: toText(source.created_at, ""),
+    updated_at: toText(source.updated_at, ""),
+    smtp_host: toText(source.smtp_host, ""),
+    smtp_port: toNumber(source.smtp_port, 587),
+    smtp_user: toText(source.smtp_user, ""),
+    smtp_from_name: toText(source.smtp_from_name, ""),
+    smtp_secure: toBoolean(source.smtp_secure),
+    smtp_configurado: toBoolean(source.smtp_configurado),
   };
 
   return {
@@ -125,6 +135,12 @@ export const toCompanyFormInput = (company: Company): CompanyFormInput => ({
   rimpe: company.rimpe ?? false,
   regimen: company.regimen ?? "",
   ambiente: company.ambiente ?? 1,
+  smtp_host: company.smtp_host ?? "",
+  smtp_port: company.smtp_port ?? 587,
+  smtp_user: company.smtp_user ?? "",
+  smtp_password: "",
+  smtp_from_name: company.smtp_from_name ?? "",
+  smtp_secure: company.smtp_secure ?? false,
 });
 
 export const buildCompanyFormData = (input: CompanyFormInput): FormData => {
@@ -152,6 +168,14 @@ export const buildCompanyFormData = (input: CompanyFormInput): FormData => {
   formData.append("rimpe", String(input.rimpe));
   formData.append("regimen", input.regimen);
   formData.append("ambiente", String(input.ambiente));
+  formData.append("smtp_host", input.smtp_host);
+  formData.append("smtp_port", String(input.smtp_port));
+  formData.append("smtp_user", input.smtp_user);
+  if (input.smtp_password) {
+    formData.append("smtp_password", input.smtp_password);
+  }
+  formData.append("smtp_from_name", input.smtp_from_name);
+  formData.append("smtp_secure", String(input.smtp_secure));
 
   return formData;
 };

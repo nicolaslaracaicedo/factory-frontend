@@ -85,9 +85,15 @@ export const productService = {
     return normalizeProductoResponse(payload).data;
   },
 
-  async toggleProductoActivo(id: number): Promise<Producto> {
-    const response = await fetch(`/api/productos/${id}/activo`, {
+  async toggleProductoActivo(id: number, estadoActual: string): Promise<Producto> {
+    const nuevoEstado = estadoActual === "INACTIVO" ? "ACTIVO" : "INACTIVO";
+
+    const response = await fetch(`/api/productos/${id}/estado`, {
       method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ estado: nuevoEstado }),
     });
 
     const payload = await readJson(response);

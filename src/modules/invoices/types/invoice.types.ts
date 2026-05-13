@@ -5,6 +5,7 @@ export interface FacturaItem {
   estado?: string;
   id_punto_emision?: number;
   id_cliente?: number;
+  consumidor_final?: boolean;
   cliente_nombre?: string;
   cliente_identificacion?: string;
   fecha_emision?: string;
@@ -12,6 +13,7 @@ export interface FacturaItem {
   forma_pago?: string;
   tipo_pago?: string;
   dias_plazo?: number;
+  monto_recibido?: number;
   observacion?: string;
   subtotal?: number;
   total?: number;
@@ -32,9 +34,9 @@ export interface FacturaDetalle {
   descuento?: number;
   codigo_iva?: string;
   porcentaje_iva?: number;
-  unidad_medida?: string;
-  valor_ice?: number;
-  valor_irbpnr?: number;
+  codigo_ice?: string;
+  porcentaje_ice?: number;
+  valor_unitario_irbpnr?: number;
 }
 
 export interface FacturaDatoAdicional {
@@ -56,15 +58,13 @@ export interface FacturaDetalleDraft {
   mode: "CATALOGO" | "MANUAL";
   id_producto: number;
   cantidad: number;
-  descuento: number;
+  descuento: string;
+  tipo_descuento: "PORCENTAJE" | "VALOR";
   codigo: string;
   descripcion: string;
   precio_unitario: number;
   codigo_iva: string;
   porcentaje_iva: number;
-  unidad_medida: string;
-  valor_ice: number;
-  valor_irbpnr: number;
 }
 
 export interface FacturaDatoAdicionalDraft {
@@ -75,7 +75,7 @@ export interface FacturaDatoAdicionalDraft {
 export interface FacturaFormState {
   id_punto_emision: number;
   id_cliente: number;
-  use_manual_cliente: boolean;
+  cliente_mode: "REGISTRADO" | "CONSUMIDOR_FINAL" | "MANUAL";
   cli_identificacion: string;
   cli_razon_social: string;
   cli_direccion: string;
@@ -85,6 +85,7 @@ export interface FacturaFormState {
   forma_pago: string;
   tipo_pago: string;
   dias_plazo: number;
+  monto_recibido: number;
   observacion: string;
   detalles: FacturaDetalleDraft[];
   datos_adicionales: FacturaDatoAdicionalDraft[];
@@ -93,6 +94,7 @@ export interface FacturaFormState {
 export type FacturaCreateInput = {
   id_punto_emision: number;
   id_cliente?: number;
+  consumidor_final?: boolean;
   cli_identificacion?: string;
   cli_razon_social?: string;
   cli_direccion?: string;
@@ -102,6 +104,7 @@ export type FacturaCreateInput = {
   forma_pago: string;
   tipo_pago: string;
   dias_plazo: number;
+  monto_recibido?: number;
   observacion: string;
   detalles: FacturaDetalle[];
   datos_adicionales: FacturaDatoAdicional[];

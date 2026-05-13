@@ -25,7 +25,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${variantClasses[variant]} ${fullWidth ? "w-full" : ""} ${className}`}
+      className={`inline-flex h-9 items-center justify-center rounded-lg px-3 text-sm font-semibold transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${variantClasses[variant]} ${fullWidth ? "w-full" : ""} ${className}`}
       {...props}
     />
   );

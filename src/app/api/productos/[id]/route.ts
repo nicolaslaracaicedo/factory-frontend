@@ -86,3 +86,28 @@ export async function PUT(
 
   return NextResponse.json(payload);
 }
+
+// PATCH → toggle activo en el backend (/api/productos/:id/activo)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const token = request.cookies.get("factory_token")?.value;
+  const { id } = await params;
+
+  const backendResponse = await fetch(`${API_URL}/api/productos/${id}/activo`, {
+    method: "PATCH",
+    headers: getAuthHeaders(token, false),
+    cache: "no-store",
+  });
+
+  const payload = await readPayload(backendResponse);
+  if (!backendResponse.ok) {
+    return NextResponse.json(
+      { message: toMessage(payload, "No se pudo actualizar el estado del producto.") },
+      { status: backendResponse.status }
+    );
+  }
+
+  return NextResponse.json(payload);
+}

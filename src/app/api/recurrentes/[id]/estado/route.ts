@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL =
-  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 const getAuthHeaders = (token: string | undefined): HeadersInit => {
   const headers: HeadersInit = {};
-
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
-
   return headers;
 };
 
@@ -23,7 +20,6 @@ const toMessage = (payload: unknown, fallback: string): string => {
     if (typeof record.message === "string") return record.message;
     if (typeof record.error === "string") return record.error;
   }
-
   return fallback;
 };
 
@@ -34,7 +30,7 @@ export async function PATCH(
   const token = request.cookies.get("factory_token")?.value;
   const { id } = await params;
 
-  const backendResponse = await fetch(`${API_URL}/api/productos/${id}/activo`, {
+  const backendResponse = await fetch(`${API_URL}/api/recurrentes/${id}/estado`, {
     method: "PATCH",
     headers: getAuthHeaders(token),
     cache: "no-store",

@@ -39,9 +39,9 @@ const normalizeDetalle = (value: UnknownRecord): FacturaDetalle => ({
   descuento: toNumber(value.descuento, 0) || undefined,
   codigo_iva: toText(value.codigo_iva ?? value.iva_codigo, ""),
   porcentaje_iva: toNumber(value.porcentaje_iva ?? value.iva_porcentaje, 0) || undefined,
-  unidad_medida: toText(value.unidad_medida ?? value.unidad, ""),
-  valor_ice: toNumber(value.valor_ice, 0) || undefined,
-  valor_irbpnr: toNumber(value.valor_irbpnr, 0) || undefined,
+  codigo_ice: toText(value.codigo_ice, ""),
+  porcentaje_ice: toNumber(value.porcentaje_ice, 0) || undefined,
+  valor_unitario_irbpnr: toNumber(value.valor_unitario_irbpnr, 0) || undefined,
 });
 
 const normalizeAdicional = (value: UnknownRecord): FacturaDatoAdicional => ({
@@ -56,6 +56,7 @@ const normalizeFactura = (value: UnknownRecord): FacturaItem => ({
   estado: toText(value.estado ?? value.status, ""),
   id_punto_emision: toNumber(value.id_punto_emision ?? value.punto_emision_id, 0) || undefined,
   id_cliente: toNumber(value.id_cliente ?? value.cliente_id, 0) || undefined,
+  consumidor_final: Boolean(value.consumidor_final),
   cliente_nombre: toText(value.cliente_nombre ?? value.cli_razon_social ?? value.razon_social, ""),
   cliente_identificacion: toText(value.cliente_identificacion ?? value.cli_identificacion, ""),
   fecha_emision: toText(value.fecha_emision ?? value.emision_fecha, ""),
@@ -63,6 +64,7 @@ const normalizeFactura = (value: UnknownRecord): FacturaItem => ({
   forma_pago: toText(value.forma_pago ?? value.formaPago, ""),
   tipo_pago: toText(value.tipo_pago ?? value.tipoPago, ""),
   dias_plazo: toNumber(value.dias_plazo ?? value.plazo, 0) || undefined,
+  monto_recibido: toNumber(value.monto_recibido, 0) || undefined,
   observacion: toText(value.observacion ?? value.observaciones, ""),
   subtotal: toNumber(value.subtotal ?? value.sub_total, 0) || undefined,
   total: toNumber(value.total ?? value.total_pagar, 0) || undefined,
@@ -103,7 +105,13 @@ export const normalizeFacturaResponse = (payload: unknown): FacturaResponse => {
 export const toFacturaFormState = (factura: FacturaItem): FacturaFormState => ({
   id_punto_emision: factura.id_punto_emision ?? 0,
   id_cliente: factura.id_cliente ?? 0,
-  use_manual_cliente: false,
+  cliente_mode: factura.consumidor_final
+    ? "CONSUMIDOR_FINAL"
+    : factura.id_cliente
+      ? "REGISTRADO"
+      : factura.cliente_identificacion || factura.cliente_nombre
+        ? "MANUAL"
+        : "REGISTRADO",
   cli_identificacion: factura.cliente_identificacion ?? "",
   cli_razon_social: factura.cliente_nombre ?? "",
   cli_direccion: "",
@@ -113,20 +121,19 @@ export const toFacturaFormState = (factura: FacturaItem): FacturaFormState => ({
   forma_pago: factura.forma_pago ?? "",
   tipo_pago: factura.tipo_pago ?? "",
   dias_plazo: factura.dias_plazo ?? 0,
+  monto_recibido: factura.monto_recibido ?? 0,
   observacion: factura.observacion ?? "",
   detalles: (factura.detalles ?? []).map((detalle) => ({
     mode: detalle.id_producto ? "CATALOGO" : "MANUAL",
     id_producto: detalle.id_producto ?? 0,
     cantidad: detalle.cantidad ?? 0,
-    descuento: detalle.descuento ?? 0,
+    descuento: String(detalle.descuento ?? 0),
+    tipo_descuento: "PORCENTAJE" as const,
     codigo: detalle.codigo ?? "",
     descripcion: detalle.descripcion ?? "",
     precio_unitario: detalle.precio_unitario ?? 0,
     codigo_iva: detalle.codigo_iva ?? "",
     porcentaje_iva: detalle.porcentaje_iva ?? 0,
-    unidad_medida: detalle.unidad_medida ?? "",
-    valor_ice: detalle.valor_ice ?? 0,
-    valor_irbpnr: detalle.valor_irbpnr ?? 0,
   })),
   datos_adicionales: (factura.datos_adicionales ?? []).map((item) => ({
     nombre: item.nombre ?? "",

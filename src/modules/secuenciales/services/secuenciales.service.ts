@@ -77,6 +77,16 @@ export const secuencialesService = {
       throw new Error(getErrorMessage(payload));
     }
 
+    const record = payload as Record<string, any>;
+    if (Array.isArray(record.data)) {
+      const found = record.data.find((x: any) => x.id === id);
+      if (found) {
+        record.data = found;
+      } else if (record.data.length > 0) {
+        record.data = record.data[0];
+      }
+    }
+
     return normalizeSecuencialResponse(payload).data;
   },
 

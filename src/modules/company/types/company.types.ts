@@ -1,4 +1,5 @@
 export interface Company {
+  id?: number;
   ruc?: string;
   identificacion?: string;
   logo?: string;
@@ -18,6 +19,15 @@ export interface Company {
   rimpe: boolean;
   regimen?: string;
   ambiente?: number;
+  estado?: string;
+  created_at?: string;
+  updated_at?: string;
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_user?: string;
+  smtp_from_name?: string;
+  smtp_secure?: boolean;
+  smtp_configurado?: boolean;
 }
 
 export interface CompanyResponse {
@@ -45,4 +55,10 @@ export type CompanyFormInput = {
   rimpe: boolean;
   regimen: string;
   ambiente: number;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_user: string;
+  smtp_password?: string;
+  smtp_from_name: string;
+  smtp_secure: boolean;
 };

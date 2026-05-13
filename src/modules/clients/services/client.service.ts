@@ -22,8 +22,12 @@ const getErrorMessage = (payload: unknown): string => {
 };
 
 export const clientService = {
-  async listClientes(estado?: string): Promise<Cliente[]> {
-    const query = estado ? `?estado=${encodeURIComponent(estado)}` : "";
+  async listClientes(estado?: string, search?: string): Promise<Cliente[]> {
+    const params = new URLSearchParams();
+    if (estado && estado !== "TODOS") params.append("estado", estado);
+    if (search) params.append("search", search);
+    
+    const query = params.toString() ? `?${params.toString()}` : "";
     const response = await fetch(`/api/clientes${query}`, {
       method: "GET",
       cache: "no-store",
@@ -49,6 +53,22 @@ export const clientService = {
     }
 
     return normalizeClienteResponse(payload).data;
+  },
+
+  async buscarPorIdentificacion(q: string): Promise<Cliente | null> {
+    const response = await fetch(`/api/clientes/buscar?q=${encodeURIComponent(q)}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    const payload = await readJson(response) as any;
+    if (!response.ok) {
+      if (response.status === 404) return null; // Not found
+      throw new Error(getErrorMessage(payload));
+    }
+
+    // El endpoint devuelve data: Cliente
+    return payload.data ? normalizeClienteResponse(payload).data : null;
   },
 
   async createCliente(input: ClienteCreateInput): Promise<Cliente> {

@@ -48,4 +48,16 @@ export const companyService = {
 
     return normalizeCompanyResponse(payload).data;
   },
+
+  async sendTestEmail(input: CompanyFormInput): Promise<void> {
+    const response = await fetch("/api/empresa/test-email", {
+      method: "POST",
+      body: buildCompanyFormData(input),
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload));
+    }
+  },
 };

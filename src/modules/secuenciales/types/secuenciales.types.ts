@@ -5,6 +5,12 @@ export interface SecuencialItem {
   ambiente: number;
   estado?: string;
   secuencial?: string;
+  secuencial_actual?: string;
+  ambiente_nombre?: string;
+  punto_codigo?: string;
+  est_codigo?: string;
+  est_nombre?: string;
+  updated_at?: string;
 }
 
 export interface SecuencialesResponse {

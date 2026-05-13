@@ -42,9 +42,15 @@ const normalizeSecuencial = (value: UnknownRecord): SecuencialItem => ({
   ambiente: toNumber(value.ambiente ?? value.id_ambiente ?? value.ambiente_id, 0),
   estado: toText(value.estado ?? value.status, ""),
   secuencial: toText(
-    value.secuencial ?? value.numero ?? value.numero_secuencial ?? value.actual,
+    value.secuencial ?? value.numero ?? value.numero_secuencial ?? value.actual ?? value.secuencial_actual,
     ""
   ),
+  secuencial_actual: toText(value.secuencial_actual, ""),
+  ambiente_nombre: toText(value.ambiente_nombre, ""),
+  punto_codigo: toText(value.punto_codigo, ""),
+  est_codigo: toText(value.est_codigo, ""),
+  est_nombre: toText(value.est_nombre, ""),
+  updated_at: toText(value.updated_at, ""),
 });
 
 const normalizeTipoDocumento = (value: UnknownRecord): TipoDocumentoItem => ({

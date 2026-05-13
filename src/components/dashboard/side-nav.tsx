@@ -3,19 +3,28 @@
 import { useEffect, useState, type ComponentType } from "react";
 import {
   Building2,
+  ClipboardList,
   FileCode,
+  FileSearch,
   FileText,
+  Handshake,
   LayoutGrid,
   MapPinHouse,
   Package,
   PackageSearch,
   Percent,
   ReceiptText,
+  Redo2,
+  RefreshCw,
   Settings,
   ShieldCheck,
+  ShoppingCart,
   Signature,
   Store,
+  Truck,
+  Undo2,
   Users,
+  Wallet,
 } from "lucide-react";
 import type { SidebarGroup } from "@/src/modules/dashboard/config/role-dashboard.config";
 import { companyService } from "@/src/modules/company/services/company.service";
@@ -37,14 +46,19 @@ export const iconByKey: Record<string, ComponentType<{ className?: string }>> = 
   "puntos-emision": MapPinHouse,
   iva: Percent,
   clientes: Users,
-  proveedores: Users,
+  proveedores: Handshake,
   "grupos-producto": PackageSearch,
   productos: Package,
   facturas: ReceiptText,
-  "notas-credito": FileText,
-  "notas-debito": FileText,
-  "guias-remision": FileText,
-  retenciones: FileText,
+  "notas-credito": Undo2,
+  "notas-venta": ShoppingCart,
+  "notas-debito": Redo2,
+  retenciones: Wallet,
+  "guias-remision": Truck,
+  "liquidaciones-compra": ClipboardList,
+  proformas: FileText,
+  recurrentes: RefreshCw,
+  "sri-logs": FileSearch,
   impuestos: FileCode,
   reportes: FileText,
   usuarios: Settings,
@@ -67,8 +81,8 @@ export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {
   }, []);
 
   return (
-    <aside className="h-full overflow-y-auto border-r border-slate-200 bg-white/90 backdrop-blur">
-      <div className="flex h-20 items-center justify-center px-5">
+    <aside className="sticky top-0 h-screen overflow-y-auto border-r border-slate-200 bg-white/90 backdrop-blur">
+      <div className="flex h-20 items-center justify-center px-4">
         <div className="w-full flex justify-center">
           {company?.logo ? (
             <img
@@ -84,10 +98,10 @@ export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {
         </div>
       </div>
 
-      <nav className="space-y-5 px-3 pb-6">
+      <nav className="space-y-4 px-3 pb-6">
         {groups.map((group) => (
           <section key={group.title} className="space-y-1.5">
-            <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+            <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
               {group.title}
             </p>
 
@@ -99,12 +113,12 @@ export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {
                   key={item.key}
                   type="button"
                   onClick={() => onSelect(item.key)}
-                  className={`group flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-slate-100 ${
-                    activeKey === item.key ? "bg-app-primary/10" : ""
+                  className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100 ${
+                    activeKey === item.key ? "bg-app-primary/10 text-app-primary" : "text-slate-800"
                   }`}
                 >
                   <span
-                    className={`mt-0.5 rounded-lg p-1.5 ${
+                    className={`rounded-lg p-1.5 ${
                       activeKey === item.key
                         ? "bg-app-primary/20 text-app-primary"
                         : "bg-slate-100 text-slate-600 group-hover:bg-app-primary/20 group-hover:text-app-primary"
@@ -112,16 +126,7 @@ export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {
                   >
                     <Icon className="h-4 w-4" />
                   </span>
-                  <span>
-                    <span
-                      className={`block text-sm font-semibold ${
-                        activeKey === item.key ? "text-app-primary" : "text-slate-800"
-                      }`}
-                    >
-                      {item.label}
-                    </span>
-                    <span className="block text-xs text-slate-500">{item.hint}</span>
-                  </span>
+                  <span>{item.label}</span>
                 </button>
               );
             })}

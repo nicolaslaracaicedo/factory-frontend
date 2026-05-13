@@ -30,3 +30,13 @@ body {
   color: var(--foreground);
   font-family: var(--font-app-sans), sans-serif;
 }
+
+/* Table headers always lowercase */
+table thead th {
+  text-transform: lowercase !important;
+  font-weight: 500;
+}
+
+table thead th:first-letter {
+  text-transform: uppercase;
+}

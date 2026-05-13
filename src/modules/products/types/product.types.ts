@@ -9,7 +9,16 @@ export interface Producto {
   precio: number;
   tiene_ice: boolean;
   porcentaje_ice?: number;
+  codigo_ice?: string;
+  tiene_irbpnr: boolean;
+  valor_unitario_irbpnr?: number;
   estado?: string;
+  // Campos enriquecidos del backend (detalle)
+  grupo_nombre?: string;
+  iva_nombre?: string;
+  iva_codigo?: string;
+  iva_porcentaje?: number;
+  porcentaje_iva?: number;
 }
 
 export interface ProductosResponse {
@@ -32,8 +41,12 @@ export type ProductoFormInput = {
   precio: number;
   tiene_ice: boolean;
   porcentaje_ice: number;
+  codigo_ice: string;
+  tiene_irbpnr: boolean;
+  valor_unitario_irbpnr: number;
 };
 
-export type ProductoCreateInput = Omit<ProductoFormInput, "porcentaje_ice">;
+export type ProductoCreateInput = ProductoFormInput;
 
-export type ProductoUpdateInput = ProductoFormInput;
+// El backend no permite actualizar el campo codigo via PUT
+export type ProductoUpdateInput = Omit<ProductoFormInput, "codigo">;

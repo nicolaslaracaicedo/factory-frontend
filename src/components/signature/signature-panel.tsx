@@ -3,8 +3,27 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Eye, PlusCircle, RefreshCw, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  flexRender,
+  type ColumnDef,
+  type ColumnFiltersState,
+  type SortingState,
+} from "@tanstack/react-table";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { CheckCircle2, Eye, PlusCircle, RefreshCw, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, FileSignature, Lock, Upload, File } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/src/components/ui/dropdown-menu";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
 import type {
@@ -12,6 +31,7 @@ import type {
   FirmaUploadInput,
 } from "@/src/modules/signature/types/signature.types";
 import { signatureService } from "@/src/modules/signature/services/signature.service";
+import { Loader } from "@/src/components/ui/loader";
 
 interface SignaturePanelProps {
   showPanel?: boolean;
@@ -32,31 +52,134 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
   const [detail, setDetail] = useState<FirmaElectronica | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FirmaUploadInput>(emptyForm);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
-  const filteredFirmas = useMemo(() => {
-    let result = firmas;
-    if (searchTerm) {
-      const lower = searchTerm.toLowerCase();
-      result = result.filter(f => 
-        f.nombre?.toLowerCase().includes(lower) || 
-        f.archivo?.toLowerCase().includes(lower)
-      );
-    }
-    return result;
-  }, [firmas, searchTerm]);
+  function SortIcon({ column }: { column: any }) {
+    const sorted = column.getIsSorted();
+    if (sorted === "asc") return <ArrowUp size={11} className="ml-1 text-sky-500" />;
+    if (sorted === "desc") return <ArrowDown size={11} className="ml-1 text-sky-500" />;
+    return <ChevronsUpDown size={11} className="ml-1 text-slate-300" />;
+  }
 
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(filteredFirmas.length / itemsPerPage) || 1;
-  const paginatedFirmas = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredFirmas.slice(start, start + itemsPerPage);
-  }, [filteredFirmas, currentPage]);
+  const columns = useMemo<ColumnDef<FirmaElectronica>[]>(() => [
+    {
+      accessorKey: "nombre",
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Firma
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => (
+        <div className="flex flex-col gap-0.5">
+          <div className="font-semibold text-slate-900">{row.original.nombre}</div>
+          {row.original.archivo ? (
+            <div className="text-slate-500 text-xs">{row.original.archivo}</div>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "fecha_registro",
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Registrado
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => {
+        const value = row.original.fecha_registro;
+        if (!value) return <span className="text-slate-400">-</span>;
+        return <span className="text-slate-700">{new Date(value).toLocaleDateString("es-EC")}</span>;
+      },
+    },
+    {
+      accessorKey: "fecha_expiracion",
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Expiración
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => {
+        const value = row.original.fecha_expiracion;
+        if (!value) return <span className="text-slate-400">-</span>;
+        return <span className="text-slate-700">{new Date(value).toLocaleDateString("es-EC")}</span>;
+      },
+    },
+    {
+      accessorKey: "activo",
+      header: ({ column }) => (
+        <button
+          className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Estado
+          <SortIcon column={column} />
+        </button>
+      ),
+      cell: ({ row }) => (
+        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${row.original.activo === false ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+          {row.original.activo === false ? "INACTIVA" : "ACTIVA"}
+        </span>
+      ),
+    },
+    {
+      id: "acciones",
+      header: () => null,
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors focus:outline-none">
+                <MoreVertical size={16} strokeWidth={2.5} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openDetail(row.original)}>
+                <Eye size={14} className="mr-2" />
+                Ver
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openReplace(row.original)}>
+                <RefreshCw size={14} className="mr-2" />
+                Reemplazar
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => activateFirma(row.original)} className="text-emerald-600 focus:bg-emerald-50 focus:text-emerald-700">
+                <CheckCircle2 size={14} className="mr-2" />
+                Activar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
+  ], []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+  const table = useReactTable({
+    data: firmas,
+    columns,
+    state: { globalFilter, columnFilters, sorting },
+    onGlobalFilterChange: setGlobalFilter,
+    onColumnFiltersChange: setColumnFilters,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
+  });
 
   useEffect(() => {
     const loadFirmas = async () => {
@@ -168,158 +291,265 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Buscar firma..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      {/* Toolbar Principal */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Búsqueda global */}
+        <div className="flex flex-1 items-center gap-2 min-w-[280px] max-w-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <input
+              type="text"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Buscar firma..."
+              className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-200 bg-white shadow-none text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all hover:bg-slate-50/50"
+            />
+            {globalFilter && (
+              <button
+                onClick={() => setGlobalFilter("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="secondary" onClick={refresh}>
-            <RefreshCw className="mr-2 h-4 w-4" />
+
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="secondary" onClick={refresh} className="h-9 shadow-none whitespace-nowrap">
+            <RefreshCw size={15} className="mr-1.5" />
             Actualizar
           </Button>
-          <Button onClick={openCreate}>
-            <PlusCircle className="mr-2 h-4 w-4" />
+          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+            <Plus size={15} className="mr-1.5" />
             Subir firma
           </Button>
         </div>
       </div>
 
+      {/* Tabla */}
       {loading ? (
-        <p className="mt-4 text-sm text-slate-500">Cargando firmas...</p>
-      ) : filteredFirmas.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white/60 p-8 text-center">
+        <Loader label="Cargando firmas" className="mt-8" />
+      ) : table.getFilteredRowModel().rows.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+          <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+            <FileText size={24} className="text-slate-400" />
+          </div>
           <p className="text-sm text-slate-600">No hay firmas registradas.</p>
-          <Button className="mt-3" onClick={openCreate}>
-            Subir firma
+          <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
+            <Plus size={15} className="mr-1.5" /> Subir firma
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Firma</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedFirmas.map((firma) => (
-                <tr key={firma.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-slate-800">{firma.nombre}</p>
-                    <p className="text-xs text-slate-500">{firma.archivo || "-"}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${firma.activo === false
-                        ? "bg-rose-100 text-rose-700"
-                        : "bg-emerald-100 text-emerald-700"
-                      }`}>
-                      {firma.activo === false ? "INACTIVA" : "ACTIVA"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="secondary" onClick={() => openDetail(firma)}>
-                        <Eye className="mr-1 h-4 w-4" />
-                        Ver
-                      </Button>
-                      <Button variant="secondary" onClick={() => openReplace(firma)}>
-                        <RefreshCw className="mr-1 h-4 w-4" />
-                        Reemplazar
-                      </Button>
-                      <Button variant="ghost" onClick={() => activateFirma(firma)}>
-                        <CheckCircle2 className="mr-1 h-4 w-4" />
-                        Activar
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
-              <span className="text-sm text-slate-500">
-                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredFirmas.length)} de {filteredFirmas.length}
+        <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="px-4 py-3 whitespace-nowrap text-xs text-slate-500"
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3 align-top">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between px-4 py-2 border-t border-slate-100 bg-white">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span>Filas:</span>
+              <SelectPrimitive.Root value={table.getState().pagination.pageSize.toString()} onValueChange={(val) => table.setPageSize(Number(val))}>
+                <SelectPrimitive.Trigger className="inline-flex h-7 min-w-[60px] items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 shadow-none transition-all hover:bg-slate-50 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-200">
+                  <SelectPrimitive.Value />
+                  <SelectPrimitive.Icon>
+                    <ChevronDown size={12} className="text-slate-400" />
+                  </SelectPrimitive.Icon>
+                </SelectPrimitive.Trigger>
+                <SelectPrimitive.Portal>
+                  <SelectPrimitive.Content className="relative z-50 min-w-[60px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2" position="popper" sideOffset={4}>
+                    <SelectPrimitive.Viewport className="p-1">
+                      {[10, 20, 50].map((pageSize) => (
+                        <SelectPrimitive.Item key={pageSize} value={pageSize.toString()} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                          <SelectPrimitive.ItemText>{pageSize}</SelectPrimitive.ItemText>
+                        </SelectPrimitive.Item>
+                      ))}
+                    </SelectPrimitive.Viewport>
+                  </SelectPrimitive.Content>
+                </SelectPrimitive.Portal>
+              </SelectPrimitive.Root>
+              <span className="text-slate-300 ml-1">·</span>
+              <span className="tabular-nums font-medium text-slate-600">
+                Total: {table.getFilteredRowModel().rows.length} registros
               </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                  Anterior
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Siguiente
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </div>
             </div>
-          )}
+            
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span className="px-2 text-xs text-slate-500 font-medium tabular-nums">
+                {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+              </span>
+              <button
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[2px]" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <Dialog.Title className="text-lg font-semibold text-slate-900">
-              {replaceTarget ? "Reemplazar firma" : "Subir nueva firma"}
-            </Dialog.Title>
-            <Dialog.Description className="mt-1 text-sm text-slate-600">
-              {replaceTarget
-                ? "Selecciona el nuevo archivo y la contrase&ntilde;a del certificado."
-                : "Carga el archivo .p12 junto con la contrase&ntilde;a."}
-            </Dialog.Description>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Content 
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+          >
+            {/* Header con icono y título */}
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                  <FileSignature className="h-6 w-6 text-app-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Dialog.Title className="text-xl font-semibold text-slate-900">
+                    {replaceTarget ? "Reemplazar firma" : "Subir nueva firma"}
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    {replaceTarget
+                      ? "Selecciona el nuevo archivo .p12 y la contraseña del certificado digital."
+                      : "Carga tu certificado digital .p12 o .pfx junto con la contraseña para firmar documentos electrónicamente."}
+                  </Dialog.Description>
+                </div>
+              </div>
+            </div>
 
-            <form className="mt-4 space-y-4" onSubmit={submitForm}>
-              <Field label="Archivo" htmlFor="firma">
-                <Input
-                  id="firma"
-                  type="file"
-                  accept=".p12,.pfx"
-                  onChange={(event) =>
-                    updateField("firma", event.target.files?.[0] ?? null)
-                  }
-                />
-              </Field>
+            {/* Formulario */}
+            <form className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]" onSubmit={submitForm}>
+              {/* SECCIÓN: Certificado */}
+              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <File className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Certificado digital</h3>
+                </div>
+                <div className="space-y-3">
+                  <Field label="Archivo (.p12)" htmlFor="firma">
+                    <div className="relative">
+                      <Input
+                        id="firma"
+                        type="file"
+                        accept=".p12"
+                        onChange={(event) =>
+                          updateField("firma", event.target.files?.[0] ?? null)
+                        }
+                        className="bg-white shadow-none file:hidden h-28 py-0 px-0 border-dashed border-2 border-slate-300 hover:border-app-primary/50 transition-colors cursor-pointer rounded-lg"
+                      />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 pointer-events-none px-4">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-app-primary/10">
+                          <Upload className="h-4 w-4 text-app-primary" />
+                        </div>
+                        <div className="text-center">
+                          {form.firma?.name ? (
+                            <>
+                              <p className="text-xs font-medium text-slate-700 truncate max-w-[240px]">
+                                {form.firma.name}
+                              </p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                Archivo listo
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-xs font-medium text-slate-600">
+                                Arrastra o haz clic para seleccionar
+                              </p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                Solo archivos .p12
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Field>
 
-              <Field label="Nombre" htmlFor="nombre">
-                <Input
-                  id="nombre"
-                  value={form.nombre}
-                  onChange={(event) => updateField("nombre", event.target.value)}
-                />
-              </Field>
+                  <Field label="Nombre identificativo" htmlFor="nombre">
+                    <Input
+                      id="nombre"
+                      value={form.nombre}
+                      onChange={(event) => updateField("nombre", event.target.value)}
+                      className="bg-white shadow-none placeholder:text-slate-300"
+                      placeholder="Ej: Firma Principal 2025"
+                    />
+                  </Field>
+                </div>
+              </div>
 
-              <Field label="Contrase&ntilde;a" htmlFor="password">
-                <Input
-                  id="password"
-                  type="password"
-                  value={form.password}
-                  onChange={(event) => updateField("password", event.target.value)}
-                />
-              </Field>
+              {/* SECCIÓN: Credenciales */}
+              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Credenciales</h3>
+                </div>
+                <div className="space-y-3">
+                  <Field label="Contraseña del certificado" htmlFor="password">
+                    <Input
+                      id="password"
+                      type="password"
+                      value={form.password}
+                      onChange={(event) => updateField("password", event.target.value)}
+                      className="bg-white shadow-none placeholder:text-slate-300"
+                      placeholder="Ingresa la contraseña del archivo .p12"
+                    />
+                  </Field>
+                </div>
+              </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="secondary" type="button" onClick={() => setModalOpen(false)}>
+              {/* Botones de acción */}
+              <div className="flex justify-end gap-3 pt-2">
+                <Button 
+                  variant="secondary" 
+                  type="button" 
+                  onClick={() => setModalOpen(false)}
+                  className="h-10 px-4"
+                >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={saving}>
-                  {saving ? "Guardando..." : "Guardar"}
+                <Button 
+                  type="submit" 
+                  disabled={saving}
+                  className="h-10 px-4"
+                >
+                  {saving ? "Guardando..." : replaceTarget ? "Reemplazar firma" : "Subir firma"}
                 </Button>
               </div>
             </form>
@@ -338,53 +568,95 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
               Informaci&oacute;n del certificado y estado.
             </Dialog.Description>
 
-            <div className="mt-4 space-y-2 text-sm text-slate-700">
-              <p>
-                <span className="font-semibold">Nombre:</span> {detail?.nombre || "-"}
-              </p>
-              <p>
-                <span className="font-semibold">Archivo:</span> {detail?.archivo || "-"}
-              </p>
-              <p>
-                <span className="font-semibold">Estado:</span>{" "}
-                {detail?.activo === false ? "INACTIVA" : "ACTIVA"}
-              </p>
-              <p>
-                <span className="font-semibold">Estado certificado:</span>{" "}
-                {detail?.estado_certificado || "-"}
-              </p>
-              <p>
-                <span className="font-semibold">Expiraci&oacute;n:</span>{" "}
-                {detail?.fecha_expiracion || "-"}
-              </p>
-              <p>
-                <span className="font-semibold">Titular:</span>{" "}
-                {certificado?.titular || "-"}
-              </p>
-              <p>
-                <span className="font-semibold">Organizaci&oacute;n:</span>{" "}
-                {certificado?.organizacion || "-"}
-              </p>
-              <p>
-                <span className="font-semibold">Unidad:</span> {certificado?.unidad || "-"}
-              </p>
-              <p>
-                <span className="font-semibold">Pa&iacute;s:</span> {certificado?.pais || "-"}
-              </p>
-              <p>
-                <span className="font-semibold">V&aacute;lido desde:</span>{" "}
-                {certificado?.valido_desde || "-"}
-              </p>
-              <p>
-                <span className="font-semibold">V&aacute;lido hasta:</span>{" "}
-                {certificado?.valido_hasta || "-"}
-              </p>
-              <p>
-                <span className="font-semibold">Emisor:</span> {certificado?.emisor || "-"}
-              </p>
-              <p>
-                <span className="font-semibold">Serial:</span> {certificado?.serial || "-"}
-              </p>
+            <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
+              <div>
+                <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Nombre</span>
+                <span className="font-medium">{detail?.nombre || "-"}</span>
+              </div>
+              
+              <div>
+                <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Estado</span>
+                <span className={`inline-flex items-center rounded-md px-2 py-0.5 mt-0.5 text-[11px] font-semibold ${detail?.activo === false ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                  {detail?.activo === false ? "INACTIVA" : "ACTIVA"}
+                </span>
+              </div>
+
+              {detail?.archivo && (
+                <div>
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Archivo</span>
+                  <span>{detail.archivo}</span>
+                </div>
+              )}
+
+              {detail?.fecha_expiracion && (
+                <div>
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Vencimiento</span>
+                  <span>{detail.fecha_expiracion}</span>
+                </div>
+              )}
+
+              {detail?.fecha_registro && (
+                <div>
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Registrado en</span>
+                  <span>{detail.fecha_registro}</span>
+                </div>
+              )}
+
+              {detail?.estado_certificado && (
+                <div>
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Estado certificado</span>
+                  <span>{detail.estado_certificado}</span>
+                </div>
+              )}
+
+              {certificado?.titular && (
+                <div className="sm:col-span-2">
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Titular</span>
+                  <span>{certificado.titular}</span>
+                </div>
+              )}
+              {certificado?.organizacion && (
+                <div>
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Organizaci&oacute;n</span>
+                  <span>{certificado.organizacion}</span>
+                </div>
+              )}
+              {certificado?.unidad && (
+                <div>
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Unidad</span>
+                  <span>{certificado.unidad}</span>
+                </div>
+              )}
+              {certificado?.pais && (
+                <div>
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Pa&iacute;s</span>
+                  <span>{certificado.pais}</span>
+                </div>
+              )}
+              {certificado?.valido_desde && (
+                <div>
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">V&aacute;lido desde</span>
+                  <span>{certificado.valido_desde}</span>
+                </div>
+              )}
+              {certificado?.valido_hasta && (
+                <div>
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">V&aacute;lido hasta</span>
+                  <span>{certificado.valido_hasta}</span>
+                </div>
+              )}
+              {certificado?.emisor && (
+                <div className="sm:col-span-2">
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Emisor</span>
+                  <span>{certificado.emisor}</span>
+                </div>
+              )}
+              {certificado?.serial && (
+                <div className="sm:col-span-2">
+                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Serial</span>
+                  <span className="font-mono text-xs">{certificado.serial}</span>
+                </div>
+              )}
             </div>
 
             <div className="mt-5 flex justify-end">
