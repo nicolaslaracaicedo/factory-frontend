@@ -3,7 +3,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Edit, Eye, Plus, PlusCircle, Power, Send, Trash2, Search, ChevronLeft, ChevronRight, FileText, ChevronDown, ListFilter, MoreVertical, ArrowUp, ArrowDown, ChevronsUpDown, X, Receipt, Radio, User, FileCheck, Calendar, Tag, DollarSign, Trash } from "lucide-react";
+import { Edit, Eye, Plus, PlusCircle, Power, Send, Trash2, Search, ChevronLeft, ChevronRight, FileText, ChevronDown, ListFilter, MoreVertical, ArrowUp, ArrowDown, ChevronsUpDown, X, Receipt, FileCheck, Tag, Trash, RefreshCw, Calculator } from "lucide-react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -39,6 +39,9 @@ import type { PuntoEmision } from "@/src/modules/emission-points/types/emission-
 import { invoiceService } from "@/src/modules/invoices/services/invoice.service";
 import type { FacturaItem } from "@/src/modules/invoices/types/invoice.types";
 import { Loader } from "@/src/components/ui/loader";
+import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
+import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
+import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 
 const initialDetalle = (): RetencionDetalleDraft => ({
   tipo: "1",
@@ -61,7 +64,13 @@ const tipoRetencionOptions = [
   { value: "2", label: "Retención IVA" },
 ];
 
-const codigosIRTEcuador = [
+type RetencionCodigoOption = {
+  value: string;
+  label: string;
+  porcentaje?: number;
+};
+
+const codigosIRTEcuador: RetencionCodigoOption[] = [
   { value: "303", label: "303 - Honorarios profesionales" },
   { value: "304", label: "304 - Servicios predomina intelecto" },
   { value: "307", label: "307 - Servicios predomina mano de obra" },
@@ -77,13 +86,8 @@ const codigosIRTEcuador = [
   { value: "346", label: "346 - Otras compras a persona natural" },
 ];
 
-const codigosIVAEcuador = [
-  { value: "721", label: "721 - Retención IVA 30%" },
-  { value: "723", label: "723 - Retención IVA 100%" },
-  { value: "725", label: "725 - Retención IVA 10%" },
-  { value: "726", label: "726 - Retención IVA 20%" },
-  { value: "727", label: "727 - Retención IVA 50%" },
-  { value: "728", label: "728 - Retención IVA 70%" },
+const codigosIVAEcuador: RetencionCodigoOption[] = [
+  { value: "1", label: "1 - Retención IVA 30%", porcentaje: 30 },
 ];
 
 const estadoFilters = ["TODOS", "BORRADOR", "AUTORIZADO", "RECHAZADA", "INACTIVO"] as const;
@@ -113,14 +117,18 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<EstadoFiltro>("TODOS");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editing, setEditing] = useState<RetencionItem | null>(null);
   const [detail, setDetail] = useState<RetencionItem | null>(null);
   const [form, setForm] = useState<RetencionFormState>(initialForm);
+  const [facturaQuery, setFacturaQuery] = useState("");
+  const [facturaSearchResults, setFacturaSearchResults] = useState<FacturaItem[]>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
+  const { setActiveSection } = useDashboardSection();
 
   function SortIcon({ column }: { column: any }) {
     const s = column.getIsSorted();
@@ -285,20 +293,63 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
     void loadCatalogs();
   }, []);
 
-  const openCreate = () => {
-    setEditing(null);
-    setForm(initialForm);
-    setModalOpen(true);
+  const navigateTo = (section: string) => {
+    setActiveSection(section);
   };
 
-  const openEdit = (retencion: RetencionItem) => {
+  useEffect(() => {
+    if (editorOpen) {
+      setHeaderVisible(false);
+      setBreadcrumbs([
+        { label: "Inicio", onClick: () => navigateTo("dashboard") },
+        { label: "Retenciones", onClick: () => navigateTo("retenciones") },
+        { label: editing ? "Editar retención" : "Nueva retención" },
+      ]);
+    } else {
+      setHeaderVisible(true);
+      setBreadcrumbs(null);
+    }
+
+    return () => {
+      setHeaderVisible(true);
+      setBreadcrumbs(null);
+    };
+  }, [editorOpen, editing, setBreadcrumbs, setHeaderVisible, setActiveSection]);
+
+  const getDefaultPuntoId = () => {
+    const d = useAuthStore.getState().user?.puntoEmisionDefault;
+    const n = Number(d);
+    return n > 0 && puntos.some((p) => p.id === n) ? n : (puntos[0]?.id ?? 0);
+  };
+
+  const openCreate = () => {
+    setEditing(null);
+    setFacturaQuery("");
+    setFacturaSearchResults([]);
+    setForm({
+      ...initialForm,
+      id_punto_emision: getDefaultPuntoId(),
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
+      detalles: [initialDetalle()],
+    });
+    setEditorOpen(true);
+  };
+
+  const openEdit = async (retencion: RetencionItem) => {
     if (!canEdit(retencion)) {
       toast.error("Solo se pueden editar retenciones en estado BORRADOR o RECHAZADA");
       return;
     }
-    setEditing(retencion);
-    setForm(toRetencionFormState(retencion));
-    setModalOpen(true);
+    try {
+      const full = await retencionesService.getRetencion(retencion.id);
+      setEditing(full);
+      setForm(toRetencionFormState(full));
+      setFacturaQuery("");
+      setFacturaSearchResults([]);
+      setEditorOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al cargar la retención");
+    }
   };
 
   const openDetail = async (retencion: RetencionItem) => {
@@ -311,19 +362,79 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
     }
   };
 
-  const closeModal = () => {
-    setModalOpen(false);
+  const closeEditor = () => {
+    setEditorOpen(false);
     setEditing(null);
     setForm(initialForm);
+    setFacturaQuery("");
+    setFacturaSearchResults([]);
   };
 
-  const handleSave = async () => {
+  const resetForm = () => {
+    setForm({
+      ...initialForm,
+      id_punto_emision: getDefaultPuntoId(),
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
+      detalles: [initialDetalle()],
+    });
+    setFacturaQuery("");
+    setFacturaSearchResults([]);
+  };
+
+  const handleFacturaSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setFacturaQuery(value);
+    if (!value.trim()) {
+      setFacturaSearchResults([]);
+      return;
+    }
+
+    const normalizeNum = (input: string) =>
+      input.replace(/-0+/g, "-").replace(/^0+/, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    const query = value.trim().toLowerCase();
+    const normalized = normalizeNum(query);
+    const results = facturas.filter((factura) => {
+      const fullNum = (factura.numero_comprobante || factura.numero || "").toLowerCase();
+      return fullNum.includes(query)
+        || normalizeNum(fullNum).includes(normalized)
+        || (factura.cliente_nombre || "").toLowerCase().includes(query);
+    });
+    setFacturaSearchResults(results);
+  };
+
+  const selectFactura = (factura: FacturaItem) => {
+    setForm((prev) => ({ ...prev, id_factura_ref: factura.id }));
+    setFacturaQuery("");
+    setFacturaSearchResults([]);
+  };
+
+  const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!form.id_punto_emision || !form.id_proveedor || !form.id_factura_ref) {
       toast.error("Complete todos los campos obligatorios");
       return;
     }
-    if (form.detalles.length === 0 || form.detalles.some(d => !d.codigo || d.base_imponible <= 0)) {
+    const normalizedDetalles = form.detalles.map((detalle) => ({
+      ...detalle,
+      codigo: (detalle.codigo || "").trim(),
+      descripcion: (detalle.descripcion || "").trim(),
+      base_imponible: Number(detalle.base_imponible) || 0,
+      porcentaje: Number(detalle.porcentaje) || 0,
+    }));
+
+    const detallesEnUso = normalizedDetalles.filter(
+      (d) => d.codigo || d.base_imponible > 0 || d.porcentaje > 0
+    );
+    const detallesValidos = detallesEnUso.filter(
+      (d) => d.codigo && d.base_imponible > 0
+    );
+
+    if (detallesValidos.length === 0) {
       toast.error("Agregue al menos un detalle válido");
+      return;
+    }
+    if (detallesValidos.length !== detallesEnUso.length) {
+      toast.error("Revisa los detalles: código y base imponible son obligatorios.");
       return;
     }
 
@@ -334,13 +445,21 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
         id_proveedor: form.id_proveedor,
         id_factura_ref: form.id_factura_ref,
         fecha_emision: form.fecha_emision,
-        detalles: form.detalles.map(d => ({
-          tipo: d.tipo,
-          codigo: d.codigo,
-          descripcion: d.descripcion,
-          base_imponible: d.base_imponible,
-          porcentaje: d.porcentaje,
-        })),
+        detalles: detallesValidos.map((d) => {
+          const catalog = d.tipo === "1" ? codigosIRTEcuador : codigosIVAEcuador;
+          const label = catalog.find((item) => item.value === d.codigo)?.label ?? "";
+          const fallbackDesc = label.includes(" - ")
+            ? label.split(" - ").slice(1).join(" - ")
+            : label;
+          const ivaConfig = d.tipo === "2" ? codigosIVAEcuador.find((item) => item.value === d.codigo) : undefined;
+          return {
+            tipo: d.tipo,
+            codigo: d.codigo,
+            descripcion: d.descripcion || fallbackDesc,
+            base_imponible: d.base_imponible,
+            porcentaje: ivaConfig?.porcentaje ?? d.porcentaje,
+          };
+        }),
       };
 
       if (editing) {
@@ -350,8 +469,8 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
         await retencionesService.createRetencion(payload);
         toast.success("Retención creada");
       }
-      closeModal();
       await loadRetenciones();
+      closeEditor();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al guardar");
     } finally {
@@ -417,7 +536,9 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
 
   const getFacturaLabel = (id: number) => {
     const f = facturas.find((x) => x.id === id);
-    return f ? `${f.numero ?? f.id}` : `ID ${id}`;
+    if (!f) return `ID ${id}`;
+    const numero = f.numero_comprobante ?? f.numero ?? `Factura #${f.id}`;
+    return f.cliente_nombre ? `${numero} · ${f.cliente_nombre}` : numero;
   };
 
   const updateDetalle = (index: number, updates: Partial<RetencionDetalleDraft>) => {
@@ -442,7 +563,385 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
     }));
   };
 
+  const formatMoney = (value: number) => {
+    return value.toLocaleString("es-EC", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const totales = useMemo(() => {
+    const baseTotal = form.detalles.reduce((sum, d) => sum + (Number(d.base_imponible) || 0), 0);
+    const totalRetenido = form.detalles.reduce((sum, d) => {
+      const base = Number(d.base_imponible) || 0;
+      const pct = Number(d.porcentaje) || 0;
+      return sum + (base * pct) / 100;
+    }, 0);
+    return { baseTotal, totalRetenido };
+  }, [form.detalles]);
+
   if (!showPanel) return null;
+
+  if (editorOpen) {
+    return (
+      <section className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={closeEditor}
+              className="h-10 w-10 p-0 text-slate-600 bg-slate-100 hover:bg-slate-200"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-semibold text-slate-900">
+                {editing ? "Editar retención" : "Nueva retención"}
+              </p>
+              <p className="text-xs text-slate-500">
+                Completa los datos del encabezado y los detalles antes de guardar.
+              </p>
+            </div>
+          </div>
+          <Button variant="secondary" type="button" onClick={resetForm} className="h-9 px-3 text-xs">
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+            Limpiar
+          </Button>
+        </div>
+
+        <form className="space-y-6" onSubmit={submitForm}>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Información general</h3>
+                </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Field label="Punto de emisión *" htmlFor="ret-punto">
+                    <SelectPrimitive.Root
+                      value={form.id_punto_emision === 0 ? undefined : form.id_punto_emision.toString()}
+                      onValueChange={(val) => setForm((f) => ({ ...f, id_punto_emision: Number(val) }))}
+                      disabled={Boolean(editing) || loadingCatalogs}
+                    >
+                      <SelectPrimitive.Trigger
+                        id="ret-punto"
+                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                      >
+                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un punto de emisión..."} />
+                        <SelectPrimitive.Icon>
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </SelectPrimitive.Icon>
+                      </SelectPrimitive.Trigger>
+                      <SelectPrimitive.Portal>
+                        <SelectPrimitive.Content
+                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                          position="popper"
+                          sideOffset={4}
+                        >
+                          <SelectPrimitive.Viewport className="p-1">
+                            {puntos.map((p) => (
+                              <SelectPrimitive.Item
+                                key={p.id}
+                                value={p.id.toString()}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                              >
+                                <SelectPrimitive.ItemText>{p.codigo} - {p.descripcion}</SelectPrimitive.ItemText>
+                              </SelectPrimitive.Item>
+                            ))}
+                          </SelectPrimitive.Viewport>
+                        </SelectPrimitive.Content>
+                      </SelectPrimitive.Portal>
+                    </SelectPrimitive.Root>
+                  </Field>
+
+                  <Field label="Proveedor *" htmlFor="ret-proveedor">
+                    <SelectPrimitive.Root
+                      value={form.id_proveedor === 0 ? undefined : form.id_proveedor.toString()}
+                      onValueChange={(val) => setForm((f) => ({ ...f, id_proveedor: Number(val) }))}
+                      disabled={loadingCatalogs}
+                    >
+                      <SelectPrimitive.Trigger
+                        id="ret-proveedor"
+                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                      >
+                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un proveedor..."} />
+                        <SelectPrimitive.Icon>
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </SelectPrimitive.Icon>
+                      </SelectPrimitive.Trigger>
+                      <SelectPrimitive.Portal>
+                        <SelectPrimitive.Content
+                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                          position="popper"
+                          sideOffset={4}
+                        >
+                          <SelectPrimitive.Viewport className="p-1">
+                            {proveedores.map((p) => (
+                              <SelectPrimitive.Item
+                                key={p.id}
+                                value={p.id.toString()}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                              >
+                                <SelectPrimitive.ItemText>{p.razon_social}</SelectPrimitive.ItemText>
+                              </SelectPrimitive.Item>
+                            ))}
+                          </SelectPrimitive.Viewport>
+                        </SelectPrimitive.Content>
+                      </SelectPrimitive.Portal>
+                    </SelectPrimitive.Root>
+                  </Field>
+
+                  <Field label="Fecha de emisión *" htmlFor="ret-fecha">
+                    <Input
+                      id="ret-fecha"
+                      type="date"
+                      value={form.fecha_emision}
+                      onChange={(event) => setForm((f) => ({ ...f, fecha_emision: event.target.value }))}
+                      className="bg-white shadow-none"
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Receipt className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Factura referenciada</h3>
+                </div>
+
+                {form.id_factura_ref > 0 && facturaSearchResults.length === 0 && !facturaQuery.trim() ? (
+                  <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                      <span className="text-sm font-medium text-slate-800 truncate">{getFacturaLabel(form.id_factura_ref)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm((prev) => ({ ...prev, id_factura_ref: 0 }));
+                          setFacturaQuery("");
+                          setFacturaSearchResults([]);
+                        }}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                        title="Cambiar factura"
+                      >
+                        <Search size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Field label="Buscar factura *" htmlFor="factura_search">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                        <input
+                          id="factura_search"
+                          type="text"
+                          value={facturaQuery}
+                          onChange={handleFacturaSearchChange}
+                          placeholder="Buscar por número de factura..."
+                          className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
+                        />
+                      </div>
+                    </Field>
+                    {facturaSearchResults.length > 0 && (
+                      <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
+                        {facturaSearchResults.map((factura) => (
+                          <button
+                            key={factura.id}
+                            type="button"
+                            onClick={() => selectFactura(factura)}
+                            className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
+                          >
+                            <div className="font-medium text-slate-800">
+                              {factura.numero_comprobante || factura.numero || `Factura #${factura.id}`}
+                            </div>
+                            <div className="text-xs text-slate-500">{factura.cliente_nombre || ""}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Detalles de retención</h3>
+                  </div>
+                  <Button type="button" variant="secondary" className="h-9 px-3" onClick={addDetalle}>
+                    <PlusCircle className="mr-1.5 h-4 w-4" />
+                    Agregar detalle
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {form.detalles.map((detalle, idx) => (
+                    <div key={idx} className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3 items-start">
+                      <div className="flex-1 min-w-0">
+                        <Field label="Tipo" htmlFor={`ret-tipo-${idx}`}>
+                          <SelectPrimitive.Root
+                            value={detalle.tipo}
+                            onValueChange={(val) => updateDetalle(idx, { tipo: val, codigo: "", descripcion: "" })}
+                          >
+                            <SelectPrimitive.Trigger
+                              id={`ret-tipo-${idx}`}
+                              className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                            >
+                              <SelectPrimitive.Value className="truncate" />
+                              <SelectPrimitive.Icon>
+                                <ChevronDown className="h-4 w-4 text-slate-400" />
+                              </SelectPrimitive.Icon>
+                            </SelectPrimitive.Trigger>
+                            <SelectPrimitive.Portal>
+                              <SelectPrimitive.Content
+                                className="z-50 min-w-[260px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                                position="popper"
+                                sideOffset={4}
+                              >
+                                <SelectPrimitive.Viewport className="p-1">
+                                  {tipoRetencionOptions.map((opt) => (
+                                    <SelectPrimitive.Item
+                                      key={opt.value}
+                                      value={opt.value}
+                                      className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                    >
+                                      <SelectPrimitive.ItemText>{opt.label}</SelectPrimitive.ItemText>
+                                    </SelectPrimitive.Item>
+                                  ))}
+                                </SelectPrimitive.Viewport>
+                              </SelectPrimitive.Content>
+                            </SelectPrimitive.Portal>
+                          </SelectPrimitive.Root>
+                        </Field>
+                      </div>
+
+                      <div className="flex-[1.5] min-w-0">
+                        <Field label="Código" htmlFor={`ret-codigo-${idx}`}>
+                          <SelectPrimitive.Root
+                            value={detalle.codigo || undefined}
+                            onValueChange={(val) => {
+                              const catalog = detalle.tipo === "1" ? codigosIRTEcuador : codigosIVAEcuador;
+                              const selected = catalog.find((c) => c.value === val);
+                              const label = selected?.label ?? "";
+                              const descripcion = label.includes(" - ") ? label.split(" - ").slice(1).join(" - ") : label;
+                              updateDetalle(idx, {
+                                codigo: val,
+                                descripcion,
+                                porcentaje: selected?.porcentaje ?? detalle.porcentaje,
+                              });
+                            }}
+                          >
+                            <SelectPrimitive.Trigger
+                              id={`ret-codigo-${idx}`}
+                              className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                            >
+                              <SelectPrimitive.Value placeholder="Selecciona..." className="truncate" />
+                              <SelectPrimitive.Icon>
+                                <ChevronDown className="h-4 w-4 text-slate-400" />
+                              </SelectPrimitive.Icon>
+                            </SelectPrimitive.Trigger>
+                            <SelectPrimitive.Portal>
+                              <SelectPrimitive.Content
+                                className="z-50 min-w-[300px] max-h-60 overflow-y-auto overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                                position="popper"
+                                sideOffset={4}
+                              >
+                                <SelectPrimitive.Viewport className="p-1">
+                                  {(detalle.tipo === "1" ? codigosIRTEcuador : codigosIVAEcuador).map((opt) => (
+                                    <SelectPrimitive.Item
+                                      key={opt.value}
+                                      value={opt.value}
+                                      className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                    >
+                                      <SelectPrimitive.ItemText>{opt.label}</SelectPrimitive.ItemText>
+                                    </SelectPrimitive.Item>
+                                  ))}
+                                </SelectPrimitive.Viewport>
+                              </SelectPrimitive.Content>
+                            </SelectPrimitive.Portal>
+                          </SelectPrimitive.Root>
+                        </Field>
+                      </div>
+
+                      <div className="w-28 shrink-0">
+                        <Field label="Base" htmlFor={`ret-base-${idx}`}>
+                          <Input
+                            id={`ret-base-${idx}`}
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={detalle.base_imponible}
+                            onChange={(event) => updateDetalle(idx, { base_imponible: Number(event.target.value) })}
+                            className="bg-white shadow-none"
+                          />
+                        </Field>
+                      </div>
+
+                      <div className="w-24 shrink-0">
+                        <Field label="% Retención" htmlFor={`ret-porc-${idx}`}>
+                          <Input
+                            id={`ret-porc-${idx}`}
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={0.01}
+                            value={detalle.porcentaje}
+                            onChange={(event) => updateDetalle(idx, { porcentaje: Number(event.target.value) })}
+                            className="bg-white shadow-none"
+                            disabled={detalle.tipo === "2" && Boolean(codigosIVAEcuador.find((c) => c.value === detalle.codigo)?.porcentaje)}
+                          />
+                        </Field>
+                      </div>
+
+                      <div className="pt-6">
+                        <Button
+                          variant="ghost"
+                          className="h-9 w-9 p-0 text-rose-600 hover:bg-rose-50"
+                          onClick={() => removeDetalle(idx)}
+                          disabled={form.detalles.length === 1}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <aside className="space-y-4 lg:sticky lg:top-6">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calculator className="h-3.5 w-3.5 text-slate-500" />
+                  <h4 className="text-sm font-semibold text-slate-700">Totales</h4>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-700">Base total:</span>
+                  <span className="font-medium text-slate-800">${formatMoney(totales.baseTotal)}</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2">
+                  <span className="text-sm font-bold text-slate-800">Total retenido:</span>
+                  <span className="text-lg font-extrabold text-sky-700">${formatMoney(totales.totalRetenido)}</span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <Button type="submit" disabled={saving} className="h-10 w-full">
+                  {saving ? "Guardando..." : editing ? "Guardar retención" : "Crear retención"}
+                </Button>
+              </div>
+            </aside>
+          </div>
+        </form>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-4">
@@ -540,352 +1039,6 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
           </div>
         </div>
       )}
-
-      <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
-          <Dialog.Content 
-            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,800px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
-            onPointerDownOutside={(event) => event.preventDefault()}
-            onInteractOutside={(event) => event.preventDefault()}
-          >
-            {/* Header con icono y título */}
-            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Receipt className="h-6 w-6 text-app-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Dialog.Title className="text-xl font-semibold text-slate-900">
-                    {editing ? "Editar retención" : "Crear nueva retención"}
-                  </Dialog.Title>
-                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
-                    {editing
-                      ? "Actualiza los datos de la retención existente."
-                      : "Registra una nueva retención completando los datos del encabezado y agregando los detalles correspondientes."}
-                  </Dialog.Description>
-                </div>
-              </div>
-            </div>
-
-            {/* Formulario */}
-            <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {/* SECCIÓN: Datos del encabezado */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <FileCheck className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Datos del encabezado</h3>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Punto de emisión *" htmlFor="ret-punto">
-                    <SelectPrimitive.Root 
-                      value={form.id_punto_emision === 0 ? undefined : form.id_punto_emision.toString()} 
-                      onValueChange={(val) => setForm((f) => ({ ...f, id_punto_emision: Number(val) }))}
-                      disabled={Boolean(editing) || loadingCatalogs}
-                    >
-                      <SelectPrimitive.Trigger 
-                        id="ret-punto"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                      >
-                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un punto de emisión..."} />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content 
-                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((p) => (
-                              <SelectPrimitive.Item 
-                                key={p.id}
-                                value={p.id.toString()}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{p.codigo} - {p.descripcion}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-
-                  <Field label="Proveedor *" htmlFor="ret-proveedor">
-                    <SelectPrimitive.Root 
-                      value={form.id_proveedor === 0 ? undefined : form.id_proveedor.toString()} 
-                      onValueChange={(val) => setForm((f) => ({ ...f, id_proveedor: Number(val) }))}
-                      disabled={loadingCatalogs}
-                    >
-                      <SelectPrimitive.Trigger 
-                        id="ret-proveedor"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                      >
-                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un proveedor..."} />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content 
-                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <SelectPrimitive.Viewport className="p-1">
-                            {proveedores.map((p) => (
-                              <SelectPrimitive.Item 
-                                key={p.id}
-                                value={p.id.toString()}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{p.razon_social}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-
-                  <Field label="Factura de referencia *" htmlFor="ret-factura">
-                    <SelectPrimitive.Root 
-                      value={form.id_factura_ref === 0 ? undefined : form.id_factura_ref.toString()} 
-                      onValueChange={(val) => setForm((f) => ({ ...f, id_factura_ref: Number(val) }))}
-                      disabled={loadingCatalogs}
-                    >
-                      <SelectPrimitive.Trigger 
-                        id="ret-factura"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                      >
-                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona una factura..."} />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content 
-                          className="z-50 min-w-[320px] max-h-80 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          {/* Input de búsqueda para facturas */}
-                          <div className="p-2 border-b border-slate-200">
-                            <input
-                              type="text"
-                              placeholder="Buscar factura..."
-                              className="w-full h-8 px-3 text-sm rounded-md border border-slate-200 bg-slate-50 outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-200"
-                              onChange={(e) => {
-                                // Filtrar facturas en el viewport
-                                const searchTerm = e.target.value.toLowerCase();
-                                const items = document.querySelectorAll('[data-factura-item]');
-                                items.forEach((item) => {
-                                  const text = item.textContent?.toLowerCase() || '';
-                                  if (text.includes(searchTerm)) {
-                                    item.removeAttribute('hidden');
-                                  } else {
-                                    item.setAttribute('hidden', 'true');
-                                  }
-                                });
-                              }}
-                            />
-                          </div>
-                          <SelectPrimitive.Viewport className="p-1 max-h-60 overflow-y-auto">
-                            {facturas.map((f) => (
-                              <SelectPrimitive.Item 
-                                key={f.id}
-                                value={f.id.toString()}
-                                data-factura-item
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{f.numero || f.id} - {f.cliente_nombre || "Sin cliente"}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-
-                  <Field label="Fecha de emisión *" htmlFor="ret-fecha">
-                    <Input
-                      id="ret-fecha"
-                      type="date"
-                      value={form.fecha_emision}
-                      onChange={(event) => setForm((f) => ({ ...f, fecha_emision: event.target.value }))}
-                      className="bg-white shadow-none"
-                    />
-                  </Field>
-                </div>
-              </div>
-
-              {/* SECCIÓN: Detalles de retención */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Tag className="h-3.5 w-3.5 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700">Detalles de retención</h3>
-                  </div>
-                  <Button type="button" variant="secondary" className="h-9 px-3" onClick={addDetalle}>
-                    <PlusCircle className="mr-1.5 h-4 w-4" />
-                    Agregar detalle
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  {form.detalles.map((detalle, idx) => (
-                    <div key={idx} className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3 items-start">
-                      <div className="flex-1 min-w-0">
-                        <Field label="Tipo" htmlFor={`ret-tipo-${idx}`}>
-                          <SelectPrimitive.Root
-                            value={detalle.tipo}
-                            onValueChange={(val) => updateDetalle(idx, { tipo: val })}
-                          >
-                            <SelectPrimitive.Trigger
-                              id={`ret-tipo-${idx}`}
-                              className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
-                            >
-                              <SelectPrimitive.Value className="truncate" />
-                              <SelectPrimitive.Icon>
-                                <ChevronDown className="h-4 w-4 text-slate-400" />
-                              </SelectPrimitive.Icon>
-                            </SelectPrimitive.Trigger>
-                            <SelectPrimitive.Portal>
-                              <SelectPrimitive.Content
-                                className="z-50 min-w-[260px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                                position="popper"
-                                sideOffset={4}
-                              >
-                                <SelectPrimitive.Viewport className="p-1">
-                                  {tipoRetencionOptions.map((opt) => (
-                                    <SelectPrimitive.Item
-                                      key={opt.value}
-                                      value={opt.value}
-                                      className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                                    >
-                                      <SelectPrimitive.ItemText>{opt.label}</SelectPrimitive.ItemText>
-                                    </SelectPrimitive.Item>
-                                  ))}
-                                </SelectPrimitive.Viewport>
-                              </SelectPrimitive.Content>
-                            </SelectPrimitive.Portal>
-                          </SelectPrimitive.Root>
-                        </Field>
-                      </div>
-
-                      <div className="flex-[1.5] min-w-0">
-                        <Field label="Código" htmlFor={`ret-codigo-${idx}`}>
-                          <SelectPrimitive.Root
-                            value={detalle.codigo || undefined}
-                            onValueChange={(val) => {
-                              const codigo = val;
-                              const descripcion = detalle.tipo === "1"
-                                ? codigosIRTEcuador.find(c => c.value === codigo)?.label.split(" - ")[1] || ""
-                                : codigosIVAEcuador.find(c => c.value === codigo)?.label.split(" - ")[1] || "";
-                              updateDetalle(idx, { codigo, descripcion });
-                            }}
-                          >
-                            <SelectPrimitive.Trigger
-                              id={`ret-codigo-${idx}`}
-                              className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
-                            >
-                              <SelectPrimitive.Value placeholder="Selecciona..." className="truncate" />
-                              <SelectPrimitive.Icon>
-                                <ChevronDown className="h-4 w-4 text-slate-400" />
-                              </SelectPrimitive.Icon>
-                            </SelectPrimitive.Trigger>
-                            <SelectPrimitive.Portal>
-                              <SelectPrimitive.Content
-                                className="z-50 min-w-[300px] max-h-60 overflow-y-auto overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                                position="popper"
-                                sideOffset={4}
-                              >
-                                <SelectPrimitive.Viewport className="p-1">
-                                  {(detalle.tipo === "1" ? codigosIRTEcuador : codigosIVAEcuador).map((opt) => (
-                                    <SelectPrimitive.Item
-                                      key={opt.value}
-                                      value={opt.value}
-                                      className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                                    >
-                                      <SelectPrimitive.ItemText>{opt.label}</SelectPrimitive.ItemText>
-                                    </SelectPrimitive.Item>
-                                  ))}
-                                </SelectPrimitive.Viewport>
-                              </SelectPrimitive.Content>
-                            </SelectPrimitive.Portal>
-                          </SelectPrimitive.Root>
-                        </Field>
-                      </div>
-
-                      <div className="w-28 shrink-0">
-                        <Field label="Base" htmlFor={`ret-base-${idx}`}>
-                          <Input
-                            id={`ret-base-${idx}`}
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={detalle.base_imponible}
-                            onChange={(event) => updateDetalle(idx, { base_imponible: Number(event.target.value) })}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="w-24 shrink-0">
-                        <Field label="% Retención" htmlFor={`ret-porc-${idx}`}>
-                          <Input
-                            id={`ret-porc-${idx}`}
-                            type="number"
-                            min={0}
-                            max={100}
-                            step={0.01}
-                            value={detalle.porcentaje}
-                            onChange={(event) => updateDetalle(idx, { porcentaje: Number(event.target.value) })}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="pt-6">
-                        <Button
-                          variant="ghost"
-                          className="h-9 w-9 p-0 text-rose-600 hover:bg-rose-50"
-                          onClick={() => removeDetalle(idx)}
-                          disabled={form.detalles.length === 1}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Botones de acción */}
-              <div className="flex justify-end gap-3 pt-2">
-                <Button 
-                  variant="secondary" 
-                  type="button" 
-                  onClick={closeModal}
-                  className="h-10 px-4"
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  onClick={handleSave} 
-                  disabled={saving}
-                  className="h-10 px-4"
-                >
-                  {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear retención"}
-                </Button>
-              </div>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>
