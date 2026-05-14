@@ -111,5 +111,8 @@ export const toNotaCreditoFormState = (nota: NotaCreditoItem): NotaCreditoFormSt
     descuento: detalle.descuento ?? 0,
     codigo_iva: detalle.codigo_iva ?? "",
     porcentaje_iva: detalle.porcentaje_iva ?? 0,
+    codigo_ice: detalle.codigo_ice ?? "",
+    porcentaje_ice: detalle.porcentaje_ice ?? 0,
+    valor_unitario_irbpnr: detalle.valor_unitario_irbpnr ?? 0,
   })),
 });

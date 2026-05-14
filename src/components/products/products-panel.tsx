@@ -228,20 +228,19 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
       cell: ({ row }) => <span className="font-medium text-slate-800">${row.original.precio.toFixed(2)}</span>,
     },
     {
-      id: "precio_iva",
+      id: "precio_final",
       header: ({ column }) => (
         <button
           className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Precio + IVA
+          Precio Final
           <SortIcon column={column} />
         </button>
       ),
       cell: ({ row }) => {
-        const porcentaje = row.original.porcentaje_iva ?? 0;
-        const total = row.original.precio * (1 + porcentaje / 100);
-        return <span className="font-medium text-sky-700">${total.toFixed(2)}</span>;
+        const precioFinal = row.original.precio_final ?? (row.original.precio * (1 + (row.original.porcentaje_iva ?? 0) / 100));
+        return <span className="font-medium text-sky-700">${precioFinal.toFixed(2)}</span>;
       },
     },
     {
@@ -1193,7 +1192,7 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
                     <DollarSign className="h-3.5 w-3.5 text-slate-500" />
                     <h3 className="text-sm font-semibold text-slate-700">Precios</h3>
                   </div>
-                  <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                  <dl className="grid gap-4 text-sm sm:grid-cols-3">
                     <div className="rounded-lg bg-white/80 px-3 py-2">
                       <dt className="text-xs font-semibold text-slate-500">Precio</dt>
                       <dd className="mt-2 text-lg font-bold text-slate-800">
@@ -1201,12 +1200,17 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
                       </dd>
                     </div>
                     <div className="rounded-lg bg-white/80 px-3 py-2">
-                      <dt className="text-xs font-semibold text-slate-500">Precio + IVA</dt>
+                      <dt className="text-xs font-semibold text-slate-500">IVA ({detailData?.porcentaje_iva ?? 0}%)</dt>
+                      <dd className="mt-2 text-lg font-bold text-amber-600">
+                        ${((detailData?.precio ?? 0) * ((detailData?.porcentaje_iva ?? 0) / 100)).toFixed(2)}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Precio Final</dt>
                       <dd className="mt-2 text-lg font-bold text-sky-700">
                         ${(() => {
-                          const p = detailData?.precio ?? 0;
-                          const iva = detailData?.porcentaje_iva ?? 0;
-                          return (p * (1 + iva / 100)).toFixed(2);
+                          const p = detailData?.precio_final ?? ((detailData?.precio ?? 0) * (1 + (detailData?.porcentaje_iva ?? 0) / 100));
+                          return p.toFixed(2);
                         })()}
                       </dd>
                     </div>

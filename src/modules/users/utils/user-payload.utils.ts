@@ -39,6 +39,7 @@ const normalizeUsuario = (value: UnknownRecord): UsuarioItem => ({
   telefono: toText(value.telefono, ""),
   direccion: toText(value.direccion, ""),
   estado: toText(value.estado ?? value.status, ""),
+  id_punto_emision_default: toNumber(value.id_punto_emision_default, 0) || undefined,
 });
 
 export const normalizeUsuariosResponse = (payload: unknown): UsuariosResponse => {
@@ -73,4 +74,5 @@ export const toUsuarioFormInput = (usuario: UsuarioItem): UsuarioFormInput => ({
   password: "",
   telefono: usuario.telefono ?? "",
   direccion: usuario.direccion ?? "",
+  id_punto_emision_default: usuario.id_punto_emision_default ?? 0,
 });

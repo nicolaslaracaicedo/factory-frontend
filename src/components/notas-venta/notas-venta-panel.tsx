@@ -400,7 +400,7 @@ export function NotasVentaPanel({ showPanel = true }: NotasVentaPanelProps) {
   // Set fecha por defecto al abrir modal
   useEffect(() => {
     if (modalOpen && !editing) {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0];
       setForm((prev) => ({
         ...prev,
         fecha_emision: today,

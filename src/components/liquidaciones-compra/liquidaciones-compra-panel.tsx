@@ -72,7 +72,7 @@ interface LiquidacionesCompraPanelProps {
 
 const initialFormState: LiquidacionCompraFormState = {
   id_punto_emision: 0,
-  fecha_emision: new Date().toISOString().split("T")[0],
+  fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0],
   id_proveedor: 0,
   detalles: [{ codigo: "", descripcion: "", cantidad: 1, precio_unitario: 0, descuento: 0, codigo_iva: "4", porcentaje_iva: 15 }],
 };

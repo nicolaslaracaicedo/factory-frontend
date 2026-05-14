@@ -72,6 +72,20 @@ export const buildLoginResponse = (
       apellido: toOptionalString(user.apellido),
       email: toOptionalString(user.email),
       role,
+      puntoEmisionDefault: (() => {
+        const tryExtract = (obj: UnknownRecord | undefined | null): number | null => {
+          if (!obj) return null;
+          const val = obj.punto_emision_default ?? obj.puntoEmisionDefault;
+          if (val === undefined || val === null) return null;
+          if (typeof val === "number") return val || null;
+          if (typeof val === "object") {
+            const id = (val as Record<string, unknown>).id;
+            return typeof id === "number" ? id : typeof id === "string" ? Number(id) || null : null;
+          }
+          return null;
+        };
+        return tryExtract(user) ?? tryExtract(source) ?? tryExtract(raw) ?? null;
+      })(),
     },
   };
 };

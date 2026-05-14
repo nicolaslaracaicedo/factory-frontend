@@ -48,6 +48,7 @@ import { Loader } from "@/src/components/ui/loader";
 import { Switch } from "@/src/components/ui/switch";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
+import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 import { ClientFormModal } from "@/src/components/clients/client-form-modal";
 import { ProductFormModal } from "@/src/components/products/product-form-modal";
 
@@ -106,7 +107,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
   const [clienteQuery, setClienteQuery] = useState("");
   const [clientSearchResults, setClientSearchResults] = useState<Cliente[]>([]);
   const [clientSearching, setClientSearching] = useState(false);
-  const clientSearchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const clientSearchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [productoQueries, setProductoQueries] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
@@ -379,13 +380,19 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
     }
   };
 
+  const getDefaultPuntoId = () => {
+    const d = useAuthStore.getState().user?.puntoEmisionDefault;
+    const n = Number(d);
+    return (n > 0 && puntos.some(p => p.id === n)) ? n : (puntos[0]?.id ?? 0);
+  };
+
   const openCreate = () => {
     setEditing(null);
     setMontoStr("");
     setForm({
       ...initialForm,
-      id_punto_emision: puntos[0]?.id ?? 0,
-      fecha_emision: new Date().toISOString().slice(0, 10),
+      id_punto_emision: getDefaultPuntoId(),
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
       detalles: [initialDetail()],
     });
     setEditorOpen(true);
@@ -446,8 +453,8 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
     setMontoStr("");
     setForm({
       ...initialForm,
-      id_punto_emision: puntos[0]?.id ?? 0,
-      fecha_emision: new Date().toISOString().slice(0, 10),
+      id_punto_emision: getDefaultPuntoId(),
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
       detalles: [initialDetail()],
     });
     setClienteQuery("");
@@ -994,69 +1001,66 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
 
                 {form.cliente_mode !== "CONSUMIDOR_FINAL" && (
                   <div>
-                    <div className="flex items-end gap-2">
-                      <div className="flex-1 min-w-0">
-                        <Field label="Buscar cliente *" htmlFor="cliente_search">
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                            <input
-                              id="cliente_search"
-                              type="text"
-                              value={clienteQuery}
-                              onChange={handleClientSearchChange}
-                              placeholder="Buscar por cédula, RUC o razón social..."
-                              className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
-                            />
-                            {clientSearching && (
-                              <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
-                              </div>
-                            )}
-                          </div>
-                        </Field>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => setClientModalOpen(true)}
-                        className="h-9 px-3 mb-0.5 shrink-0"
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Nuevo
-                      </Button>
-                    </div>
-
-                    <div className="relative">
-                      {clientSearchResults.length > 0 && (
-                        <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
-                          {clientSearchResults.map((cliente) => (
-                            <button
-                              key={cliente.id}
-                              type="button"
-                              onClick={() => selectClient(cliente)}
-                              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
-                            >
-                              <div className="font-medium text-slate-800">{cliente.razon_social}</div>
-                              <div className="text-xs text-slate-500">{cliente.identificacion}</div>
-                            </button>
-                          ))}
+                    {form.id_cliente > 0 && clientSearchResults.length === 0 && !clienteQuery.trim() ? (
+                      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                          <span className="text-sm font-medium text-slate-800 truncate">{getClienteLabel(form.id_cliente)}</span>
+                          <span className="text-xs text-slate-400">· {clientes.find((c) => c.id === form.id_cliente)?.identificacion || ""}</span>
                         </div>
-                      )}
-                    </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button type="button" onClick={() => { updateField("id_cliente", 0); setClienteQuery(""); setClientSearchResults([]); }} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Cambiar cliente">
+                            <Search size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1 min-w-0 relative">
+                          <Field label="Buscar cliente *" htmlFor="cliente_search">
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                              <input
+                                id="cliente_search"
+                                type="text"
+                                value={clienteQuery}
+                                onChange={handleClientSearchChange}
+                                placeholder="Buscar por cédula, RUC o razón social..."
+                                className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
+                              />
+                              {clientSearching && (
+                                <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
+                                </div>
+                              )}
+                            </div>
+                          </Field>
 
-                    {form.id_cliente > 0 && clientSearchResults.length === 0 && !clienteQuery.trim() && (
-                      <div className="mt-2 flex items-center gap-2 text-sm">
-                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
-                        <span className="font-medium text-slate-700">{getClienteLabel(form.id_cliente)}</span>
-                        <span className="text-xs text-slate-400">· {clientes.find((c) => c.id === form.id_cliente)?.identificacion || ""}</span>
-                        <button
+                          {clientSearchResults.length > 0 && (
+                            <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
+                              {clientSearchResults.map((cliente) => (
+                                <button
+                                  key={cliente.id}
+                                  type="button"
+                                  onClick={() => selectClient(cliente)}
+                                  className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
+                                >
+                                  <div className="font-medium text-slate-800">{cliente.razon_social}</div>
+                                  <div className="text-xs text-slate-500">{cliente.identificacion}</div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <Button
                           type="button"
-                          onClick={() => { updateField("id_cliente", 0); }}
-                          className="text-slate-400 hover:text-rose-500 transition-colors ml-1"
-                          title="Quitar cliente"
+                          variant="secondary"
+                          onClick={() => setClientModalOpen(true)}
+                          className="h-9 px-3 mb-0.5 shrink-0"
                         >
-                          <X size={14} />
-                        </button>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Nuevo
+                        </Button>
                       </div>
                     )}
                   </div>

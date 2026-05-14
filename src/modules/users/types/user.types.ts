@@ -9,6 +9,7 @@ export interface UsuarioItem {
   telefono?: string;
   direccion?: string;
   estado?: string;
+  id_punto_emision_default?: number;
 }
 
 export interface UsuariosResponse {
@@ -31,6 +32,7 @@ export interface UsuarioFormInput {
   password: string;
   telefono: string;
   direccion: string;
+  id_punto_emision_default: number;
 }
 
 export type UsuarioCreateInput = UsuarioFormInput;

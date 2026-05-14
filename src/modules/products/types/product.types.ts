@@ -19,6 +19,7 @@ export interface Producto {
   iva_codigo?: string;
   iva_porcentaje?: number;
   porcentaje_iva?: number;
+  precio_final?: number;
   created_at?: string;
   updated_at?: string;
 }

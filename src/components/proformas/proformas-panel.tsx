@@ -75,7 +75,7 @@ interface ProformasPanelProps {
 const initialFormState: ProformaFormState = {
   id_punto_emision: 0,
   id_cliente: 0,
-  fecha_emision: new Date().toISOString().split("T")[0],
+  fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0],
   fecha_vencimiento: "",
   observaciones: "",
   detalles: [{ codigo: "", descripcion: "", cantidad: 1, precio_unitario: 0, descuento: 0, codigo_iva: "2", porcentaje_iva: 12 }],
@@ -125,7 +125,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
   const [convertForm, setConvertForm] = useState<ProformaConvertirInput>({
     forma_pago: "01",
     tipo_pago: "CONTADO",
-    fecha_emision: new Date().toISOString().split("T")[0],
+    fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0],
   });
 
   const [search, setSearch] = useState("");
@@ -319,7 +319,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
     setConvertForm({
       forma_pago: "01",
       tipo_pago: "CONTADO",
-      fecha_emision: new Date().toISOString().split("T")[0],
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0],
     });
     setConvertOpen(true);
   };

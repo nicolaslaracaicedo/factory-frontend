@@ -44,6 +44,7 @@ export interface NotaCreditoDetalleDraft {
   cantidad: number;
   precio_unitario: number;
   descuento: number;
+  tipo_descuento: "PORCENTAJE" | "VALOR";
   codigo_iva: string;
   porcentaje_iva: number;
   codigo_ice: string;
@@ -64,6 +65,7 @@ export interface NotaCreditoFormState {
   use_manual_cliente: boolean;
   cli_identificacion: string;
   cli_razon_social: string;
+  monto_recibido: number;
   fecha_emision: string;
   detalles: NotaCreditoDetalleDraft[];
 }

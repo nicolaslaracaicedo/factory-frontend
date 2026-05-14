@@ -73,7 +73,7 @@ interface GuiasRemisionPanelProps {
 
 const initialFormState: GuiaFormState = {
   id_punto_emision: 0,
-  fecha_emision: new Date().toISOString().split("T")[0],
+  fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0],
   ruc_transportista: "",
   razon_social_transportista: "",
   placa: "",

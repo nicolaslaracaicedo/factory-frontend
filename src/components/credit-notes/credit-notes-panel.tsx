@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Edit, Eye, PlusCircle, Power, RefreshCw, Search, Send, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Printer, Trash, Package, User, Calendar, FileCheck, Tag, Receipt, FileX, Calculator } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Edit, Eye, PlusCircle, Power, RefreshCw, Search, Send, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Printer, Trash, Package, User, Calendar, FileCheck, Tag, Receipt, FileX, Calculator, DollarSign } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -44,6 +44,7 @@ import { Loader } from "@/src/components/ui/loader";
 import { ClientFormModal } from "@/src/components/clients/client-form-modal";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
+import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 
 const initialDetail = (): NotaCreditoDetalleDraft => ({
   codigo: "",
@@ -51,6 +52,7 @@ const initialDetail = (): NotaCreditoDetalleDraft => ({
   cantidad: 1,
   precio_unitario: 0,
   descuento: 0,
+  tipo_descuento: "PORCENTAJE",
   codigo_iva: "",
   porcentaje_iva: 0,
   codigo_ice: "",
@@ -71,6 +73,7 @@ const initialForm: NotaCreditoFormState = {
   use_manual_cliente: false,
   cli_identificacion: "",
   cli_razon_social: "",
+  monto_recibido: 0,
   fecha_emision: "",
   detalles: [initialDetail()],
 };
@@ -109,6 +112,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
   const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
   const { setActiveSection } = useDashboardSection();
   const [form, setForm] = useState<NotaCreditoFormState>(initialForm);
+  const [montoStr, setMontoStr] = useState("");
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -116,8 +120,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [facturaQuery, setFacturaQuery] = useState("");
   const [facturaSearchResults, setFacturaSearchResults] = useState<FacturaItem[]>([]);
-  const [facturaSearching, setFacturaSearching] = useState(false);
-  const facturaSearchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [facturaEsConsumidorFinal, setFacturaEsConsumidorFinal] = useState(false);
   const [clienteQuery, setClienteQuery] = useState("");
   const [clienteSearchResults, setClienteSearchResults] = useState<Cliente[]>([]);
   const [clienteSearching, setClienteSearching] = useState(false);
@@ -312,7 +315,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
     if (editorOpen) {
       setHeaderVisible(false);
       setBreadcrumbs([
-        { label: "Dashboard", onClick: () => navigateTo("dashboard") },
+        { label: "Inicio", onClick: () => navigateTo("dashboard") },
         { label: "Notas de crédito", onClick: () => navigateTo("notas-credito") },
         { label: editing ? "Editar nota" : "Nueva nota" },
       ]);
@@ -370,11 +373,13 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
     setFacturaSearchResults([]);
     setClienteQuery("");
     setClienteSearchResults([]);
+    setMontoStr("");
+    setFacturaEsConsumidorFinal(false);
     setForm({
       ...initialForm,
-      id_punto_emision: puntos[0]?.id ?? 0,
+      id_punto_emision: (() => { const d = useAuthStore.getState().user?.puntoEmisionDefault; const n = Number(d); return (n > 0 && puntos.some(p => p.id === n)) ? n : (puntos[0]?.id ?? 0); })(),
       cliente_mode: "REGISTRADO",
-      fecha_emision: new Date().toISOString().slice(0, 10),
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
       detalles: [initialDetail()],
     });
     setEditorOpen(true);
@@ -383,14 +388,17 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
   const closeEditor = () => {
     setEditorOpen(false);
     setEditing(null);
+    setMontoStr("");
+    setFacturaEsConsumidorFinal(false);
     setForm(initialForm);
   };
 
   const resetForm = () => {
+    setMontoStr("");
     setForm({
       ...initialForm,
-      id_punto_emision: puntos[0]?.id ?? 0,
-      fecha_emision: new Date().toISOString().slice(0, 10),
+      id_punto_emision: (() => { const d = useAuthStore.getState().user?.puntoEmisionDefault; const n = Number(d); return (n > 0 && puntos.some(p => p.id === n)) ? n : (puntos[0]?.id ?? 0); })(),
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
       detalles: [initialDetail()],
     });
     setFacturaQuery("");
@@ -443,28 +451,27 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
   const handleFacturaSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setFacturaQuery(value);
-    if (facturaSearchTimerRef.current) clearTimeout(facturaSearchTimerRef.current);
     if (!value.trim()) { setFacturaSearchResults([]); return; }
-    facturaSearchTimerRef.current = setTimeout(async () => {
-      setFacturaSearching(true);
-      try {
-        const results = await invoiceService.listFacturas(value.trim());
-        setFacturaSearchResults(results);
-      } catch { /* ignore */ }
-      finally { setFacturaSearching(false); }
-    }, 300);
+    const normalizeNum = (s: string) => s.replace(/-0+/g, "-").replace(/^0+/, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    const q = value.trim().toLowerCase();
+    const qNorm = normalizeNum(q);
+    const results = facturas.filter((f) => {
+      const fullNum = (f.numero_comprobante || f.numero || "").toLowerCase();
+      return fullNum.includes(q) || normalizeNum(fullNum).includes(qNorm) || (f.cliente_nombre || "").toLowerCase().includes(q);
+    });
+    setFacturaSearchResults(results);
   };
 
   const selectFactura = async (factura: FacturaItem) => {
     try {
       const fullFactura = await invoiceService.getFactura(factura.id);
       updateField("id_factura_ref", fullFactura.id);
-      if (fullFactura.consumidor_final) {
-        updateField("cliente_mode", "CONSUMIDOR_FINAL");
-        updateField("id_cliente", 0);
+      const esConsumidor = fullFactura.consumidor_final === true || (!fullFactura.id_cliente && !fullFactura.cliente_nombre);
+      setFacturaEsConsumidorFinal(esConsumidor);
+      if (esConsumidor) {
+        setForm((prev) => ({ ...prev, cliente_mode: "CONSUMIDOR_FINAL", id_cliente: 0 }));
       } else if (fullFactura.id_cliente) {
-        updateField("cliente_mode", "REGISTRADO");
-        updateField("id_cliente", fullFactura.id_cliente);
+        setForm((prev) => ({ ...prev, cliente_mode: "REGISTRADO", id_cliente: fullFactura.id_cliente! }));
       }
       if (fullFactura.detalles?.length) {
         const detalles: NotaCreditoDetalleDraft[] = fullFactura.detalles.map((d) => ({
@@ -473,6 +480,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
           cantidad: d.cantidad,
           precio_unitario: d.precio_unitario ?? 0,
           descuento: d.descuento ?? 0,
+          tipo_descuento: "PORCENTAJE" as const,
           codigo_iva: d.codigo_iva ?? "",
           porcentaje_iva: d.porcentaje_iva ?? 0,
           codigo_ice: d.codigo_ice ?? "",
@@ -481,6 +489,9 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
         }));
         setForm((prev) => ({ ...prev, detalles }));
       }
+      const totalFactura = fullFactura.total ?? 0;
+      setMontoStr(totalFactura > 0 ? totalFactura.toFixed(2) : "");
+      updateField("monto_recibido", totalFactura);
       setFacturaQuery("");
       setFacturaSearchResults([]);
       setClienteQuery("");
@@ -559,21 +570,22 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
       valor_unitario_irbpnr: item.valor_unitario_irbpnr || undefined,
     }));
 
-    return {
+    const isConsumidorFinal = form.cliente_mode === "CONSUMIDOR_FINAL";
+    const payload: any = {
       id_punto_emision: form.id_punto_emision,
       id_factura_ref: form.ref_mode === "INTERNA" ? form.id_factura_ref : undefined,
       factura_ref_numero: form.ref_mode === "MANUAL" ? form.factura_ref_numero : undefined,
       factura_ref_fecha: form.ref_mode === "MANUAL" ? form.factura_ref_fecha : undefined,
-      factura_ref_autorizacion:
-        form.ref_mode === "MANUAL" ? form.factura_ref_autorizacion : undefined,
+      factura_ref_autorizacion: form.ref_mode === "MANUAL" ? form.factura_ref_autorizacion : undefined,
       motivo: form.motivo,
-      consumidor_final: form.cliente_mode === "CONSUMIDOR_FINAL",
-      id_cliente: form.cliente_mode === "REGISTRADO" ? form.id_cliente : undefined,
-      cli_identificacion: form.cliente_mode === "MANUAL" ? form.cli_identificacion : undefined,
-      cli_razon_social: form.cliente_mode === "MANUAL" ? form.cli_razon_social : undefined,
+      ...(isConsumidorFinal ? { consumidor_final: true } : {}),
+      ...(!isConsumidorFinal && form.cliente_mode === "REGISTRADO" && form.id_cliente > 0 ? { id_cliente: form.id_cliente } : {}),
+      ...(form.cliente_mode === "MANUAL" ? { cli_identificacion: form.cli_identificacion, cli_razon_social: form.cli_razon_social } : {}),
       fecha_emision: form.fecha_emision,
       detalles,
     };
+
+    return payload;
   };
 
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -594,8 +606,16 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
       toast.warning("Ingresa el número de factura referenciada.");
       return;
     }
+    if (form.ref_mode === "INTERNA" && facturaEsConsumidorFinal) {
+      toast.warning("No se puede crear nota de crédito para facturas de Consumidor Final. Use otro documento.");
+      return;
+    }
     if (form.detalles.length === 0) {
       toast.warning("Agrega al menos un detalle.");
+      return;
+    }
+    if (form.ref_mode === "INTERNA" && form.monto_recibido > 0 && totales.total > form.monto_recibido) {
+      toast.warning(`El total de la nota (${formatMoney(totales.total)}) no puede superar el total de la factura original (${formatMoney(form.monto_recibido)}). Reduce cantidades o elimina productos.`);
       return;
     }
 
@@ -670,22 +690,32 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
   const getFacturaLabel = (facturaId?: number, fallback?: string) => {
     if (!facturaId) return fallback || "-";
     const factura = facturas.find((item) => item.id === facturaId);
-    return factura?.numero || `Factura #${facturaId}`;
+    return factura?.numero_comprobante || factura?.numero || `Factura #${facturaId}`;
   };
 
   const formatMoney = (value: number) => {
     return `$${value.toFixed(2)}`;
   };
 
+  const getDescuentoValor = (detalle: NotaCreditoDetalleDraft) => {
+    const cantidad = Number(detalle.cantidad) || 0;
+    const precio = Number(detalle.precio_unitario) || 0;
+    const raw = Math.max(Number(detalle.descuento) || 0, 0);
+    if (detalle.tipo_descuento === "PORCENTAJE") {
+      return (cantidad * precio) * (raw / 100);
+    }
+    return raw;
+  };
+
   const totales = useMemo(() => {
     const subtotal = form.detalles.reduce((sum, d) => sum + d.cantidad * d.precio_unitario, 0);
-    const descuentoTotal = form.detalles.reduce((sum, d) => sum + d.descuento, 0);
+    const descuentoTotal = form.detalles.reduce((sum, d) => sum + getDescuentoValor(d), 0);
     const iva = form.detalles.reduce((sum, d) => {
-      const base = d.cantidad * d.precio_unitario - d.descuento;
+      const base = d.cantidad * d.precio_unitario - getDescuentoValor(d);
       return sum + base * (d.porcentaje_iva / 100);
     }, 0);
     const ice = form.detalles.reduce((sum, d) => {
-      const base = d.cantidad * d.precio_unitario - d.descuento;
+      const base = d.cantidad * d.precio_unitario - getDescuentoValor(d);
       return sum + base * (d.porcentaje_ice / 100);
     }, 0);
     const irbpnr = form.detalles.reduce((sum, d) => sum + d.cantidad * d.valor_unitario_irbpnr, 0);
@@ -803,47 +833,59 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                   </div>
                 </div>
                 {form.ref_mode === "INTERNA" ? (
-                  <div className="relative">
-                    <Field label="Buscar factura *" htmlFor="factura_search">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                        <input
-                          id="factura_search"
-                          type="text"
-                          value={facturaQuery}
-                          onChange={handleFacturaSearchChange}
-                          placeholder="Buscar por número de factura..."
-                          className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
-                        />
-                        {facturaSearching && (
-                          <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
+                  <div>
+                    {form.id_factura_ref > 0 && facturaSearchResults.length === 0 && !facturaQuery.trim() ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                            <span className="text-sm font-medium text-slate-800 truncate">{getFacturaLabel(form.id_factura_ref)}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button type="button" onClick={() => { updateField("id_factura_ref", 0); setFacturaQuery(""); setFacturaSearchResults([]); setFacturaEsConsumidorFinal(false); }} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Cambiar factura">
+                              <Search size={14} />
+                            </button>
+                          </div>
+                        </div>
+                        {(facturaEsConsumidorFinal || form.cliente_mode === "CONSUMIDOR_FINAL") && (
+                          <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
+                            <div className="text-xs text-amber-800">
+                              <span className="font-semibold">Factura de Consumidor Final:</span> según normativas del SRI 2025-2026, no se pueden emitir notas de crédito para modificar estas facturas. Debe usar otro documento.
+                            </div>
                           </div>
                         )}
                       </div>
-                    </Field>
-                    {facturaSearchResults.length > 0 && (
-                      <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
-                        {facturaSearchResults.map((factura) => (
-                          <button
-                            key={factura.id}
-                            type="button"
-                            onClick={() => selectFactura(factura)}
-                            className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
-                          >
-                            <div className="font-medium text-slate-800">{factura.numero || `Factura #${factura.id}`}</div>
-                            <div className="text-xs text-slate-500">{factura.cliente_nombre || ""}</div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {form.id_factura_ref > 0 && facturaSearchResults.length === 0 && !facturaQuery.trim() && (
-                      <div className="mt-1 text-sm font-medium text-slate-700 flex items-center gap-2">
-                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
-                        {getFacturaLabel(form.id_factura_ref)}
-                        <button type="button" onClick={() => { updateField("id_factura_ref", 0); }} className="text-slate-400 hover:text-rose-500 transition-colors" title="Quitar factura">
-                          <X size={14} />
-                        </button>
+                    ) : (
+                      <div className="relative">
+                        <Field label="Buscar factura *" htmlFor="factura_search">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                            <input
+                              id="factura_search"
+                              type="text"
+                              value={facturaQuery}
+                              onChange={handleFacturaSearchChange}
+                              placeholder="Buscar por número de factura (1-2-1)..."
+                              className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
+                            />
+                        </div>
+                      </Field>
+                        {facturaSearchResults.length > 0 && (
+                          <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
+                            {facturaSearchResults.map((factura) => (
+                              <button
+                                key={factura.id}
+                                type="button"
+                                onClick={() => selectFactura(factura)}
+                                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
+                              >
+                                <div className="font-medium text-slate-800">{factura.numero_comprobante || factura.numero || `Factura #${factura.id}`}</div>
+                                <div className="text-xs text-slate-500">{factura.cliente_nombre || ""}</div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -871,11 +913,16 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-slate-500">Consumidor final</span>
-                    <Switch checked={form.cliente_mode === "CONSUMIDOR_FINAL"} disabled={form.id_factura_ref > 0} onCheckedChange={(checked) => { updateField("cliente_mode", checked ? "CONSUMIDOR_FINAL" : "REGISTRADO"); if (checked) updateField("id_cliente", 0); }} />
+                    <Switch checked={form.cliente_mode === "CONSUMIDOR_FINAL" || (form.id_factura_ref > 0 && form.id_cliente === 0)} disabled={form.id_factura_ref > 0} onCheckedChange={(checked) => { updateField("cliente_mode", checked ? "CONSUMIDOR_FINAL" : "REGISTRADO"); if (checked) updateField("id_cliente", 0); }} />
                   </div>
                 </div>
 
-                {form.cliente_mode === "CONSUMIDOR_FINAL" ? null : form.ref_mode === "INTERNA" && form.id_factura_ref > 0 ? (
+                {form.id_factura_ref > 0 && (form.cliente_mode === "CONSUMIDOR_FINAL" || form.id_cliente === 0) ? (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                    <span className="font-medium text-slate-700">Consumidor final</span>
+                  </div>
+                ) : form.ref_mode === "INTERNA" && form.id_factura_ref > 0 ? (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm">
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
                     <span className="font-medium text-slate-700">{getClienteLabel(form.id_cliente)}</span>
@@ -945,11 +992,52 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                     <Package className="h-3.5 w-3.5 text-slate-500" />
                     <h3 className="text-sm font-semibold text-slate-700">Detalles</h3>
                   </div>
-                  {form.ref_mode !== "INTERNA" && (
-                    <Button type="button" variant="secondary" onClick={addDetail} className="h-9 px-3">
-                      <PlusCircle className="mr-1.5 h-4 w-4" />
-                      Agregar detalle
-                    </Button>
+                  {(form.ref_mode === "INTERNA" || form.ref_mode === "MANUAL") && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <span>Descuento:</span>
+                        <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: "PORCENTAJE" as const })),
+                              }))
+                            }
+                            className={`flex h-7 w-8 items-center justify-center rounded text-xs font-bold transition-colors ${
+                              form.detalles[0]?.tipo_descuento === "PORCENTAJE"
+                                ? "bg-sky-500 text-white shadow-sm"
+                                : "text-slate-400 hover:text-slate-600"
+                            }`}
+                            title="Descuento en porcentaje"
+                          >
+                            %
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: "VALOR" as const })),
+                              }))
+                            }
+                            className={`flex h-7 w-8 items-center justify-center rounded text-xs font-bold transition-colors ${
+                              form.detalles[0]?.tipo_descuento === "VALOR"
+                                ? "bg-emerald-500 text-white shadow-sm"
+                                : "text-slate-400 hover:text-slate-600"
+                            }`}
+                            title="Descuento en valor monetario"
+                          >
+                            $
+                          </button>
+                        </div>
+                      </div>
+                      <Button type="button" variant="secondary" onClick={addDetail} className="h-9 px-3">
+                        <PlusCircle className="mr-1.5 h-4 w-4" />
+                        Agregar detalle
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -968,7 +1056,8 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                     </div>
                     <div className="divide-y divide-slate-200">
                       {form.detalles.map((detalle, index) => {
-                        const base = detalle.cantidad * detalle.precio_unitario - detalle.descuento;
+                        const descuentoValor = getDescuentoValor(detalle);
+                        const base = detalle.cantidad * detalle.precio_unitario - descuentoValor;
                         const totalLinea = base + base * (detalle.porcentaje_iva / 100) + base * (detalle.porcentaje_ice / 100) + detalle.cantidad * detalle.valor_unitario_irbpnr;
                         return (
                         <div key={`detalle-${index}`} className="grid items-center gap-4 bg-white px-3 py-2 lg:grid-cols-[80px_1fr_50px_80px_56px_56px_60px_56px_80px_36px]">
@@ -982,7 +1071,17 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                           ) : (
                             <Input value={detalle.descripcion} onChange={(event) => updateDetail(index, "descripcion", event.target.value)} className="bg-white shadow-none h-8 text-xs" placeholder="*" />
                           )}
-                          <Input type="number" min={1} value={detalle.cantidad} onChange={(event) => updateDetail(index, "cantidad", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                          <Input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={detalle.cantidad}
+                                    onChange={(event) => {
+                                      let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                                      if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
+                                      updateDetail(index, "cantidad", cleaned === "" ? 0 : Number(cleaned));
+                                    }}
+                                    className="bg-white shadow-none h-8 text-xs text-right"
+                                  />
                           {form.id_factura_ref > 0 ? (
                             <span className="text-right text-xs text-slate-800">${detalle.precio_unitario.toFixed(2)}</span>
                           ) : (
@@ -1009,7 +1108,17 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                           ) : (
                             <Input type="number" min={0} step="0.0001" value={detalle.valor_unitario_irbpnr} onChange={(event) => updateDetail(index, "valor_unitario_irbpnr", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
                           )}
-                          <Input type="number" min={0} step="0.01" value={detalle.descuento} onChange={(event) => updateDetail(index, "descuento", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                          <Input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={detalle.descuento}
+                                    onChange={(event) => {
+                                      let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                                      if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
+                                      updateDetail(index, "descuento", cleaned === "" ? 0 : Number(cleaned));
+                                    }}
+                                    className="bg-white shadow-none h-8 text-xs text-right"
+                                  />
                           <span className="text-right text-xs font-semibold text-slate-800">${totalLinea.toFixed(2)}</span>
                           <button type="button" onClick={() => removeDetail(index)} disabled={form.detalles.length === 1} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" title="Eliminar">
                             <Trash className="h-3.5 w-3.5" />
@@ -1062,6 +1171,64 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                   <span className="text-lg font-extrabold text-sky-700">{formatMoney(totales.total)}</span>
                 </div>
               </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
+                  <h4 className="text-sm font-semibold text-slate-700">Finalizar Pago</h4>
+                </div>
+                <div>
+                  <Field label="Monto recibido" htmlFor="monto_recibido">
+                    {form.id_factura_ref > 0 ? (
+                      <div className="h-9 flex items-center text-sm font-semibold text-slate-800 px-1">
+                        {montoStr ? `$${montoStr}` : "$0.00"}
+                      </div>
+                    ) : (
+                      <Input
+                        id="monto_recibido"
+                        type="text"
+                        inputMode="decimal"
+                        value={montoStr}
+                        onChange={(event) => {
+                          const raw = event.target.value.replace(/[^0-9.,]/g, "").replace(",", ".");
+                          const parts = raw.split(".");
+                          const cleaned = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : raw;
+                          const finalVal = cleaned.includes(".") ? cleaned.slice(0, cleaned.indexOf(".") + 3) : cleaned;
+                          const num = parseFloat(finalVal);
+                          setMontoStr(event.target.value);
+                          updateField("monto_recibido", !isNaN(num) && num >= 0 ? Math.round(num * 100) / 100 : 0);
+                        }}
+                        className="bg-white shadow-none h-9"
+                        placeholder="0.00"
+                      />
+                    )}
+                  </Field>
+                </div>
+                <div className="flex justify-between items-center bg-slate-50 rounded-lg px-3 py-2">
+                  <span className="text-sm font-medium text-slate-600">Cambio:</span>
+                  <span className={`text-lg font-bold ${(() => { const diff = form.monto_recibido - totales.total; return diff < 0 ? "text-rose-600" : "text-emerald-600"; })()}`}>
+                    {form.monto_recibido > 0 ? formatMoney(form.monto_recibido - totales.total) : "$0.00"}
+                  </span>
+                </div>
+              </div>
+              {(form.ref_mode === "INTERNA" || facturaEsConsumidorFinal || form.cliente_mode === "CONSUMIDOR_FINAL") && (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                  <div className="flex items-start gap-2">
+                    <span className="inline-flex shrink-0 mt-0.5 h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
+                    <div className="text-xs text-amber-800">
+                      <span className="font-semibold">Restricción SRI 2025-2026:</span> No se pueden emitir notas de crédito para facturas de Consumidor Final. Use otro documento.
+                    </div>
+                  </div>
+                </div>
+              )}
+              {form.ref_mode === "INTERNA" && form.monto_recibido > 0 && totales.total > form.monto_recibido && (
+                <div className="flex items-center gap-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-rose-600 text-xs font-bold">!</span>
+                  <div className="text-xs text-rose-800">
+                    El total de la nota supera el total de la factura original ({formatMoney(form.monto_recibido)}). Reduce cantidades o elimina productos.
+                  </div>
+                </div>
+              )}
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <Button type="submit" disabled={saving} className="h-10 w-full">
                   {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear nota de crédito"}

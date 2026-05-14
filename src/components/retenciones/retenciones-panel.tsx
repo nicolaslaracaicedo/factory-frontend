@@ -52,7 +52,7 @@ const initialForm: RetencionFormState = {
   id_punto_emision: 0,
   id_proveedor: 0,
   id_factura_ref: 0,
-  fecha_emision: new Date().toISOString().split("T")[0],
+  fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0],
   detalles: [initialDetalle()],
 };
 

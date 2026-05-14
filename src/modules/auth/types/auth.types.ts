@@ -28,6 +28,7 @@ export interface AuthUser {
   apellido?: string;
   email?: string;
   role: UserRole;
+  puntoEmisionDefault?: number | null;
 }
 
 export interface LoginResponse {

@@ -57,6 +57,8 @@ import { toUsuarioFormInput } from "@/src/modules/users/utils/user-payload.utils
 import { userService } from "@/src/modules/users/services/user.service";
 import { roleIdToName } from "@/src/modules/auth/utils/role.utils";
 import { Loader } from "@/src/components/ui/loader";
+import { emissionPointService } from "@/src/modules/emission-points/services/emission-point.service";
+import type { PuntoEmision } from "@/src/modules/emission-points/types/emission-point.types";
 
 const initialForm: UsuarioFormInput = {
   id_rol: 0,
@@ -68,6 +70,7 @@ const initialForm: UsuarioFormInput = {
   password: "",
   telefono: "",
   direccion: "",
+  id_punto_emision_default: 0,
 };
 
 const tipoIdentificacionOptions = [
@@ -129,6 +132,8 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
+  const [loadingPuntos, setLoadingPuntos] = useState(true);
 
   function SortIcon({ column }: { column: any }) {
     const s = column.getIsSorted();
@@ -254,6 +259,18 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
     void loadUsuarios();
   }, [filter]);
 
+  useEffect(() => {
+    const loadPuntos = async () => {
+      setLoadingPuntos(true);
+      try {
+        const data = await emissionPointService.listPuntos("ACTIVO");
+        setPuntos(data);
+      } catch { /* ignore */ }
+      finally { setLoadingPuntos(false); }
+    };
+    void loadPuntos();
+  }, []);
+
 
   const openCreate = () => {
     setEditing(null);
@@ -297,6 +314,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
       email: form.email,
       telefono: form.telefono,
       direccion: form.direccion,
+      id_punto_emision_default: form.id_punto_emision_default > 0 ? form.id_punto_emision_default : undefined,
     };
 
     if (form.password.trim()) {
@@ -619,6 +637,46 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
                     </Field>
                   </div>
                 </div>
+              </div>
+
+              {/* SECCIÓN: Punto de emisión por defecto */}
+              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Punto de emisión</h3>
+                </div>
+                <Field label="Punto de emisión por defecto" htmlFor="id_punto_emision_default">
+                  <SelectPrimitive.Root 
+                    value={form.id_punto_emision_default === 0 ? undefined : form.id_punto_emision_default.toString()} 
+                    onValueChange={(val) => updateField("id_punto_emision_default", Number(val))}
+                    disabled={loadingPuntos}
+                  >
+                    <SelectPrimitive.Trigger 
+                      id="id_punto_emision_default"
+                      className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                    >
+                      <SelectPrimitive.Value placeholder={loadingPuntos ? "Cargando..." : "Selecciona un punto de emisión..."} />
+                      <SelectPrimitive.Icon>
+                        <ChevronDown className="h-4 w-4 text-slate-400" />
+                      </SelectPrimitive.Icon>
+                    </SelectPrimitive.Trigger>
+                    <SelectPrimitive.Portal>
+                      <SelectPrimitive.Content className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" position="popper" sideOffset={4}>
+                        <SelectPrimitive.Viewport className="p-1">
+                          {puntos.map((punto) => (
+                            <SelectPrimitive.Item 
+                              key={punto.id}
+                              value={punto.id.toString()}
+                              className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                            >
+                              <SelectPrimitive.ItemText>{punto.codigo} - {punto.descripcion}</SelectPrimitive.ItemText>
+                            </SelectPrimitive.Item>
+                          ))}
+                        </SelectPrimitive.Viewport>
+                      </SelectPrimitive.Content>
+                    </SelectPrimitive.Portal>
+                  </SelectPrimitive.Root>
+                </Field>
               </div>
 
               {/* SECCIÓN: Información de contacto */}
