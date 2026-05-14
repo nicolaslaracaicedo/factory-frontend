@@ -1,7 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   useReactTable,
@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Edit, Eye, PlusCircle, Power, RefreshCw, Search, Send, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Printer, Trash, Package, User, Calendar, FileCheck, Tag, Receipt, FileX } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Edit, Eye, PlusCircle, Power, RefreshCw, Search, Send, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Printer, Trash, Package, User, Calendar, FileCheck, Tag, Receipt, FileX, Calculator } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -26,6 +26,7 @@ import {
 } from "@/src/components/ui/dropdown-menu";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
+import { Switch } from "@/src/components/ui/switch";
 import type {
   NotaCreditoDetalleDraft,
   NotaCreditoFormState,
@@ -40,6 +41,9 @@ import type { PuntoEmision } from "@/src/modules/emission-points/types/emission-
 import { invoiceService } from "@/src/modules/invoices/services/invoice.service";
 import type { FacturaItem } from "@/src/modules/invoices/types/invoice.types";
 import { Loader } from "@/src/components/ui/loader";
+import { ClientFormModal } from "@/src/components/clients/client-form-modal";
+import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
+import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 
 const initialDetail = (): NotaCreditoDetalleDraft => ({
   codigo: "",
@@ -49,6 +53,9 @@ const initialDetail = (): NotaCreditoDetalleDraft => ({
   descuento: 0,
   codigo_iva: "",
   porcentaje_iva: 0,
+  codigo_ice: "",
+  porcentaje_ice: 0,
+  valor_unitario_irbpnr: 0,
 });
 
 const initialForm: NotaCreditoFormState = {
@@ -59,6 +66,7 @@ const initialForm: NotaCreditoFormState = {
   factura_ref_fecha: "",
   factura_ref_autorizacion: "",
   motivo: "",
+  cliente_mode: "REGISTRADO",
   id_cliente: 0,
   use_manual_cliente: false,
   cli_identificacion: "",
@@ -94,15 +102,26 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<EstadoFiltro>("TODOS");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editing, setEditing] = useState<NotaCreditoItem | null>(null);
   const [detail, setDetail] = useState<NotaCreditoItem | null>(null);
+  const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
+  const { setActiveSection } = useDashboardSection();
   const [form, setForm] = useState<NotaCreditoFormState>(initialForm);
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [facturaQuery, setFacturaQuery] = useState("");
+  const [facturaSearchResults, setFacturaSearchResults] = useState<FacturaItem[]>([]);
+  const [facturaSearching, setFacturaSearching] = useState(false);
+  const facturaSearchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [clienteQuery, setClienteQuery] = useState("");
+  const [clienteSearchResults, setClienteSearchResults] = useState<Cliente[]>([]);
+  const [clienteSearching, setClienteSearching] = useState(false);
+  const clienteSearchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   function SortIcon({ column }: { column: any }) {
     const sorted = column.getIsSorted();
@@ -285,6 +304,29 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
     void loadCatalogs();
   }, []);
 
+  const navigateTo = (section: string) => {
+    setActiveSection(section);
+  };
+
+  useEffect(() => {
+    if (editorOpen) {
+      setHeaderVisible(false);
+      setBreadcrumbs([
+        { label: "Dashboard", onClick: () => navigateTo("dashboard") },
+        { label: "Notas de crédito", onClick: () => navigateTo("notas-credito") },
+        { label: editing ? "Editar nota" : "Nueva nota" },
+      ]);
+    } else {
+      setHeaderVisible(true);
+      setBreadcrumbs(null);
+    }
+
+    return () => {
+      setHeaderVisible(true);
+      setBreadcrumbs(null);
+    };
+  }, [editorOpen, editing, setBreadcrumbs, setHeaderVisible, setActiveSection]);
+
   useEffect(() => {
     const loadNotas = async () => {
       setLoading(true);
@@ -324,15 +366,37 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
 
   const openCreate = () => {
     setEditing(null);
+    setFacturaQuery("");
+    setFacturaSearchResults([]);
+    setClienteQuery("");
+    setClienteSearchResults([]);
     setForm({
       ...initialForm,
       id_punto_emision: puntos[0]?.id ?? 0,
-      id_cliente: clientes[0]?.id ?? 0,
-      id_factura_ref: facturas[0]?.id ?? 0,
+      cliente_mode: "REGISTRADO",
       fecha_emision: new Date().toISOString().slice(0, 10),
       detalles: [initialDetail()],
     });
-    setModalOpen(true);
+    setEditorOpen(true);
+  };
+
+  const closeEditor = () => {
+    setEditorOpen(false);
+    setEditing(null);
+    setForm(initialForm);
+  };
+
+  const resetForm = () => {
+    setForm({
+      ...initialForm,
+      id_punto_emision: puntos[0]?.id ?? 0,
+      fecha_emision: new Date().toISOString().slice(0, 10),
+      detalles: [initialDetail()],
+    });
+    setFacturaQuery("");
+    setFacturaSearchResults([]);
+    setClienteQuery("");
+    setClienteSearchResults([]);
   };
 
   const openEdit = async (nota: NotaCreditoItem) => {
@@ -340,7 +404,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
       const data = await creditNoteService.getNota(nota.id);
       setEditing(data);
       setForm(toNotaCreditoFormState(data));
-      setModalOpen(true);
+      setEditorOpen(true);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "No se pudo cargar la nota.";
@@ -374,6 +438,79 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleFacturaSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setFacturaQuery(value);
+    if (facturaSearchTimerRef.current) clearTimeout(facturaSearchTimerRef.current);
+    if (!value.trim()) { setFacturaSearchResults([]); return; }
+    facturaSearchTimerRef.current = setTimeout(async () => {
+      setFacturaSearching(true);
+      try {
+        const results = await invoiceService.listFacturas(value.trim());
+        setFacturaSearchResults(results);
+      } catch { /* ignore */ }
+      finally { setFacturaSearching(false); }
+    }, 300);
+  };
+
+  const selectFactura = async (factura: FacturaItem) => {
+    try {
+      const fullFactura = await invoiceService.getFactura(factura.id);
+      updateField("id_factura_ref", fullFactura.id);
+      if (fullFactura.consumidor_final) {
+        updateField("cliente_mode", "CONSUMIDOR_FINAL");
+        updateField("id_cliente", 0);
+      } else if (fullFactura.id_cliente) {
+        updateField("cliente_mode", "REGISTRADO");
+        updateField("id_cliente", fullFactura.id_cliente);
+      }
+      if (fullFactura.detalles?.length) {
+        const detalles: NotaCreditoDetalleDraft[] = fullFactura.detalles.map((d) => ({
+          codigo: d.codigo ?? "",
+          descripcion: d.descripcion ?? "",
+          cantidad: d.cantidad,
+          precio_unitario: d.precio_unitario ?? 0,
+          descuento: d.descuento ?? 0,
+          codigo_iva: d.codigo_iva ?? "",
+          porcentaje_iva: d.porcentaje_iva ?? 0,
+          codigo_ice: d.codigo_ice ?? "",
+          porcentaje_ice: d.porcentaje_ice ?? 0,
+          valor_unitario_irbpnr: d.valor_unitario_irbpnr ?? 0,
+        }));
+        setForm((prev) => ({ ...prev, detalles }));
+      }
+      setFacturaQuery("");
+      setFacturaSearchResults([]);
+      setClienteQuery("");
+      setClienteSearchResults([]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo cargar la factura.";
+      toast.error(message);
+    }
+  };
+
+  const handleClienteSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setClienteQuery(value);
+    if (clienteSearchTimerRef.current) clearTimeout(clienteSearchTimerRef.current);
+    if (!value.trim()) { setClienteSearchResults([]); return; }
+    clienteSearchTimerRef.current = setTimeout(async () => {
+      setClienteSearching(true);
+      try {
+        const results = await clientService.listClientes("ACTIVO", value.trim());
+        setClienteSearchResults(results);
+      } catch { /* ignore */ }
+      finally { setClienteSearching(false); }
+    }, 300);
+  };
+
+  const selectCliente = (cliente: Cliente) => {
+    updateField("id_cliente", cliente.id);
+    updateField("cliente_mode", "REGISTRADO");
+    setClienteQuery("");
+    setClienteSearchResults([]);
   };
 
   const updateDetail = (
@@ -417,6 +554,9 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
       descuento: item.descuento,
       codigo_iva: item.codigo_iva,
       porcentaje_iva: item.porcentaje_iva,
+      codigo_ice: item.codigo_ice || undefined,
+      porcentaje_ice: item.porcentaje_ice || undefined,
+      valor_unitario_irbpnr: item.valor_unitario_irbpnr || undefined,
     }));
 
     return {
@@ -427,9 +567,10 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
       factura_ref_autorizacion:
         form.ref_mode === "MANUAL" ? form.factura_ref_autorizacion : undefined,
       motivo: form.motivo,
-      id_cliente: form.use_manual_cliente ? undefined : form.id_cliente,
-      cli_identificacion: form.use_manual_cliente ? form.cli_identificacion : undefined,
-      cli_razon_social: form.use_manual_cliente ? form.cli_razon_social : undefined,
+      consumidor_final: form.cliente_mode === "CONSUMIDOR_FINAL",
+      id_cliente: form.cliente_mode === "REGISTRADO" ? form.id_cliente : undefined,
+      cli_identificacion: form.cliente_mode === "MANUAL" ? form.cli_identificacion : undefined,
+      cli_razon_social: form.cliente_mode === "MANUAL" ? form.cli_razon_social : undefined,
       fecha_emision: form.fecha_emision,
       detalles,
     };
@@ -469,7 +610,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
         toast.success("Nota de crédito creada.");
       }
       await refresh();
-      setModalOpen(false);
+      setEditorOpen(false);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "No se pudo guardar la nota.";
@@ -532,7 +673,417 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
     return factura?.numero || `Factura #${facturaId}`;
   };
 
+  const formatMoney = (value: number) => {
+    return `$${value.toFixed(2)}`;
+  };
+
+  const totales = useMemo(() => {
+    const subtotal = form.detalles.reduce((sum, d) => sum + d.cantidad * d.precio_unitario, 0);
+    const descuentoTotal = form.detalles.reduce((sum, d) => sum + d.descuento, 0);
+    const iva = form.detalles.reduce((sum, d) => {
+      const base = d.cantidad * d.precio_unitario - d.descuento;
+      return sum + base * (d.porcentaje_iva / 100);
+    }, 0);
+    const ice = form.detalles.reduce((sum, d) => {
+      const base = d.cantidad * d.precio_unitario - d.descuento;
+      return sum + base * (d.porcentaje_ice / 100);
+    }, 0);
+    const irbpnr = form.detalles.reduce((sum, d) => sum + d.cantidad * d.valor_unitario_irbpnr, 0);
+    const ivaPcts = [...new Set(form.detalles.filter(d => d.porcentaje_iva > 0).map(d => d.porcentaje_iva))];
+    const icePcts = [...new Set(form.detalles.filter(d => d.porcentaje_ice > 0).map(d => d.porcentaje_ice))];
+    const irbpnrValues = [...new Set(form.detalles.filter(d => d.valor_unitario_irbpnr > 0).map(d => d.valor_unitario_irbpnr))];
+    return { subtotal, descuentoTotal, iva, ice, irbpnr, ivaPcts, icePcts, irbpnrValues, total: subtotal - descuentoTotal + iva + ice + irbpnr };
+  }, [form.detalles]);
+
   if (!showPanel) return null;
+
+  if (editorOpen) {
+    return (
+      <section className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" type="button" onClick={closeEditor} className="h-10 w-10 p-0 text-slate-600 bg-slate-100 hover:bg-slate-200">
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-semibold text-slate-900">
+                {editing ? "Editar nota de crédito" : "Nueva nota de crédito"}
+              </p>
+              <p className="text-xs text-slate-500">
+                Completa los datos y agrega los detalles antes de guardar.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" type="button" onClick={resetForm} className="h-9 px-3 text-xs">
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+              Limpiar
+            </Button>
+          </div>
+        </div>
+
+        <form className="space-y-6" onSubmit={submitForm}>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
+              {/* SECCIÓN: Información general */}
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Información general</h3>
+                </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Field label="Punto de emisión *" htmlFor="id_punto_emision">
+                    <SelectPrimitive.Root
+                      value={form.id_punto_emision === 0 ? undefined : form.id_punto_emision.toString()}
+                      onValueChange={(val) => updateField("id_punto_emision", Number(val))}
+                      disabled={loadingCatalogs}
+                    >
+                      <SelectPrimitive.Trigger
+                        id="id_punto_emision"
+                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                      >
+                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un punto de emisión..."} />
+                        <SelectPrimitive.Icon>
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </SelectPrimitive.Icon>
+                      </SelectPrimitive.Trigger>
+                      <SelectPrimitive.Portal>
+                        <SelectPrimitive.Content
+                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                          position="popper"
+                          sideOffset={4}
+                        >
+                          <SelectPrimitive.Viewport className="p-1">
+                            {puntos.map((punto) => (
+                              <SelectPrimitive.Item
+                                key={punto.id}
+                                value={punto.id.toString()}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                              >
+                                <SelectPrimitive.ItemText>{punto.codigo} - {punto.descripcion}</SelectPrimitive.ItemText>
+                              </SelectPrimitive.Item>
+                            ))}
+                          </SelectPrimitive.Viewport>
+                        </SelectPrimitive.Content>
+                      </SelectPrimitive.Portal>
+                    </SelectPrimitive.Root>
+                  </Field>
+                  <Field label="Fecha de emisión *" htmlFor="fecha_emision">
+                    <Input
+                      id="fecha_emision"
+                      type="date"
+                      value={form.fecha_emision}
+                      onChange={(event) => updateField("fecha_emision", event.target.value)}
+                      className="bg-white shadow-none"
+                    />
+                  </Field>
+                  <Field label="Motivo *" htmlFor="motivo">
+                    <Input
+                      id="motivo"
+                      value={form.motivo}
+                      onChange={(event) => updateField("motivo", event.target.value)}
+                      placeholder="Ej: Anulación de factura"
+                      className="bg-white shadow-none placeholder:text-slate-300"
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              {/* SECCIÓN: Factura referenciada */}
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Factura referenciada</h3>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-500">Manual</span>
+                    <Switch checked={form.ref_mode === "INTERNA"} onCheckedChange={(checked) => updateField("ref_mode", checked ? "INTERNA" : "MANUAL")} />
+                    <span className="text-xs text-slate-500">Interna</span>
+                  </div>
+                </div>
+                {form.ref_mode === "INTERNA" ? (
+                  <div className="relative">
+                    <Field label="Buscar factura *" htmlFor="factura_search">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                        <input
+                          id="factura_search"
+                          type="text"
+                          value={facturaQuery}
+                          onChange={handleFacturaSearchChange}
+                          placeholder="Buscar por número de factura..."
+                          className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
+                        />
+                        {facturaSearching && (
+                          <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
+                          </div>
+                        )}
+                      </div>
+                    </Field>
+                    {facturaSearchResults.length > 0 && (
+                      <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
+                        {facturaSearchResults.map((factura) => (
+                          <button
+                            key={factura.id}
+                            type="button"
+                            onClick={() => selectFactura(factura)}
+                            className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
+                          >
+                            <div className="font-medium text-slate-800">{factura.numero || `Factura #${factura.id}`}</div>
+                            <div className="text-xs text-slate-500">{factura.cliente_nombre || ""}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {form.id_factura_ref > 0 && facturaSearchResults.length === 0 && !facturaQuery.trim() && (
+                      <div className="mt-1 text-sm font-medium text-slate-700 flex items-center gap-2">
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                        {getFacturaLabel(form.id_factura_ref)}
+                        <button type="button" onClick={() => { updateField("id_factura_ref", 0); }} className="text-slate-400 hover:text-rose-500 transition-colors" title="Quitar factura">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <Field label="Número *" htmlFor="factura_ref_numero">
+                      <Input id="factura_ref_numero" value={form.factura_ref_numero} onChange={(event) => updateField("factura_ref_numero", event.target.value)} className="bg-white shadow-none" />
+                    </Field>
+                    <Field label="Fecha *" htmlFor="factura_ref_fecha">
+                      <Input id="factura_ref_fecha" type="date" value={form.factura_ref_fecha} onChange={(event) => updateField("factura_ref_fecha", event.target.value)} className="bg-white shadow-none" />
+                    </Field>
+                    <Field label="Autorización *" htmlFor="factura_ref_autorizacion">
+                      <Input id="factura_ref_autorizacion" value={form.factura_ref_autorizacion} onChange={(event) => updateField("factura_ref_autorizacion", event.target.value)} className="bg-white shadow-none" />
+                    </Field>
+                  </div>
+                )}
+              </div>
+
+              {/* SECCIÓN: Cliente */}
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Cliente</h3>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-500">Consumidor final</span>
+                    <Switch checked={form.cliente_mode === "CONSUMIDOR_FINAL"} disabled={form.id_factura_ref > 0} onCheckedChange={(checked) => { updateField("cliente_mode", checked ? "CONSUMIDOR_FINAL" : "REGISTRADO"); if (checked) updateField("id_cliente", 0); }} />
+                  </div>
+                </div>
+
+                {form.cliente_mode === "CONSUMIDOR_FINAL" ? null : form.ref_mode === "INTERNA" && form.id_factura_ref > 0 ? (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                    <span className="font-medium text-slate-700">{getClienteLabel(form.id_cliente)}</span>
+                    <span className="text-xs text-slate-400">· {clientes.find((c) => c.id === form.id_cliente)?.identificacion || ""}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1 min-w-0">
+                      <Field label="Buscar cliente *" htmlFor="cliente_search">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                          <input
+                            id="cliente_search"
+                            type="text"
+                            value={clienteQuery}
+                            onChange={handleClienteSearchChange}
+                            placeholder="Buscar por cédula, RUC o razón social..."
+                            className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
+                          />
+                          {clienteSearching && (
+                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
+                            </div>
+                          )}
+                        </div>
+                      </Field>
+
+                      {clienteSearchResults.length > 0 && (
+                        <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
+                          {clienteSearchResults.map((cliente) => (
+                            <button
+                              key={cliente.id}
+                              type="button"
+                              onClick={() => selectCliente(cliente)}
+                              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
+                            >
+                              <div className="font-medium text-slate-800">{cliente.razon_social}</div>
+                              <div className="text-xs text-slate-500">{cliente.identificacion}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {form.id_cliente > 0 && clienteSearchResults.length === 0 && !clienteQuery.trim() && (
+                        <div className="mt-1 text-sm font-medium text-slate-700 flex items-center gap-2">
+                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                          {getClienteLabel(form.id_cliente)}
+                          <span className="text-xs text-slate-400">· {clientes.find((c) => c.id === form.id_cliente)?.identificacion || ""}</span>
+                          <button type="button" onClick={() => { updateField("id_cliente", 0); }} className="text-slate-400 hover:text-rose-500 transition-colors" title="Quitar cliente">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <Button type="button" variant="secondary" onClick={() => setClientModalOpen(true)} className="h-9 px-3 mb-0.5 shrink-0">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Nuevo
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* SECCIÓN: Detalles */}
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Detalles</h3>
+                  </div>
+                  {form.ref_mode !== "INTERNA" && (
+                    <Button type="button" variant="secondary" onClick={addDetail} className="h-9 px-3">
+                      <PlusCircle className="mr-1.5 h-4 w-4" />
+                      Agregar detalle
+                    </Button>
+                  )}
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                  <div className="min-w-[800px]">
+                    <div className="hidden lg:grid lg:grid-cols-[80px_1fr_50px_80px_56px_56px_60px_56px_80px_36px] lg:gap-4 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                      <span>Código</span>
+                      <span>Descripción</span>
+                      <span className="text-right">Cant.</span>
+                      <span className="text-right">Precio</span>
+                      <span className="text-right">IVA</span>
+                      <span className="text-right">ICE</span>
+                      <span className="text-right">IRBPNR</span>
+                      <span className="text-right">Desc.</span>
+                      <span className="text-right">Total</span>
+                      <span />
+                    </div>
+                    <div className="divide-y divide-slate-200">
+                      {form.detalles.map((detalle, index) => {
+                        const base = detalle.cantidad * detalle.precio_unitario - detalle.descuento;
+                        const totalLinea = base + base * (detalle.porcentaje_iva / 100) + base * (detalle.porcentaje_ice / 100) + detalle.cantidad * detalle.valor_unitario_irbpnr;
+                        return (
+                        <div key={`detalle-${index}`} className="grid items-center gap-4 bg-white px-3 py-2 lg:grid-cols-[80px_1fr_50px_80px_56px_56px_60px_56px_80px_36px]">
+                          {form.id_factura_ref > 0 ? (
+                            <span className="text-xs text-slate-800 truncate">{detalle.codigo || "-"}</span>
+                          ) : (
+                            <Input value={detalle.codigo} onChange={(event) => updateDetail(index, "codigo", event.target.value)} className="bg-white shadow-none h-8 text-xs" placeholder="-" />
+                          )}
+                          {form.id_factura_ref > 0 ? (
+                            <span className="text-xs text-slate-800 truncate">{detalle.descripcion || "-"}</span>
+                          ) : (
+                            <Input value={detalle.descripcion} onChange={(event) => updateDetail(index, "descripcion", event.target.value)} className="bg-white shadow-none h-8 text-xs" placeholder="*" />
+                          )}
+                          <Input type="number" min={1} value={detalle.cantidad} onChange={(event) => updateDetail(index, "cantidad", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                          {form.id_factura_ref > 0 ? (
+                            <span className="text-right text-xs text-slate-800">${detalle.precio_unitario.toFixed(2)}</span>
+                          ) : (
+                            <Input type="number" min={0} step="0.01" value={detalle.precio_unitario} onChange={(event) => updateDetail(index, "precio_unitario", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                          )}
+                          {form.id_factura_ref > 0 && detalle.porcentaje_iva === 0 ? (
+                            <span className="text-right text-xs text-slate-400">-</span>
+                          ) : form.id_factura_ref > 0 ? (
+                            <span className="text-right text-xs text-slate-800">{detalle.porcentaje_iva}%</span>
+                          ) : (
+                            <Input type="number" min={0} step="0.01" value={detalle.porcentaje_iva} onChange={(event) => updateDetail(index, "porcentaje_iva", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                          )}
+                          {form.id_factura_ref > 0 && detalle.porcentaje_ice === 0 ? (
+                            <span className="text-right text-xs text-slate-400">-</span>
+                          ) : form.id_factura_ref > 0 ? (
+                            <span className="text-right text-xs text-slate-800">{detalle.porcentaje_ice}%</span>
+                          ) : (
+                            <Input type="number" min={0} step="0.01" value={detalle.porcentaje_ice} onChange={(event) => updateDetail(index, "porcentaje_ice", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                          )}
+                          {form.id_factura_ref > 0 && detalle.valor_unitario_irbpnr === 0 ? (
+                            <span className="text-right text-xs text-slate-400">-</span>
+                          ) : form.id_factura_ref > 0 ? (
+                            <span className="text-right text-xs text-slate-800">${detalle.valor_unitario_irbpnr.toFixed(4)}</span>
+                          ) : (
+                            <Input type="number" min={0} step="0.0001" value={detalle.valor_unitario_irbpnr} onChange={(event) => updateDetail(index, "valor_unitario_irbpnr", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                          )}
+                          <Input type="number" min={0} step="0.01" value={detalle.descuento} onChange={(event) => updateDetail(index, "descuento", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                          <span className="text-right text-xs font-semibold text-slate-800">${totalLinea.toFixed(2)}</span>
+                          <button type="button" onClick={() => removeDetail(index)} disabled={form.detalles.length === 1} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" title="Eliminar">
+                            <Trash className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+            </div>
+          </div>
+        </div>
+
+            <aside className="space-y-4 lg:sticky lg:top-6">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calculator className="h-3.5 w-3.5 text-slate-500" />
+                  <h4 className="text-sm font-semibold text-slate-700">Totales</h4>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-700">Subtotal:</span>
+                  <span className="font-medium text-slate-800">{formatMoney(totales.subtotal)}</span>
+                </div>
+                {totales.descuentoTotal > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-700">Descuento:</span>
+                    <span className="font-medium text-rose-600">-{formatMoney(totales.descuentoTotal)}</span>
+                  </div>
+                )}
+                {totales.iva > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-700">{totales.ivaPcts.length === 1 ? `IVA (${totales.ivaPcts[0]}%):` : "IVA:"}</span>
+                    <span className="font-medium text-slate-800">{formatMoney(totales.iva)}</span>
+                  </div>
+                )}
+                {totales.ice > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-700">{totales.icePcts.length === 1 ? `ICE (${totales.icePcts[0]}%):` : "ICE:"}</span>
+                    <span className="font-medium text-slate-800">{formatMoney(totales.ice)}</span>
+                  </div>
+                )}
+                {totales.irbpnr > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-700">{totales.irbpnrValues.length === 1 ? `IRBPNR ($${totales.irbpnrValues[0].toFixed(2)}):` : "IRBPNR:"}</span>
+                    <span className="font-medium text-slate-800">{formatMoney(totales.irbpnr)}</span>
+                  </div>
+                )}
+                <div className="border-t border-slate-200 pt-2 flex justify-between">
+                  <span className="font-semibold text-slate-800">Total:</span>
+                  <span className="text-lg font-extrabold text-sky-700">{formatMoney(totales.total)}</span>
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <Button type="submit" disabled={saving} className="h-10 w-full">
+                  {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear nota de crédito"}
+                </Button>
+              </div>
+            </aside>
+          </div>
+        </form>
+
+        <ClientFormModal
+          open={clientModalOpen}
+          onOpenChange={setClientModalOpen}
+          onSuccess={(newClient) => {
+            setClientes((prev) => [...prev, newClient]);
+            updateField("id_cliente", newClient.id);
+            setClienteQuery("");
+            setClienteSearchResults([]);
+          }}
+        />
+      </section>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -732,406 +1283,8 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
               </button>
             </div>
           </div>
-        </div>
+      </div>
       )}
-
-      <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
-          <Dialog.Content 
-            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,900px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
-            onPointerDownOutside={(event) => event.preventDefault()}
-            onInteractOutside={(event) => event.preventDefault()}
-          >
-            {/* Header con icono y título */}
-            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <FileX className="h-6 w-6 text-app-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Dialog.Title className="text-xl font-semibold text-slate-900">
-                    {editing ? "Editar nota de crédito" : "Crear nueva nota de crédito"}
-                  </Dialog.Title>
-                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
-                    {editing
-                      ? "Actualiza la información de la nota de crédito."
-                      : "Registra una nueva nota de crédito con los datos de la factura referenciada."}
-                  </Dialog.Description>
-                </div>
-              </div>
-            </div>
-
-            {/* Formulario */}
-            <form className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]" onSubmit={submitForm}>
-              {/* SECCIÓN: Información general */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <FileCheck className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Información general</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <Field label="Punto de emisión *" htmlFor="id_punto_emision">
-                    <SelectPrimitive.Root
-                      value={form.id_punto_emision === 0 ? undefined : form.id_punto_emision.toString()}
-                      onValueChange={(val) => updateField("id_punto_emision", Number(val))}
-                      disabled={loadingCatalogs}
-                    >
-                      <SelectPrimitive.Trigger
-                        id="id_punto_emision"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                      >
-                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un punto de emisión..."} />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content
-                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((punto) => (
-                              <SelectPrimitive.Item
-                                key={punto.id}
-                                value={punto.id.toString()}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{punto.codigo} - {punto.descripcion}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-
-                  <Field label="Fecha de emisión *" htmlFor="fecha_emision">
-                    <Input
-                      id="fecha_emision"
-                      type="date"
-                      value={form.fecha_emision}
-                      onChange={(event) => updateField("fecha_emision", event.target.value)}
-                      className="bg-white shadow-none"
-                    />
-                  </Field>
-
-                  <Field label="Motivo *" htmlFor="motivo">
-                    <Input
-                      id="motivo"
-                      value={form.motivo}
-                      onChange={(event) => updateField("motivo", event.target.value)}
-                      placeholder="Ej: Anulación de factura"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
-                  </Field>
-                </div>
-              </div>
-
-              {/* SECCIÓN: Factura referenciada */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Receipt className="h-3.5 w-3.5 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700">Factura referenciada</h3>
-                  </div>
-                  <SelectPrimitive.Root
-                    value={form.ref_mode}
-                    onValueChange={(val) => updateField("ref_mode", val as "INTERNA" | "MANUAL")}
-                  >
-                    <SelectPrimitive.Trigger className="inline-flex h-9 w-36 items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200">
-                      <SelectPrimitive.Value />
-                      <SelectPrimitive.Icon>
-                        <ChevronDown className="h-4 w-4 text-slate-400" />
-                      </SelectPrimitive.Icon>
-                    </SelectPrimitive.Trigger>
-                    <SelectPrimitive.Portal>
-                      <SelectPrimitive.Content
-                        className="z-50 min-w-[140px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                        position="popper"
-                        sideOffset={4}
-                      >
-                        <SelectPrimitive.Viewport className="p-1">
-                          <SelectPrimitive.Item value="INTERNA" className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                            <SelectPrimitive.ItemText>Interna</SelectPrimitive.ItemText>
-                          </SelectPrimitive.Item>
-                          <SelectPrimitive.Item value="MANUAL" className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                            <SelectPrimitive.ItemText>Manual</SelectPrimitive.ItemText>
-                          </SelectPrimitive.Item>
-                        </SelectPrimitive.Viewport>
-                      </SelectPrimitive.Content>
-                    </SelectPrimitive.Portal>
-                  </SelectPrimitive.Root>
-                </div>
-
-                {form.ref_mode === "INTERNA" ? (
-                  <div>
-                    <Field label="Factura *" htmlFor="id_factura_ref">
-                      <SelectPrimitive.Root
-                        value={form.id_factura_ref === 0 ? undefined : form.id_factura_ref.toString()}
-                        onValueChange={(val) => updateField("id_factura_ref", Number(val))}
-                        disabled={loadingCatalogs}
-                      >
-                        <SelectPrimitive.Trigger
-                          id="id_factura_ref"
-                          className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                        >
-                          <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona una factura..."} />
-                          <SelectPrimitive.Icon>
-                            <ChevronDown className="h-4 w-4 text-slate-400" />
-                          </SelectPrimitive.Icon>
-                        </SelectPrimitive.Trigger>
-                        <SelectPrimitive.Portal>
-                          <SelectPrimitive.Content
-                            className="z-50 min-w-[320px] max-h-60 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                            position="popper"
-                            sideOffset={4}
-                          >
-                            <SelectPrimitive.Viewport className="p-1 max-h-52 overflow-y-auto">
-                              {facturas.map((factura) => (
-                                <SelectPrimitive.Item
-                                  key={factura.id}
-                                  value={factura.id.toString()}
-                                  className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                                >
-                                  <SelectPrimitive.ItemText>{factura.numero || `Factura #${factura.id}`}</SelectPrimitive.ItemText>
-                                </SelectPrimitive.Item>
-                              ))}
-                            </SelectPrimitive.Viewport>
-                          </SelectPrimitive.Content>
-                        </SelectPrimitive.Portal>
-                      </SelectPrimitive.Root>
-                    </Field>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <Field label="Número *" htmlFor="factura_ref_numero">
-                      <Input
-                        id="factura_ref_numero"
-                        value={form.factura_ref_numero}
-                        onChange={(event) => updateField("factura_ref_numero", event.target.value)}
-                        className="bg-white shadow-none"
-                      />
-                    </Field>
-                    <Field label="Fecha *" htmlFor="factura_ref_fecha">
-                      <Input
-                        id="factura_ref_fecha"
-                        type="date"
-                        value={form.factura_ref_fecha}
-                        onChange={(event) => updateField("factura_ref_fecha", event.target.value)}
-                        className="bg-white shadow-none"
-                      />
-                    </Field>
-                    <Field label="Autorización *" htmlFor="factura_ref_autorizacion">
-                      <Input
-                        id="factura_ref_autorizacion"
-                        value={form.factura_ref_autorizacion}
-                        onChange={(event) => updateField("factura_ref_autorizacion", event.target.value)}
-                        className="bg-white shadow-none"
-                      />
-                    </Field>
-                  </div>
-                )}
-              </div>
-
-              {/* SECCIÓN: Cliente */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <User className="h-3.5 w-3.5 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700">Cliente</h3>
-                  </div>
-                  <label className="inline-flex items-center gap-2 text-xs text-slate-600">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-sky-700"
-                      checked={form.use_manual_cliente}
-                      onChange={(event) => updateField("use_manual_cliente", event.target.checked)}
-                    />
-                    Ingresar cliente manual
-                  </label>
-                </div>
-
-                {!form.use_manual_cliente ? (
-                  <div>
-                    <Field label="Cliente *" htmlFor="id_cliente">
-                      <SelectPrimitive.Root
-                        value={form.id_cliente === 0 ? undefined : form.id_cliente.toString()}
-                        onValueChange={(val) => updateField("id_cliente", Number(val))}
-                        disabled={loadingCatalogs}
-                      >
-                        <SelectPrimitive.Trigger
-                          id="id_cliente"
-                          className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                        >
-                          <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un cliente..."} />
-                          <SelectPrimitive.Icon>
-                            <ChevronDown className="h-4 w-4 text-slate-400" />
-                          </SelectPrimitive.Icon>
-                        </SelectPrimitive.Trigger>
-                        <SelectPrimitive.Portal>
-                          <SelectPrimitive.Content
-                            className="z-50 min-w-[320px] max-h-72 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                            position="popper"
-                            sideOffset={4}
-                          >
-                            <SelectPrimitive.Viewport className="p-1 max-h-60 overflow-y-auto">
-                              {clientes.map((cliente) => (
-                                <SelectPrimitive.Item
-                                  key={cliente.id}
-                                  value={cliente.id.toString()}
-                                  className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                                >
-                                  <SelectPrimitive.ItemText>{cliente.razon_social}</SelectPrimitive.ItemText>
-                                </SelectPrimitive.Item>
-                              ))}
-                            </SelectPrimitive.Viewport>
-                          </SelectPrimitive.Content>
-                        </SelectPrimitive.Portal>
-                      </SelectPrimitive.Root>
-                    </Field>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Identificación *" htmlFor="cli_identificacion">
-                      <Input
-                        id="cli_identificacion"
-                        value={form.cli_identificacion}
-                        onChange={(event) => updateField("cli_identificacion", event.target.value)}
-                        className="bg-white shadow-none"
-                      />
-                    </Field>
-                    <Field label="Razón social *" htmlFor="cli_razon_social">
-                      <Input
-                        id="cli_razon_social"
-                        value={form.cli_razon_social}
-                        onChange={(event) => updateField("cli_razon_social", event.target.value)}
-                        className="bg-white shadow-none"
-                      />
-                    </Field>
-                  </div>
-                )}
-              </div>
-
-              {/* SECCIÓN: Detalles */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-3.5 w-3.5 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700">Detalles</h3>
-                  </div>
-                  <Button type="button" variant="secondary" onClick={addDetail} className="h-9 px-3">
-                    <PlusCircle className="mr-1.5 h-4 w-4" />
-                    Agregar detalle
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  {form.detalles.map((detalle, index) => (
-                    <div key={`detalle-${index}`} className="rounded-lg border border-slate-200 bg-white p-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-slate-700">Detalle #{index + 1}</p>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => removeDetail(index)}
-                          disabled={form.detalles.length === 1}
-                          className="h-9 px-3 text-rose-600 hover:bg-rose-50"
-                        >
-                          <Trash className="mr-1.5 h-4 w-4" />
-                          Quitar
-                        </Button>
-                      </div>
-
-                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                        <Field label="Código" htmlFor={`detalle-${index}-codigo`}>
-                          <Input
-                            id={`detalle-${index}-codigo`}
-                            value={detalle.codigo}
-                            onChange={(event) => updateDetail(index, "codigo", event.target.value)}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                        <Field label="Descripción *" htmlFor={`detalle-${index}-descripcion`}>
-                          <Input
-                            id={`detalle-${index}-descripcion`}
-                            value={detalle.descripcion}
-                            onChange={(event) => updateDetail(index, "descripcion", event.target.value)}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                        <Field label="Cantidad" htmlFor={`detalle-${index}-cantidad`}>
-                          <Input
-                            id={`detalle-${index}-cantidad`}
-                            type="number"
-                            min={1}
-                            value={detalle.cantidad}
-                            onChange={(event) => updateDetail(index, "cantidad", Number(event.target.value))}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                        <Field label="Precio unitario" htmlFor={`detalle-${index}-precio`}>
-                          <Input
-                            id={`detalle-${index}-precio`}
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={detalle.precio_unitario}
-                            onChange={(event) => updateDetail(index, "precio_unitario", Number(event.target.value))}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                        <Field label="Descuento" htmlFor={`detalle-${index}-descuento`}>
-                          <Input
-                            id={`detalle-${index}-descuento`}
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={detalle.descuento}
-                            onChange={(event) => updateDetail(index, "descuento", Number(event.target.value))}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                        <Field label="Código IVA" htmlFor={`detalle-${index}-codigoiva`}>
-                          <Input
-                            id={`detalle-${index}-codigoiva`}
-                            value={detalle.codigo_iva}
-                            onChange={(event) => updateDetail(index, "codigo_iva", event.target.value)}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                        <Field label="Porcentaje IVA" htmlFor={`detalle-${index}-porcentajeiva`}>
-                          <Input
-                            id={`detalle-${index}-porcentajeiva`}
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={detalle.porcentaje_iva}
-                            onChange={(event) => updateDetail(index, "porcentaje_iva", Number(event.target.value))}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Botones de acción */}
-              <div className="flex justify-end gap-3 pt-2">
-                <Button variant="secondary" type="button" onClick={() => setModalOpen(false)} className="h-10 px-4">
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={saving} className="h-10 px-4">
-                  {saving ? "Guardando..." : "Guardar"}
-                </Button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>

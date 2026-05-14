@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { CheckCircle2, Eye, PlusCircle, RefreshCw, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, FileSignature, Lock, Upload, File } from "lucide-react";
+import { CheckCircle2, Eye, PlusCircle, RefreshCw, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, FileSignature, Lock, Upload, File, Building2 } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -55,6 +55,23 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return "-";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return new Intl.DateTimeFormat("es-EC", { dateStyle: "medium" }).format(parsed);
+  };
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return "-";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return new Intl.DateTimeFormat("es-EC", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(parsed);
+  };
 
   function SortIcon({ column }: { column: any }) {
     const sorted = column.getIsSorted();
@@ -559,110 +576,169 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[2px]" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,620px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <Dialog.Title className="text-lg font-semibold text-slate-900">
-              Detalle de firma
-            </Dialog.Title>
-            <Dialog.Description className="mt-1 text-sm text-slate-600">
-              Informaci&oacute;n del certificado y estado.
-            </Dialog.Description>
-
-            <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
-              <div>
-                <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Nombre</span>
-                <span className="font-medium">{detail?.nombre || "-"}</span>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+            onEscapeKeyDown={(event) => event.preventDefault()}
+          >
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                  <FileSignature className="h-6 w-6 text-app-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Dialog.Title className="text-xl font-semibold text-slate-900">
+                    Detalle de firma
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    Información del certificado y estado.
+                  </Dialog.Description>
+                </div>
               </div>
-              
-              <div>
-                <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Estado</span>
-                <span className={`inline-flex items-center rounded-md px-2 py-0.5 mt-0.5 text-[11px] font-semibold ${detail?.activo === false ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
-                  {detail?.activo === false ? "INACTIVA" : "ACTIVA"}
-                </span>
-              </div>
-
-              {detail?.archivo && (
-                <div>
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Archivo</span>
-                  <span>{detail.archivo}</span>
-                </div>
-              )}
-
-              {detail?.fecha_expiracion && (
-                <div>
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Vencimiento</span>
-                  <span>{detail.fecha_expiracion}</span>
-                </div>
-              )}
-
-              {detail?.fecha_registro && (
-                <div>
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Registrado en</span>
-                  <span>{detail.fecha_registro}</span>
-                </div>
-              )}
-
-              {detail?.estado_certificado && (
-                <div>
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Estado certificado</span>
-                  <span>{detail.estado_certificado}</span>
-                </div>
-              )}
-
-              {certificado?.titular && (
-                <div className="sm:col-span-2">
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Titular</span>
-                  <span>{certificado.titular}</span>
-                </div>
-              )}
-              {certificado?.organizacion && (
-                <div>
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Organizaci&oacute;n</span>
-                  <span>{certificado.organizacion}</span>
-                </div>
-              )}
-              {certificado?.unidad && (
-                <div>
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Unidad</span>
-                  <span>{certificado.unidad}</span>
-                </div>
-              )}
-              {certificado?.pais && (
-                <div>
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Pa&iacute;s</span>
-                  <span>{certificado.pais}</span>
-                </div>
-              )}
-              {certificado?.valido_desde && (
-                <div>
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">V&aacute;lido desde</span>
-                  <span>{certificado.valido_desde}</span>
-                </div>
-              )}
-              {certificado?.valido_hasta && (
-                <div>
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">V&aacute;lido hasta</span>
-                  <span>{certificado.valido_hasta}</span>
-                </div>
-              )}
-              {certificado?.emisor && (
-                <div className="sm:col-span-2">
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Emisor</span>
-                  <span>{certificado.emisor}</span>
-                </div>
-              )}
-              {certificado?.serial && (
-                <div className="sm:col-span-2">
-                  <span className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Serial</span>
-                  <span className="font-mono text-xs">{certificado.serial}</span>
-                </div>
-              )}
             </div>
 
-            <div className="mt-5 flex justify-end">
-              <Button variant="secondary" type="button" onClick={() => setDetailOpen(false)}>
-                Cerrar
-              </Button>
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="space-y-4">
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <FileSignature className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Datos de la firma</h3>
+                  </div>
+                  <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Nombre</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {detail?.nombre || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Estado</dt>
+                      <dd className="mt-2">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            detail?.activo === false
+                              ? "bg-rose-100 text-rose-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {detail?.activo === false ? "INACTIVA" : "ACTIVA"}
+                        </span>
+                      </dd>
+                    </div>
+                    {detail?.archivo ? (
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Archivo</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {detail.archivo}
+                        </dd>
+                      </div>
+                    ) : null}
+                    {detail?.estado_certificado ? (
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Estado certificado</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {detail.estado_certificado}
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </div>
+
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Vigencia</h3>
+                  </div>
+                  <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Vencimiento</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {formatDate(detail?.fecha_expiracion)}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Registrado en</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {formatDateTime(detail?.fecha_registro)}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Válido desde</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {formatDate(certificado?.valido_desde)}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Válido hasta</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {formatDate(certificado?.valido_hasta)}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Titular y entidad</h3>
+                  </div>
+                  <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                    <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                      <dt className="text-xs font-semibold text-slate-500">Titular</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {certificado?.titular || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Organización</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {certificado?.organizacion || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Unidad</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {certificado?.unidad || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">País</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {certificado?.pais || "-"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Detalles del certificado</h3>
+                  </div>
+                  <dl className="grid gap-4 text-sm">
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Emisor</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800 break-words">
+                        {certificado?.emisor || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Serial</dt>
+                      <dd className="mt-2 font-mono text-xs text-slate-700 break-words">
+                        {certificado?.serial || "-"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="secondary" type="button" onClick={() => setDetailOpen(false)}>
+                  Cancelar
+                </Button>
+              </div>
             </div>
           </Dialog.Content>
         </Dialog.Portal>

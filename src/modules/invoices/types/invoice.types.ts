@@ -14,8 +14,12 @@ export interface FacturaItem {
   tipo_pago?: string;
   dias_plazo?: number;
   monto_recibido?: number;
+  vuelto?: number;
   observacion?: string;
   subtotal?: number;
+  iva_total?: number;
+  valor_ice?: number;
+  valor_irbpnr?: number;
   total?: number;
   clave_acceso?: string;
   numero_autorizacion?: string;
@@ -23,6 +27,8 @@ export interface FacturaItem {
   pdf_url?: string | null;
   detalles?: FacturaDetalle[];
   datos_adicionales?: FacturaDatoAdicional[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface FacturaDetalle {
@@ -32,6 +38,9 @@ export interface FacturaDetalle {
   cantidad: number;
   precio_unitario?: number;
   descuento?: number;
+  subtotal?: number;
+  valor_iva?: number;
+  total?: number;
   codigo_iva?: string;
   porcentaje_iva?: number;
   codigo_ice?: string;

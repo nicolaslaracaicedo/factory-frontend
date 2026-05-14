@@ -40,11 +40,14 @@ const toBoolean = (value: unknown): boolean => {
 
 const normalizeEstablecimiento = (value: UnknownRecord): Establecimiento => ({
   id: toNumber(value.id, 0),
+  id_empresa: toNumber(value.id_empresa, 0) || undefined,
   codigo: toText(value.codigo, ""),
   nombre: toText(value.nombre, ""),
   direccion: toText(value.direccion, ""),
   es_matriz: toBoolean(value.es_matriz),
   estado: toText(value.estado, ""),
+  created_at: toText(value.created_at, ""),
+  updated_at: toText(value.updated_at, ""),
 });
 
 export const normalizeEstablecimientosResponse = (

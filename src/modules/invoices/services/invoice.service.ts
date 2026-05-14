@@ -22,8 +22,9 @@ const getErrorMessage = (payload: unknown): string => {
 };
 
 export const invoiceService = {
-  async listFacturas(): Promise<FacturaItem[]> {
-    const response = await fetch("/api/facturas", {
+  async listFacturas(search?: string): Promise<FacturaItem[]> {
+    const query = search ? `?search=${encodeURIComponent(search)}` : "";
+    const response = await fetch(`/api/facturas${query}`, {
       method: "GET",
       cache: "no-store",
     });

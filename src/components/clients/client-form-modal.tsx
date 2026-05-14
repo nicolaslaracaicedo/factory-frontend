@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { toast } from "sonner";
-import { Building2, ChevronDown, Loader2, Phone, Search, Shield } from "lucide-react";
+import { Building2, ChevronDown, Phone, Shield } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
@@ -42,39 +42,34 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
   const [form, setForm] = useState<ClienteFormInput>(client ? toClienteFormInput(client) : initialForm);
   const [saving, setSaving] = useState(false);
   const [searchingCi, setSearchingCi] = useState(false);
+  const [foundClient, setFoundClient] = useState<Cliente | null>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const editing = !!client;
 
   const updateField = (name: keyof ClienteFormInput, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleBuscarIdentificacion = async () => {
-    if (!form.identificacion) {
-      toast.error("Ingrese una identificación para buscar");
-      return;
-    }
-    setSearchingCi(true);
-    try {
-      const found = await clientService.buscarPorIdentificacion(form.identificacion);
-      if (found) {
-        setForm((prev) => ({
-          ...prev,
-          tipo_identificacion: found.tipo_identificacion,
-          razon_social: found.razon_social,
-          direccion: found.direccion || prev.direccion,
-          telefono: found.telefono || prev.telefono,
-          email: found.email || prev.email,
-          es_recurrente: found.es_recurrente,
-        }));
-        toast.success("Cliente encontrado");
-      } else {
-        toast.error("No se encontró el cliente con esa identificación");
+  const handleIdentificacionChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    updateField("identificacion", value);
+    setFoundClient(null);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!value.trim() || value.trim().length < 4) return;
+    searchTimerRef.current = setTimeout(async () => {
+      setSearchingCi(true);
+      try {
+        const found = await clientService.listClientes("ACTIVO", value.trim());
+        const match = found.find((c) => c.identificacion === value.trim());
+        if (match) {
+          setFoundClient(match);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setSearchingCi(false);
       }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al buscar cliente");
-    } finally {
-      setSearchingCi(false);
-    }
+    }, 400);
   };
 
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -112,7 +107,7 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
 
   return (
     <Dialog.Root open={open} onOpenChange={(val) => {
-      if (!val) setForm(initialForm);
+      if (!val) { setForm(initialForm); setFoundClient(null); setSearchingCi(false); if (searchTimerRef.current) clearTimeout(searchTimerRef.current); }
       onOpenChange(val);
     }}>
       <Dialog.Portal>
@@ -185,28 +180,40 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
 
                 <Field label="Identificación" htmlFor="identificacion">
                   <div className="flex gap-2 items-center">
-                    <Input
-                      id="identificacion"
-                      inputMode="numeric"
-                      value={form.identificacion}
-                      onChange={(event) => updateField("identificacion", event.target.value)}
-                      disabled={editing}
-                      className="flex-1 bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Ej: 1712345678"
-                    />
-                    {!editing && (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={handleBuscarIdentificacion}
-                        disabled={searchingCi || !form.identificacion}
-                        className="px-3 shrink-0 h-9"
-                      >
-                        {searchingCi ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                      </Button>
-                    )}
+                    <div className="flex-1 relative">
+                      <Input
+                        id="identificacion"
+                        inputMode="numeric"
+                        value={form.identificacion}
+                        onChange={handleIdentificacionChange}
+                        disabled={editing}
+                        className="w-full bg-white shadow-none placeholder:text-slate-300"
+                        placeholder="Ej: 1712345678"
+                      />
+                      {searchingCi && (
+                        <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </Field>
+
+                {!editing && foundClient && (
+                  <div className="sm:col-span-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-3">
+                    <div className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-red-200">
+                      <span className="text-red-600 font-bold text-base">!</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-red-800">
+                        No puedes crear un cliente con esta identificación
+                      </p>
+                      <p className="text-xs text-red-600 mt-1">
+                        Ya existe: {foundClient.razon_social} · {foundClient.identificacion}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="sm:col-span-2">
                   <Field label="Razón social" htmlFor="razon_social">

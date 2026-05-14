@@ -23,6 +23,9 @@ export interface NotaCreditoDetalle {
   descuento?: number;
   codigo_iva?: string;
   porcentaje_iva?: number;
+  codigo_ice?: string;
+  porcentaje_ice?: number;
+  valor_unitario_irbpnr?: number;
 }
 
 export interface NotasCreditoResponse {
@@ -43,6 +46,9 @@ export interface NotaCreditoDetalleDraft {
   descuento: number;
   codigo_iva: string;
   porcentaje_iva: number;
+  codigo_ice: string;
+  porcentaje_ice: number;
+  valor_unitario_irbpnr: number;
 }
 
 export interface NotaCreditoFormState {
@@ -53,6 +59,7 @@ export interface NotaCreditoFormState {
   factura_ref_fecha: string;
   factura_ref_autorizacion: string;
   motivo: string;
+  cliente_mode: "REGISTRADO" | "CONSUMIDOR_FINAL" | "MANUAL";
   id_cliente: number;
   use_manual_cliente: boolean;
   cli_identificacion: string;
@@ -68,6 +75,7 @@ export type NotaCreditoCreateInput = {
   factura_ref_fecha?: string;
   factura_ref_autorizacion?: string;
   motivo: string;
+  consumidor_final?: boolean;
   id_cliente?: number;
   cli_identificacion?: string;
   cli_razon_social?: string;

@@ -34,6 +34,8 @@ const normalizePunto = (value: UnknownRecord): PuntoEmision => ({
   codigo: toText(value.codigo, ""),
   descripcion: toText(value.descripcion, ""),
   estado: toText(value.estado, ""),
+  created_at: toText(value.created_at, ""),
+  updated_at: toText(value.updated_at, ""),
 });
 
 export const normalizePuntosResponse = (payload: unknown): PuntosEmisionResponse => {

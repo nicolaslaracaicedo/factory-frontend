@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Eye, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Hash, Building2, FileType, Globe } from "lucide-react";
+import { Eye, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Hash, Building2, FileType } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -41,7 +41,7 @@ import { Loader } from "@/src/components/ui/loader";
 const initialForm: SecuencialFormInput = {
   id_punto_emision: 0,
   tipo_documento: "",
-  ambiente: 0,
+  ambiente: 2,
 };
 
 const estadoFilters = ["TODOS", "ACTIVO", "INACTIVO"] as const;
@@ -60,7 +60,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
   const [loading, setLoading] = useState(true);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState<EstadoFiltro>("ACTIVO");
+  const [filter, setFilter] = useState<EstadoFiltro>("TODOS");
   const [puntoFilter, setPuntoFilter] = useState<number>(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -80,8 +80,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
   const canCreate =
     !loadingCatalogs &&
     puntos.length > 0 &&
-    tiposDocumento.length > 0 &&
-    ambientes.length > 0;
+    tiposDocumento.length > 0;
 
   useEffect(() => {
     const loadCatalogs = async () => {
@@ -177,9 +176,14 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
         </button>
       ),
       cell: ({ row }) => (
-        <span className="font-semibold text-slate-800">
-          {row.original.est_nombre || getPuntoLabel(row.original.id_punto_emision)}
-        </span>
+        <div className="flex flex-col gap-0.5">
+          <span className="font-semibold text-slate-800">
+            {getPuntoLabel(row.original.id_punto_emision)}
+          </span>
+          <span className="text-slate-500 text-xs">
+            {row.original.est_nombre || "-"}
+          </span>
+        </div>
       ),
     },
     {
@@ -357,7 +361,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
     setDetailLoading(true);
     try {
       const data = await secuencialesService.getSecuencial(item.id);
-      setDetail(data);
+      setDetail({ ...item, ...data });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "No se pudo obtener el detalle.";
@@ -588,7 +592,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
                     Crear nuevo secuencial
                   </Dialog.Title>
                   <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
-                    Configura el punto de emisión, tipo de documento y ambiente para generar números de documentos electrónicos.
+                    Configura el punto de emisión y tipo de documento para generar números de documentos electrónicos.
                   </Dialog.Description>
                 </div>
               </div>
@@ -676,43 +680,6 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
                       </SelectPrimitive.Portal>
                     </SelectPrimitive.Root>
                   </Field>
-
-                  <Field label="Ambiente SRI" htmlFor="ambiente">
-                    <SelectPrimitive.Root 
-                      value={form.ambiente === 0 ? undefined : form.ambiente.toString()} 
-                      onValueChange={(val) => updateField("ambiente", Number(val))}
-                      disabled={loadingCatalogs}
-                    >
-                      <SelectPrimitive.Trigger 
-                        id="ambiente"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                      >
-                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un ambiente..."} />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content 
-                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <SelectPrimitive.Viewport className="p-1">
-                            {ambientes.map((ambiente) => (
-                              <SelectPrimitive.Item 
-                                key={ambiente.id}
-                                value={ambiente.id.toString()}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{ambiente.nombre || ambiente.codigo || ambiente.id}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
                 </div>
               </div>
 
@@ -741,58 +708,110 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[2px]" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <Dialog.Title className="text-lg font-semibold text-slate-900">
-              Detalle del secuencial
-            </Dialog.Title>
-            <Dialog.Description className="mt-1 text-sm text-slate-600">
-              Información registrada para este punto de emisión.
-            </Dialog.Description>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+            onEscapeKeyDown={(event) => event.preventDefault()}
+          >
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                  <FileText className="h-6 w-6 text-app-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Dialog.Title className="text-xl font-semibold text-slate-900">
+                    Detalle del secuencial
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    Información registrada para este punto de emisión.
+                  </Dialog.Description>
+                </div>
+              </div>
+            </div>
 
-            {detailLoading ? (
-              <Loader label="Cargando detalle" className="mt-4 min-h-[100px]" />
-            ) : detailData ? (
-              <dl className="mt-4 grid gap-3 text-sm">
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">Punto</dt>
-                  <dd className="text-slate-800">
-                    {getPuntoLabel(detailData.id_punto_emision)}
-                  </dd>
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+              {detailLoading ? (
+                <Loader label="Cargando detalle" className="min-h-[120px]" />
+              ) : detailData ? (
+                <div className="space-y-4">
+                  <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                      <h3 className="text-sm font-semibold text-slate-700">
+                        Configuración del secuencial
+                      </h3>
+                    </div>
+                    <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Punto de emisión</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {getPuntoLabel(detailData.id_punto_emision)}
+                        </dd>
+                      </div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Tipo de documento</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {getTipoLabel(detailData.tipo_documento)}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                  <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-slate-500" />
+                      <h3 className="text-sm font-semibold text-slate-700">
+                        Estado del secuencial
+                      </h3>
+                    </div>
+                    <dl className="grid gap-4 text-sm sm:grid-cols-3">
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Ambiente SRI</dt>
+                        <dd className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              detailData.ambiente === 2
+                                ? "bg-orange-100 text-orange-700"
+                                : "bg-sky-100 text-sky-700"
+                            }`}
+                          >
+                            {detailData.ambiente === 2 ? "PRODUCCION" : "PRUEBAS"}
+                          </span>
+                        </dd>
+                      </div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Secuencial actual</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {detailData.secuencial || "-"}
+                        </dd>
+                      </div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Estado</dt>
+                        <dd className="mt-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              detailData.estado === "INACTIVO"
+                                ? "bg-rose-100 text-rose-700"
+                                : "bg-emerald-100 text-emerald-700"
+                            }`}
+                          >
+                            {(detailData.estado ?? "ACTIVO").toUpperCase()}
+                          </span>
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
                 </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">
-                    Tipo de documento
-                  </dt>
-                  <dd className="text-slate-800">
-                    {getTipoLabel(detailData.tipo_documento)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">Ambiente</dt>
-                  <dd className="text-slate-800">
-                    {getAmbienteLabel(detailData.ambiente)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">Secuencial</dt>
-                  <dd className="text-slate-800">{detailData.secuencial || "-"}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">Estado</dt>
-                  <dd className="text-slate-800">{detailData.estado || "ACTIVO"}</dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="mt-4 text-sm text-slate-500">
-                No hay información disponible.
-              </p>
-            )}
+              ) : (
+                <p className="text-sm text-slate-500">No hay información disponible.</p>
+              )}
 
-            <div className="mt-6 flex justify-end">
-              <Button variant="secondary" type="button" onClick={() => setDetailOpen(false)}>
-                Cerrar
-              </Button>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="secondary" type="button" onClick={() => setDetailOpen(false)}>
+                  Cancelar
+                </Button>
+              </div>
             </div>
           </Dialog.Content>
         </Dialog.Portal>

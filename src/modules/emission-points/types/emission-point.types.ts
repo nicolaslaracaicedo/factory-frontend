@@ -4,6 +4,8 @@ export interface PuntoEmision {
   codigo: string;
   descripcion: string;
   estado?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface PuntosEmisionResponse {

@@ -40,6 +40,8 @@ const normalizeProveedor = (value: UnknownRecord): Proveedor => {
     telefono: toText(value.telefono, ""),
     email: toText(value.email, ""),
     estado: toText(value.estado, ""),
+    created_at: toText(value.created_at, ""),
+    updated_at: toText(value.updated_at, ""),
   };
 };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   useReactTable,
@@ -104,6 +104,9 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [codigosIva, setCodigosIva] = useState<CodigoIva[]>([]);
   const [clienteQuery, setClienteQuery] = useState("");
+  const [clientSearchResults, setClientSearchResults] = useState<Cliente[]>([]);
+  const [clientSearching, setClientSearching] = useState(false);
+  const clientSearchTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [productoQueries, setProductoQueries] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
@@ -114,6 +117,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
   const [editing, setEditing] = useState<FacturaItem | null>(null);
   const [detail, setDetail] = useState<FacturaItem | null>(null);
   const [form, setForm] = useState<FacturaFormState>(initialForm);
+  const [montoStr, setMontoStr] = useState("");
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -377,10 +381,10 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
 
   const openCreate = () => {
     setEditing(null);
+    setMontoStr("");
     setForm({
       ...initialForm,
       id_punto_emision: puntos[0]?.id ?? 0,
-      id_cliente: clientes[0]?.id ?? 0,
       fecha_emision: new Date().toISOString().slice(0, 10),
       detalles: [initialDetail()],
     });
@@ -439,6 +443,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
   };
 
   const resetForm = () => {
+    setMontoStr("");
     setForm({
       ...initialForm,
       id_punto_emision: puntos[0]?.id ?? 0,
@@ -655,7 +660,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
   const getIvaLabel = (ivaId?: number) => {
     if (!ivaId) return "-";
     const iva = codigosIva.find((item) => item.id === ivaId);
-    return iva ? `${iva.codigo} - ${iva.nombre}` : "-";
+    return iva ? `${iva.nombre}` : "-";
   };
 
   const formatMoney = (value: number) => {
@@ -759,14 +764,26 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
     return punto ? `${punto.codigo} - ${punto.descripcion}` : "-";
   };
 
-  const normalizedClienteQuery = clienteQuery.trim().toLowerCase();
-  const filteredClientes = normalizedClienteQuery
-    ? clientes.filter((cliente) =>
-        [cliente.razon_social, cliente.identificacion]
-          .filter(Boolean)
-          .some((value) => value.toLowerCase().includes(normalizedClienteQuery))
-      )
-    : clientes;
+  const handleClientSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setClienteQuery(value);
+    if (clientSearchTimerRef.current) clearTimeout(clientSearchTimerRef.current);
+    if (!value.trim()) { setClientSearchResults([]); return; }
+    clientSearchTimerRef.current = setTimeout(async () => {
+      setClientSearching(true);
+      try {
+        const results = await clientService.listClientes("ACTIVO", value.trim());
+        setClientSearchResults(results);
+      } catch { /* ignore */ }
+      finally { setClientSearching(false); }
+    }, 300);
+  };
+
+  const selectClient = (cliente: Cliente) => {
+    updateField("id_cliente", cliente.id);
+    setClienteQuery("");
+    setClientSearchResults([]);
+  };
 
   const getFilteredProductos = (index: number) => {
     const normalizedQuery = getProductoQuery(index).trim().toLowerCase();
@@ -807,7 +824,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
 
         <form className="space-y-6" onSubmit={submitForm}>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="space-y-6">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
               {/* SECCIÓN: Información general */}
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                 <div className="flex items-center gap-2">
@@ -976,70 +993,72 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                 </div>
 
                 {form.cliente_mode !== "CONSUMIDOR_FINAL" && (
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1 min-w-0">
-                      <Field label="Cliente *" htmlFor="id_cliente">
-                        <SelectPrimitive.Root
-                          value={form.id_cliente === 0 ? undefined : form.id_cliente.toString()}
-                          onValueChange={(val) => updateField("id_cliente", Number(val))}
-                          disabled={loadingCatalogs}
-                        >
-                          <SelectPrimitive.Trigger
-                            id="id_cliente"
-                            className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                          >
-                            <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un cliente..."} />
-                            <SelectPrimitive.Icon>
-                              <ChevronDown className="h-4 w-4 text-slate-400" />
-                            </SelectPrimitive.Icon>
-                          </SelectPrimitive.Trigger>
-                          <SelectPrimitive.Portal>
-                            <SelectPrimitive.Content
-                              className="z-50 w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] max-h-72 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                              position="popper"
-                              sideOffset={4}
-                            >
-                              <div className="border-b border-slate-100 p-2">
-                                <Input
-                                  value={clienteQuery}
-                                  onChange={(event) => setClienteQuery(event.target.value)}
-                                  placeholder="Razón social o nombre cliente"
-                                  className="h-8 bg-white shadow-none"
-                                  onKeyDown={(event) => event.stopPropagation()}
-                                  onPointerDown={(event) => event.stopPropagation()}
-                                />
+                  <div>
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 min-w-0">
+                        <Field label="Buscar cliente *" htmlFor="cliente_search">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                            <input
+                              id="cliente_search"
+                              type="text"
+                              value={clienteQuery}
+                              onChange={handleClientSearchChange}
+                              placeholder="Buscar por cédula, RUC o razón social..."
+                              className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
+                            />
+                            {clientSearching && (
+                              <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
                               </div>
-                              <SelectPrimitive.Viewport className="p-1 max-h-52 overflow-y-auto">
-                                {filteredClientes.length === 0 ? (
-                                  <div className="px-3 py-2 text-xs text-slate-500">Sin resultados.</div>
-                                ) : (
-                                  filteredClientes.map((cliente) => (
-                                    <SelectPrimitive.Item
-                                      key={cliente.id}
-                                      value={cliente.id.toString()}
-                                      className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                                    >
-                                      <SelectPrimitive.ItemText>
-                                        {cliente.razon_social} · {cliente.identificacion}
-                                      </SelectPrimitive.ItemText>
-                                    </SelectPrimitive.Item>
-                                  ))
-                                )}
-                              </SelectPrimitive.Viewport>
-                            </SelectPrimitive.Content>
-                          </SelectPrimitive.Portal>
-                        </SelectPrimitive.Root>
-                      </Field>
+                            )}
+                          </div>
+                        </Field>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setClientModalOpen(true)}
+                        className="h-9 px-3 mb-0.5 shrink-0"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Nuevo
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setClientModalOpen(true)}
-                      className="h-9 px-3 mb-0.5 shrink-0"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Nuevo
-                    </Button>
+
+                    <div className="relative">
+                      {clientSearchResults.length > 0 && (
+                        <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
+                          {clientSearchResults.map((cliente) => (
+                            <button
+                              key={cliente.id}
+                              type="button"
+                              onClick={() => selectClient(cliente)}
+                              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
+                            >
+                              <div className="font-medium text-slate-800">{cliente.razon_social}</div>
+                              <div className="text-xs text-slate-500">{cliente.identificacion}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {form.id_cliente > 0 && clientSearchResults.length === 0 && !clienteQuery.trim() && (
+                      <div className="mt-2 flex items-center gap-2 text-sm">
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                        <span className="font-medium text-slate-700">{getClienteLabel(form.id_cliente)}</span>
+                        <span className="text-xs text-slate-400">· {clientes.find((c) => c.id === form.id_cliente)?.identificacion || ""}</span>
+                        <button
+                          type="button"
+                          onClick={() => { updateField("id_cliente", 0); }}
+                          className="text-slate-400 hover:text-rose-500 transition-colors ml-1"
+                          title="Quitar cliente"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1103,8 +1122,8 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                  <div className="min-w-[860px]">
-                    <div className="hidden lg:grid lg:grid-cols-[55px_minmax(150px,1fr)_44px_75px_72px_58px_62px_48px_82px_44px] lg:gap-2 bg-slate-50 px-2 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                  <div className="min-w-[960px]">
+                    <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_88px_72px_76px_62px_80px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                       <span>Código</span>
                       <span>Descripción</span>
                       <span>Cant.</span>
@@ -1124,7 +1143,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                         return (
                           <div
                             key={`detalle-${index}`}
-                            className="grid items-center gap-2 bg-white px-2 py-2 lg:grid-cols-[55px_minmax(150px,1fr)_44px_75px_72px_58px_62px_48px_82px_44px]"
+                            className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_88px_72px_76px_62px_80px_44px]"
                           >
                             <span className="text-xs text-slate-500 truncate">
                               {producto?.codigo || "-"}
@@ -1146,21 +1165,23 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                               </SelectPrimitive.Trigger>
                               <SelectPrimitive.Portal>
                                 <SelectPrimitive.Content
-                                  className="z-50 min-w-[300px] max-h-60 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                                  className="z-50 w-[380px] max-h-72 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
                                   position="popper"
+                                  side="bottom"
+                                  align="start"
                                   sideOffset={4}
                                 >
                                   <div className="border-b border-slate-100 p-2">
                                     <Input
                                       value={getProductoQuery(index)}
                                       onChange={(event) => setProductoQuery(index, event.target.value)}
-                                      placeholder="Nombre o codigo"
-                                      className="h-8 bg-white shadow-none"
+                                      placeholder="Buscar por nombre o código..."
+                                      className="h-8 bg-white shadow-none w-full"
                                       onKeyDown={(event) => event.stopPropagation()}
                                       onPointerDown={(event) => event.stopPropagation()}
                                     />
                                   </div>
-                                  <SelectPrimitive.Viewport className="p-1 max-h-52 overflow-y-auto">
+                                  <SelectPrimitive.Viewport className="p-1 max-h-56 overflow-y-auto">
                                     {getFilteredProductos(index).length === 0 ? (
                                       <div className="px-3 py-2 text-xs text-slate-500">Sin resultados.</div>
                                     ) : (
@@ -1358,18 +1379,25 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                   <Field label="Monto recibido" htmlFor="monto_recibido">
                     <Input
                       id="monto_recibido"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={form.monto_recibido}
-                      onChange={(event) => updateField("monto_recibido", Number(event.target.value))}
+                      type="text"
+                      inputMode="decimal"
+                      value={montoStr}
+                      onChange={(event) => {
+                        const raw = event.target.value.replace(/[^0-9.,]/g, "").replace(",", ".");
+                        const parts = raw.split(".");
+                        const cleaned = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : raw;
+                        const finalVal = cleaned.includes(".") ? cleaned.slice(0, cleaned.indexOf(".") + 3) : cleaned;
+                        const num = parseFloat(finalVal);
+                        setMontoStr(event.target.value);
+                        updateField("monto_recibido", !isNaN(num) && num >= 0 ? Math.round(num * 100) / 100 : 0);
+                      }}
                       className="bg-white shadow-none h-9"
                       placeholder="0.00"
                     />
                   </Field>
                   <div className="flex justify-between items-center bg-slate-50 rounded-lg px-3 py-2">
                     <span className="text-sm font-medium text-slate-600">Cambio:</span>
-                    <span className="text-lg font-bold text-emerald-600">
+                    <span className={`text-lg font-bold ${(() => { const diff = form.monto_recibido - totales.total; return diff < 0 ? "text-rose-600" : "text-emerald-600"; })()}`}>
                       {form.monto_recibido > 0 ? formatMoney(form.monto_recibido - totales.total) : "$0.00"}
                     </span>
                   </div>
@@ -1625,119 +1653,310 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
               </div>
             </div>
 
-            <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
               {detail ? (
-                <>
+                <div className="space-y-4">
                   {/* SECCIÓN: Información general */}
                   <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                     <div className="flex items-center gap-2">
                       <FileCheck className="h-3.5 w-3.5 text-slate-500" />
                       <h3 className="text-sm font-semibold text-slate-700">Información general</h3>
                     </div>
-                    <div className="grid gap-3 text-sm sm:grid-cols-4">
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Factura</div>
-                        <div className="font-semibold text-slate-800">{detail.numero || detail.id || "-"}</div>
+                    <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                      <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                        <dt className="text-xs font-semibold text-slate-500">N° Comprobante</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {detail.numero_comprobante || detail.numero || `Factura #${detail.id}`}
+                        </dd>
                       </div>
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Fecha</div>
-                        <div className="text-slate-800">{detail.fecha_emision || "-"}</div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Fecha emisión</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {detail.fecha_emision || "-"}
+                        </dd>
                       </div>
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Estado</div>
-                        <div className="text-slate-800">{detail.estado || "-"}</div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Estado</dt>
+                        <dd className="mt-2">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getEstadoColor(detail.estado)}`}>
+                            {detail.estado || "DESCONOCIDO"}
+                          </span>
+                        </dd>
                       </div>
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Forma de pago</div>
-                        <div className="text-slate-800">{detail.forma_pago || "-"}</div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Forma de pago</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {detail.tipo_pago || detail.forma_pago || "-"}
+                        </dd>
                       </div>
-                      {detail.monto_recibido != null && detail.monto_recibido > 0 && (
-                        <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                          <div className="text-xs text-slate-500 mb-0.5">Monto recibido</div>
-                          <div className="text-slate-800">${detail.monto_recibido.toFixed(2)}</div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Plazo</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {detail.dias_plazo != null ? `${detail.dias_plazo} días` : "-"}
+                        </dd>
+                      </div>
+                      {detail.observacion ? (
+                        <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                          <dt className="text-xs font-semibold text-slate-500">Observación</dt>
+                          <dd className="mt-2 text-sm font-semibold text-slate-800">
+                            {detail.observacion}
+                          </dd>
                         </div>
-                      )}
-                    </div>
+                      ) : null}
+                      {detail.monto_recibido != null && detail.monto_recibido > 0 ? (
+                        <div className="rounded-lg bg-white/80 px-3 py-2">
+                          <dt className="text-xs font-semibold text-slate-500">Monto recibido</dt>
+                          <dd className="mt-2 text-sm font-semibold text-slate-800">
+                            ${detail.monto_recibido.toFixed(2)}
+                          </dd>
+                        </div>
+                      ) : null}
+                      {detail.vuelto != null && detail.vuelto > 0 ? (
+                        <div className="rounded-lg bg-white/80 px-3 py-2">
+                          <dt className="text-xs font-semibold text-slate-500">Cambio</dt>
+                          <dd className="mt-2 text-sm font-semibold text-slate-800">
+                            ${detail.vuelto.toFixed(2)}
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
                   </div>
 
                   {/* SECCIÓN: Cliente */}
-                  <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                  <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                     <div className="flex items-center gap-2">
                       <User className="h-3.5 w-3.5 text-slate-500" />
                       <h3 className="text-sm font-semibold text-slate-700">Cliente</h3>
                     </div>
-                    <div className="bg-white rounded-lg p-3 border border-slate-200">
-                      <div className="text-sm font-medium text-slate-800">
-                        {getClienteLabel(detail.id_cliente, detail.cliente_nombre)}
-                      </div>
-                      {detail.cliente_identificacion && (
-                        <div className="text-xs text-slate-500 mt-1">{detail.cliente_identificacion}</div>
+                    <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                      {detail.cliente_identificacion ? (
+                        <>
+                          <div className="rounded-lg bg-white/80 px-3 py-2">
+                            <dt className="text-xs font-semibold text-slate-500">Razón social / Cliente</dt>
+                            <dd className="mt-2 text-sm font-semibold text-slate-800">
+                              {getClienteLabel(detail.id_cliente, detail.cliente_nombre)}
+                            </dd>
+                          </div>
+                          <div className="rounded-lg bg-white/80 px-3 py-2">
+                            <dt className="text-xs font-semibold text-slate-500">Identificación</dt>
+                            <dd className="mt-2 text-sm font-semibold text-slate-800">
+                              {detail.cliente_identificacion}
+                            </dd>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                          <dt className="text-xs font-semibold text-slate-500">Razón social / Cliente</dt>
+                          <dd className="mt-2 text-sm font-semibold text-slate-800">
+                            {getClienteLabel(detail.id_cliente, detail.cliente_nombre)}
+                          </dd>
+                        </div>
                       )}
-                    </div>
+                      {detail.consumidor_final ? (
+                        <div className="rounded-lg bg-white/80 px-3 py-2">
+                          <dt className="text-xs font-semibold text-slate-500">Tipo</dt>
+                          <dd className="mt-2">
+                            <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold bg-sky-100 text-sky-700">
+                              CONSUMIDOR FINAL
+                            </span>
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
                   </div>
+
+                  {/* SECCIÓN: Autorización SRI */}
+                  {(detail.clave_acceso || detail.numero_autorizacion) ? (
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Copy className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Autorización SRI</h3>
+                      </div>
+                      <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                        {detail.clave_acceso ? (
+                          <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                            <dt className="text-xs font-semibold text-slate-500">Clave de acceso</dt>
+                            <dd className="mt-2 flex items-center gap-2">
+                              <span className="text-xs font-mono font-semibold text-slate-800 break-all flex-1">
+                                {detail.clave_acceso}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => { navigator.clipboard.writeText(detail.clave_acceso ?? ""); toast.success("Clave copiada."); }}
+                                className="shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                                title="Copiar clave de acceso"
+                              >
+                                <Copy size={12} />
+                              </button>
+                            </dd>
+                          </div>
+                        ) : null}
+                        {detail.numero_autorizacion ? (
+                          <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                            <dt className="text-xs font-semibold text-slate-500">N° Autorización</dt>
+                            <dd className="mt-2 flex items-center gap-2">
+                              <span className="text-xs font-mono font-semibold text-slate-800 break-all flex-1">
+                                {detail.numero_autorizacion}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => { navigator.clipboard.writeText(detail.numero_autorizacion ?? ""); toast.success("N° Autorización copiado."); }}
+                                className="shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                                title="Copiar número de autorización"
+                              >
+                                <Copy size={12} />
+                              </button>
+                            </dd>
+                          </div>
+                        ) : null}
+                        {detail.fecha_autorizacion ? (
+                          <div className="rounded-lg bg-white/80 px-3 py-2">
+                            <dt className="text-xs font-semibold text-slate-500">Fecha autorización</dt>
+                            <dd className="mt-2 text-sm font-semibold text-slate-800">
+                              {new Date(detail.fecha_autorizacion).toLocaleDateString("es-EC", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    </div>
+                  ) : null}
 
                   {/* SECCIÓN: Detalles */}
-                  <div className="bg-slate-100 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-3.5 w-3.5 text-slate-500" />
-                      <h3 className="text-sm font-semibold text-slate-700">Detalles</h3>
-                    </div>
-                    {detail.detalles?.length ? (
-                      <div className="space-y-2">
-                        {detail.detalles.map((item, idx) => (
-                          <div key={`detalle-${idx}`} className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3 items-center">
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs text-slate-500 mb-0.5">Producto</div>
-                              <div className="text-sm font-medium text-slate-800">{getProductoLabel(item.id_producto, item.descripcion)}</div>
-                            </div>
-                            <div className="w-16 shrink-0 text-right">
-                              <div className="text-xs text-slate-500 mb-0.5">Cant.</div>
-                              <div className="text-sm font-medium text-slate-800">{item.cantidad}</div>
-                            </div>
-                            {item.precio_unitario !== undefined && (
-                              <div className="w-24 shrink-0 text-right">
-                                <div className="text-xs text-slate-500 mb-0.5">P.Unit</div>
-                                <div className="text-sm text-slate-800">${item.precio_unitario.toFixed(2)}</div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-500">Sin detalles.</p>
-                    )}
-                  </div>
-
-                  {/* SECCIÓN: Datos adicionales */}
-                  {detail.datos_adicionales?.length ? (
-                    <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                  {detail.detalles?.length ? (
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                       <div className="flex items-center gap-2">
-                        <Tag className="h-3.5 w-3.5 text-slate-500" />
-                        <h3 className="text-sm font-semibold text-slate-700">Datos adicionales</h3>
+                        <Package className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Detalles</h3>
                       </div>
-                      <div className="space-y-2">
-                        {detail.datos_adicionales.map((item, idx) => (
-                          <div key={`dato-${idx}`} className="flex gap-2 rounded-lg border border-slate-200 bg-white p-2.5">
-                            <div className="text-sm font-medium text-slate-700">{item.nombre}:</div>
-                            <div className="text-sm text-slate-600">{item.valor}</div>
-                          </div>
-                        ))}
+                      <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-200 bg-slate-50">
+                              <th className="text-left font-semibold text-slate-500 px-3 py-2.5 w-16">Código</th>
+                              <th className="text-left font-semibold text-slate-500 px-3 py-2.5 max-w-[200px]">Descripción</th>
+                              <th className="text-right font-semibold text-slate-500 px-4 py-2.5 w-14">Cant.</th>
+                              <th className="text-right font-semibold text-slate-500 px-4 py-2.5 w-20">P. Unit</th>
+                              <th className="text-right font-semibold text-slate-500 px-4 py-2.5 w-20">Subtotal</th>
+                              <th className="text-right font-semibold text-slate-500 px-4 py-2.5 w-20">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {detail.detalles.map((item, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                                <td className="px-3 py-2.5 text-slate-700 font-medium whitespace-nowrap">{item.codigo || "-"}</td>
+                                <td className="px-3 py-2.5 text-slate-800 max-w-[200px] truncate">{getProductoLabel(item.id_producto, item.descripcion)}</td>
+                                <td className="px-4 py-2.5 text-right text-slate-700 whitespace-nowrap">{item.cantidad}</td>
+                                <td className="px-4 py-2.5 text-right text-slate-700 whitespace-nowrap">${item.precio_unitario?.toFixed(2) ?? "-"}</td>
+                                <td className="px-4 py-2.5 text-right text-slate-700 whitespace-nowrap">${item.subtotal?.toFixed(2) ?? "-"}</td>
+                                <td className="px-4 py-2.5 text-right font-semibold text-slate-800 whitespace-nowrap">${item.total?.toFixed(2) ?? "-"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t border-slate-300">
+                              <td colSpan={4} className="pt-3 pr-4 pb-1.5 text-right text-xs font-semibold text-slate-600">Subtotal</td>
+                              <td className="pt-3 pb-1.5"></td>
+                              <td className="pt-3 pb-1.5 pr-4 text-right font-bold text-slate-800">${detail.subtotal?.toFixed(2) ?? "0.00"}</td>
+                            </tr>
+                            {detail.valor_ice != null && detail.valor_ice > 0 ? (
+                              <tr>
+                                <td colSpan={4} className="px-4 py-1.5 text-right text-xs font-semibold text-slate-600">ICE</td>
+                                <td className="py-1.5"></td>
+                                <td className="py-1.5 pr-4 text-right font-bold text-slate-800">${detail.valor_ice.toFixed(2)}</td>
+                              </tr>
+                            ) : null}
+                            {detail.valor_irbpnr != null && detail.valor_irbpnr > 0 ? (
+                              <tr>
+                                <td colSpan={4} className="px-4 py-1.5 text-right text-xs font-semibold text-slate-600">IRBPNR</td>
+                                <td className="py-1.5"></td>
+                                <td className="py-1.5 pr-4 text-right font-bold text-slate-800">${detail.valor_irbpnr.toFixed(2)}</td>
+                              </tr>
+                            ) : null}
+                            <tr>
+                              <td colSpan={4} className="px-4 py-1.5 text-right text-xs font-semibold text-slate-600">IVA</td>
+                              <td className="py-1.5"></td>
+                              <td className="py-1.5 pr-4 text-right font-bold text-slate-800">${detail.iva_total?.toFixed(2) ?? "0.00"}</td>
+                            </tr>
+                            <tr className="border-t border-slate-200">
+                              <td colSpan={4} className="pt-2.5 pr-4 pb-3 text-right text-sm font-bold text-slate-700">Total</td>
+                              <td className="pt-2.5 pb-3"></td>
+                              <td className="pt-2.5 pb-3 pr-4 text-right text-lg font-bold text-app-primary">${detail.total?.toFixed(2) ?? "0.00"}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
                       </div>
                     </div>
                   ) : null}
 
-                  {/* Botones de acción */}
-                  <div className="flex justify-end pt-2">
-                    <Button 
-                      variant="secondary" 
-                      type="button" 
-                      onClick={() => setDetailOpen(false)}
-                      className="h-10 px-4"
-                    >
+                  {/* SECCIÓN: Datos adicionales */}
+                  {detail.datos_adicionales?.length ? (
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Datos adicionales</h3>
+                      </div>
+                      <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                        {detail.datos_adicionales.map((item, idx) => (
+                          <div key={idx} className="rounded-lg bg-white/80 px-3 py-2">
+                            <dt className="text-xs font-semibold text-slate-500">{item.nombre}</dt>
+                            <dd className="mt-2 text-sm font-semibold text-slate-800">{item.valor || "-"}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  ) : null}
+
+                  {/* SECCIÓN: Auditoría */}
+                  {detail.created_at ? (
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Auditoría</h3>
+                      </div>
+                      <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                        <div className="rounded-lg bg-white/80 px-3 py-2">
+                          <dt className="text-xs font-semibold text-slate-500">Creado</dt>
+                          <dd className="mt-2 text-sm font-semibold text-slate-800">
+                            {new Date(detail.created_at).toLocaleDateString("es-EC", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </dd>
+                        </div>
+                        {detail.updated_at ? (
+                          <div className="rounded-lg bg-white/80 px-3 py-2">
+                            <dt className="text-xs font-semibold text-slate-500">Actualizado</dt>
+                            <dd className="mt-2 text-sm font-semibold text-slate-800">
+                              {new Date(detail.updated_at).toLocaleDateString("es-EC", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    </div>
+                  ) : null}
+
+                  {/* Botón cerrar */}
+                  <div className="flex justify-end gap-3 pt-2">
+                    <Button variant="secondary" type="button" onClick={() => setDetailOpen(false)}>
                       Cerrar
                     </Button>
                   </div>
-                </>
+                </div>
               ) : (
                 <Loader label="Cargando detalle" className="mt-4 min-h-[100px]" />
               )}

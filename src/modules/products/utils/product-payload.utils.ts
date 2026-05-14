@@ -59,6 +59,8 @@ const normalizeProducto = (value: UnknownRecord): Producto => ({
   iva_codigo: toText(value.iva_codigo, "") || undefined,
   iva_porcentaje: value.iva_porcentaje !== undefined ? toNumber(value.iva_porcentaje, 0) : undefined,
   porcentaje_iva: value.porcentaje_iva !== undefined ? toNumber(value.porcentaje_iva, 0) : undefined,
+  created_at: toText(value.created_at, ""),
+  updated_at: toText(value.updated_at, ""),
 });
 
 export const normalizeProductosResponse = (payload: unknown): ProductosResponse => {

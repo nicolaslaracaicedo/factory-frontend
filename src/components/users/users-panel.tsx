@@ -55,6 +55,7 @@ import type {
 } from "@/src/modules/users/types/user.types";
 import { toUsuarioFormInput } from "@/src/modules/users/utils/user-payload.utils";
 import { userService } from "@/src/modules/users/services/user.service";
+import { roleIdToName } from "@/src/modules/auth/utils/role.utils";
 import { Loader } from "@/src/components/ui/loader";
 
 const initialForm: UsuarioFormInput = {
@@ -148,7 +149,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
       cell: ({ row }) => (
         <div className="flex flex-col gap-0.5">
           <div className="font-semibold text-slate-900">{row.original.nombre} {row.original.apellido}</div>
-          <div className="text-slate-500 text-xs">Rol #{row.original.id_rol}</div>
+          <div className="text-slate-500 text-xs">{roleIdToName[row.original.id_rol] ?? `Rol #${row.original.id_rol}`}</div>
         </div>
       ),
     },

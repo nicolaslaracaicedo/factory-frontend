@@ -1,10 +1,13 @@
 export interface Establecimiento {
   id: number;
+  id_empresa?: number;
   codigo: string;
   nombre: string;
   direccion?: string;
   es_matriz: boolean;
   estado?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface EstablecimientosResponse {

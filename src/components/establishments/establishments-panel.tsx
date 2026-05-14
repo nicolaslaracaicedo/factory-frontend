@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Edit, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Building2, MapPin, Tag, Star } from "lucide-react";
+import { Edit, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Building2, MapPin, Tag, Star, Eye } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -34,6 +34,7 @@ import type {
 } from "@/src/modules/establishments/types/establishment.types";
 import { toEstablecimientoFormInput } from "@/src/modules/establishments/utils/establishment-payload.utils";
 import { establishmentService } from "@/src/modules/establishments/services/establishment.service";
+import { Loader } from "@/src/components/ui/loader";
 
 const initialForm: EstablecimientoFormInput = {
   codigo: "",
@@ -56,6 +57,8 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<EstadoFiltro>("ACTIVO");
   const [modalOpen, setModalOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailData, setDetailData] = useState<Establecimiento | null>(null);
   const [editing, setEditing] = useState<Establecimiento | null>(null);
   const [form, setForm] = useState<EstablecimientoFormInput>(initialForm);
   const [searchTerm, setSearchTerm] = useState("");
@@ -192,6 +195,11 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openDetail(row.original)}>
+                <Eye size={14} className="mr-2" />
+                Ver
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => openEdit(row.original)}>
                 <Edit size={14} className="mr-2" />
                 Editar
@@ -232,6 +240,18 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
     setEditing(establecimiento);
     setForm(toEstablecimientoFormInput(establecimiento));
     setModalOpen(true);
+  };
+
+  const openDetail = async (establecimiento: Establecimiento) => {
+    try {
+      const data = await establishmentService.getEstablecimiento(establecimiento.id);
+      setDetailData(data);
+      setDetailOpen(true);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "No se pudo obtener el detalle.";
+      toast.error(message);
+    }
   };
 
   const updateField = (name: keyof EstablecimientoFormInput, value: string | boolean) => {
@@ -564,6 +584,138 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
                 </Button>
               </div>
             </form>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+            onEscapeKeyDown={(event) => event.preventDefault()}
+          >
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                  <Building2 className="h-6 w-6 text-app-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Dialog.Title className="text-xl font-semibold text-slate-900">
+                    Detalle del establecimiento
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    Información registrada del establecimiento.
+                  </Dialog.Description>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="space-y-4">
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Información del establecimiento</h3>
+                  </div>
+                  <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Nombre</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {detailData?.nombre || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Código</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {detailData?.codigo || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                      <dt className="text-xs font-semibold text-slate-500">Dirección</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {detailData?.direccion || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Estado</dt>
+                      <dd className="mt-2">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            detailData?.estado === "INACTIVO"
+                              ? "bg-rose-100 text-rose-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {detailData?.estado || "ACTIVO"}
+                        </span>
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Es matriz</dt>
+                      <dd className="mt-2">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            detailData?.es_matriz
+                              ? "bg-sky-100 text-sky-700"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {detailData?.es_matriz ? "Sí" : "No"}
+                        </span>
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                {detailData?.created_at && (
+                  <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-slate-500" />
+                      <h3 className="text-sm font-semibold text-slate-700">Auditoría</h3>
+                    </div>
+                    <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Creado</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {detailData.created_at
+                            ? new Date(detailData.created_at).toLocaleDateString("es-EC", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "-"}
+                        </dd>
+                      </div>
+                      {detailData.updated_at && (
+                        <div className="rounded-lg bg-white/80 px-3 py-2">
+                          <dt className="text-xs font-semibold text-slate-500">Actualizado</dt>
+                          <dd className="mt-2 text-sm font-semibold text-slate-800">
+                            {new Date(detailData.updated_at).toLocaleDateString("es-EC", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="secondary" type="button" onClick={() => setDetailOpen(false)}>
+                  Cerrar
+                </Button>
+              </div>
+            </div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>

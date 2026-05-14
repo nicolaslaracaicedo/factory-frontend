@@ -19,6 +19,8 @@ export interface Producto {
   iva_codigo?: string;
   iva_porcentaje?: number;
   porcentaje_iva?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ProductosResponse {

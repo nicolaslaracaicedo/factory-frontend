@@ -16,13 +16,14 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Truck, Search, ChevronLeft, ChevronRight, Edit3, Power, Plus, X, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, Check, MoreVertical, Phone, Mail, MapPin, Shield } from "lucide-react";
+import { Truck, Search, ChevronLeft, ChevronRight, Edit3, Power, Plus, X, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, Check, MoreVertical, Phone, Mail, MapPin, Shield, Eye, FileText } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/src/components/ui/dropdown-menu";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
@@ -67,6 +68,8 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<EstadoFiltro>("TODOS");
   const [modalOpen, setModalOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailData, setDetailData] = useState<Proveedor | null>(null);
   const [editing, setEditing] = useState<Proveedor | null>(null);
   const [form, setForm] = useState<ProveedorFormInput>(initialForm);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -106,10 +109,7 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <div className="flex flex-col gap-0.5">
-          <div className="font-medium text-slate-800">{row.original.identificacion}</div>
-          <div className="text-slate-500 text-xs">{getTipoLabel(row.original.tipo_identificacion)}</div>
-        </div>
+        <span className="font-medium text-slate-800">{row.original.identificacion}</span>
       ),
     },
     {
@@ -163,6 +163,11 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openDetail(row.original)}>
+                <Eye size={14} className="mr-2" />
+                Ver
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => openEdit(row.original)}>
                 <Edit3 size={14} className="mr-2" />
                 Editar
@@ -258,6 +263,18 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
     setEditing(proveedor);
     setForm(toProveedorFormInput(proveedor));
     setModalOpen(true);
+  };
+
+  const openDetail = async (proveedor: Proveedor) => {
+    try {
+      const data = await providerService.getProveedor(proveedor.id);
+      setDetailData(data);
+      setDetailOpen(true);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "No se pudo obtener el detalle.";
+      toast.error(message);
+    }
   };
 
   const updateField = (name: keyof ProveedorFormInput, value: string) => {
@@ -681,6 +698,141 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
                 </Button>
               </div>
             </form>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+            onEscapeKeyDown={(event) => event.preventDefault()}
+          >
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                  <Truck className="h-6 w-6 text-app-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Dialog.Title className="text-xl font-semibold text-slate-900">
+                    Detalle del proveedor
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    Información registrada del proveedor.
+                  </Dialog.Description>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="space-y-4">
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Información general</h3>
+                  </div>
+                  <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                    <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                      <dt className="text-xs font-semibold text-slate-500">Razón social</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {detailData?.razon_social || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Identificación</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {detailData?.identificacion || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Estado</dt>
+                      <dd className="mt-2">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          detailData?.estado === "INACTIVO"
+                            ? "bg-rose-100 text-rose-700"
+                            : "bg-emerald-100 text-emerald-700"
+                        }`}>
+                          {detailData?.estado || "ACTIVO"}
+                        </span>
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Contacto</h3>
+                  </div>
+                  <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Teléfono</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {detailData?.telefono || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2">
+                      <dt className="text-xs font-semibold text-slate-500">Email</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {detailData?.email || "-"}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                      <dt className="text-xs font-semibold text-slate-500">Dirección</dt>
+                      <dd className="mt-2 text-sm font-semibold text-slate-800">
+                        {detailData?.direccion || "-"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                {detailData?.created_at ? (
+                  <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-slate-500" />
+                      <h3 className="text-sm font-semibold text-slate-700">Auditoría</h3>
+                    </div>
+                    <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Creado</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {new Date(detailData.created_at).toLocaleDateString("es-EC", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </dd>
+                      </div>
+                      {detailData.updated_at ? (
+                        <div className="rounded-lg bg-white/80 px-3 py-2">
+                          <dt className="text-xs font-semibold text-slate-500">Actualizado</dt>
+                          <dd className="mt-2 text-sm font-semibold text-slate-800">
+                            {new Date(detailData.updated_at).toLocaleDateString("es-EC", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="secondary" type="button" onClick={() => setDetailOpen(false)}>
+                  Cerrar
+                </Button>
+              </div>
+            </div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>

@@ -1,5 +1,11 @@
 import type { UserRole } from "@/src/modules/auth/types/auth.types";
 
+export const roleIdToName: Record<number, UserRole> = {
+  1: "Administrador",
+  2: "Facturador",
+  3: "Contador",
+};
+
 export const roleToSlug: Record<UserRole, string> = {
   Administrador: "administrador",
   Facturador: "facturador",

@@ -4,11 +4,11 @@ export const loginSchema = z.object({
   ruc: z
     .string({ error: "El RUC es requerido." })
     .trim()
-    .min(10, "Ingresa un RUC valido."),
+    .length(13, "El RUC debe tener 13 digitos."),
   cedula: z
     .string({ error: "La cedula es requerida." })
     .trim()
-    .min(8, "Ingresa una cedula valida."),
+    .length(10, "La cedula debe tener 10 digitos."),
   clave: z
     .string({ error: "La clave es requerida." })
     .min(6, "La clave debe tener al menos 6 caracteres."),

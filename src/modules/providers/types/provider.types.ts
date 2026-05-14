@@ -7,6 +7,8 @@ export interface Proveedor {
   telefono?: string;
   email?: string;
   estado?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ProveedoresResponse {
