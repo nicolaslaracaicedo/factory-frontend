@@ -42,78 +42,21 @@ export function TopNavbar({
         <Breadcrumbs items={breadcrumbItems} className="text-[11px]" />
       </div>
 
-      <div className="flex items-center gap-3">
-        {hasMenu ? (
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                <PanelRightOpen className="h-4 w-4 text-app-primary" />
-                Accesos
-                <ChevronDown className="h-4 w-4 text-slate-500" />
-              </button>
-            </DropdownMenu.Trigger>
-
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content
-                sideOffset={8}
-                align="end"
-                className="z-50 min-w-[240px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
-              >
-                {menuGroups?.map((group) => (
-                  <div key={group.title} className="px-2 py-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                      {group.title}
-                    </p>
-                    <div className="mt-1 space-y-1">
-                      {group.items.map((item) => {
-                        const Icon = iconByKey[item.key] ?? LayoutGrid;
-
-                        return (
-                          <DropdownMenu.Item
-                            key={item.key}
-                            onSelect={(event) => {
-                              event.preventDefault();
-                              onSelect?.(item.key);
-                            }}
-                            className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm outline-none transition-colors hover:bg-slate-50 ${
-                              activeKey === item.key
-                                ? "bg-app-primary/10 text-app-primary"
-                                : "text-slate-700"
-                            }`}
-                          >
-                            <span
-                              className={`rounded-lg p-1 ${
-                                activeKey === item.key
-                                  ? "bg-app-primary/15 text-app-primary"
-                                  : "bg-slate-100 text-slate-600"
-                              }`}
-                            >
-                              <Icon className="h-3.5 w-3.5" />
-                            </span>
-                            <span className="font-medium">{item.label}</span>
-                          </DropdownMenu.Item>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
-        ) : null}
-
+      <div className="flex items-center">
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
             <button
               type="button"
-              className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm transition-colors hover:bg-slate-50"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 transition-colors hover:bg-slate-50"
             >
-              <UserCircle2 className="h-5 w-5 text-app-primary" />
-              <span className="font-semibold text-slate-800">{fullName}</span>
-              <ChevronDown className="h-4 w-4 text-slate-500" />
+              <UserCircle2 className="h-6 w-6 text-app-primary" />
+              <div className="flex flex-col items-start gap-0">
+                <span className="text-sm font-semibold text-slate-800 leading-tight">{fullName}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 leading-tight">
+                  {role}
+                </span>
+              </div>
+              <ChevronDown className="h-4 w-4 text-slate-400" />
             </button>
           </DropdownMenu.Trigger>
 
@@ -121,7 +64,7 @@ export function TopNavbar({
             <DropdownMenu.Content
               sideOffset={8}
               align="end"
-              className="z-50 min-w-[240px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
+              className="z-50 min-w-[280px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
             >
               <div className="px-2 py-2 space-y-2">
                 <div className="flex items-center gap-2">
@@ -139,6 +82,48 @@ export function TopNavbar({
                   <p className="text-sm text-slate-400 capitalize">{role.toLowerCase()}</p>
                 </div>
               </div>
+
+              {menuGroups?.map((group) => (
+                <div key={group.title}>
+                  <DropdownMenu.Separator className="my-1 h-px bg-slate-200" />
+                  <div className="px-2 py-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      {group.title}
+                    </p>
+                    <div className="mt-1 space-y-1">
+                      {group.items.map((item) => {
+                        const Icon = iconByKey[item.key] ?? LayoutGrid;
+
+                        return (
+                          <DropdownMenu.Item
+                            key={item.key}
+                            onSelect={(event) => {
+                              event.preventDefault();
+                              onSelect?.(item.key);
+                            }}
+                            className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] font-semibold outline-none transition-colors hover:bg-slate-100 ${
+                              activeKey === item.key
+                                ? "bg-app-primary/10 text-app-primary"
+                                : "text-slate-700"
+                            }`}
+                          >
+                            <span
+                              className={`rounded-md p-[3px] ${
+                                activeKey === item.key
+                                  ? "bg-app-primary/20 text-app-primary"
+                                  : "bg-slate-100 text-slate-500"
+                              }`}
+                            >
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span>{item.label}</span>
+                          </DropdownMenu.Item>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))}
 
               <DropdownMenu.Separator className="my-1 h-px bg-slate-200" />
 

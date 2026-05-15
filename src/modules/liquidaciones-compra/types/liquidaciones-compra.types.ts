@@ -9,8 +9,13 @@ export interface LiquidacionCompraDetalle {
   descuento: number;
   codigo_iva?: string;
   porcentaje_iva?: number;
+  codigo_ice?: string;
+  porcentaje_ice?: number;
+  valor_unitario_irbpnr?: number;
   subtotal?: number;
   iva?: number;
+  ice?: number;
+  irbpnr?: number;
   total?: number;
   created_at?: string;
 }
@@ -60,6 +65,9 @@ export interface LiquidacionCompraCreateInput {
     descuento?: number;
     codigo_iva?: string;
     porcentaje_iva?: number;
+    codigo_ice?: string;
+    porcentaje_ice?: number;
+    valor_unitario_irbpnr?: number;
   }>;
 }
 
@@ -76,6 +84,9 @@ export interface LiquidacionCompraUpdateInput {
     descuento?: number;
     codigo_iva?: string;
     porcentaje_iva?: number;
+    codigo_ice?: string;
+    porcentaje_ice?: number;
+    valor_unitario_irbpnr?: number;
   }>;
 }
 
@@ -85,11 +96,13 @@ export interface LiquidacionCompraFormState {
   id_proveedor: number;
   detalles: Array<{
     id?: number;
+    id_producto: number;
     codigo: string;
     descripcion: string;
     cantidad: number;
     precio_unitario: number;
-    descuento: number;
+    descuento: string;
+    tipo_descuento: "PORCENTAJE" | "VALOR";
     codigo_iva: string;
     porcentaje_iva: number;
   }>;

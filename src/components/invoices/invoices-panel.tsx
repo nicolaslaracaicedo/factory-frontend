@@ -732,7 +732,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
     ivaPorRates: Record<string, PorIvaRate>;
   }>(
     (acc, detalle) => {
-      const descuento = Math.max(Number(detalle.descuento) || 0, 0);
+      const descuento = getDescuentoValor(detalle);
       const base = getDetalleSubtotal(detalle);
       const ivaPct = getDetalleIvaPercent(detalle);
       const iva = (base * ivaPct) / 100;
@@ -1338,10 +1338,12 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                   <span className="text-slate-700">Subtotal:</span>
                   <span className="font-medium text-slate-800">{formatMoney(totales.subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-700">Descuento:</span>
-                  <span className="font-medium text-slate-800">{formatMoney(totales.descuento)}</span>
-                </div>
+                {totales.descuento > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-700">Descuento:</span>
+                    <span className="font-medium text-rose-600">{formatMoney(totales.descuento)}</span>
+                  </div>
+                )}
                 {totales.iva > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-700">
@@ -1357,7 +1359,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                     <span className="text-slate-700">
                       {totales.icePcts.length === 1 ? `ICE (${totales.icePcts[0]}%):` : "ICE:"}
                     </span>
-                    <span className="font-medium text-slate-800">{formatMoney(totales.ice)}</span>
+                    <span className="font-medium text-amber-600">{formatMoney(totales.ice)}</span>
                   </div>
                 )}
                 {totales.irbpnr > 0 && (
@@ -1365,7 +1367,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                     <span className="text-slate-700">
                       {totales.irbpnrValues.length === 1 ? `IRBPNR ($${totales.irbpnrValues[0].toFixed(2)}):` : "IRBPNR:"}
                     </span>
-                    <span className="font-medium text-slate-800">{formatMoney(totales.irbpnr)}</span>
+                    <span className="font-medium text-purple-600">{formatMoney(totales.irbpnr)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2">

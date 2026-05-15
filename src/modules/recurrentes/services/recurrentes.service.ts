@@ -110,6 +110,22 @@ export const recurrentesService = {
     return normalizeRecurrenteResponse(payload).data;
   },
 
+  async cambiarEstado(id: number, estado: string): Promise<RecurrenteItem> {
+    const response = await fetch(`/api/recurrentes/${id}/estado`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+      cache: "no-store",
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload));
+    }
+
+    return normalizeRecurrenteResponse(payload).data;
+  },
+
   async generarFactura(id: number, input: RecurrenteGenerarInput): Promise<unknown> {
     const response = await fetch(`/api/recurrentes/${id}/generar`, {
       method: "POST",

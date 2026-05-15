@@ -90,6 +90,8 @@ export interface RecurrenteGenerarInput {
   dia_emision: number;
   proxima_facturacion: string;
   forma_pago: string;
+  tipo_pago?: string;
+  dias_plazo?: number;
   detalles: Array<{
     id_producto: number;
     cantidad: number;

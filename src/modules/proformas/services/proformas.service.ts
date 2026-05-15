@@ -109,6 +109,22 @@ export const proformasService = {
     return normalizeProformaResponse(payload).data;
   },
 
+  async cambiarEstado(id: number, estado: string): Promise<ProformaItem> {
+    const response = await fetch(`/api/proformas/${id}/estado`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+      cache: "no-store",
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload));
+    }
+
+    return normalizeProformaResponse(payload).data;
+  },
+
   async convertirAFactura(id: number, input: ProformaConvertirInput): Promise<ProformaItem> {
     const response = await fetch(`/api/proformas/${id}/convertir`, {
       method: "POST",

@@ -1157,13 +1157,13 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                 {totales.ice > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-700">{totales.icePcts.length === 1 ? `ICE (${totales.icePcts[0]}%):` : "ICE:"}</span>
-                    <span className="font-medium text-slate-800">{formatMoney(totales.ice)}</span>
+                    <span className="font-medium text-amber-600">{formatMoney(totales.ice)}</span>
                   </div>
                 )}
                 {totales.irbpnr > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-700">{totales.irbpnrValues.length === 1 ? `IRBPNR ($${totales.irbpnrValues[0].toFixed(2)}):` : "IRBPNR:"}</span>
-                    <span className="font-medium text-slate-800">{formatMoney(totales.irbpnr)}</span>
+                    <span className="font-medium text-purple-600">{formatMoney(totales.irbpnr)}</span>
                   </div>
                 )}
                 <div className="border-t border-slate-200 pt-2 flex justify-between">

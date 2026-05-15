@@ -33,7 +33,7 @@ const adminSidebarGroups: SidebarGroup[] = [
     ],
   },
   {
-    title: "Operacion",
+    title: "Ventas",
     items: [
       {
         key: "facturas",
@@ -49,21 +49,31 @@ const adminSidebarGroups: SidebarGroup[] = [
         key: "notas-credito",
         label: "Notas de Crédito",
         hint: "Genera notas de crédito por devoluciones, anulaciones o correcciones de facturas emitidas",
-      }, 
+      },
       {
         key: "notas-debito",
         label: "Notas de Débito",
         hint: "Emite notas de débito por intereses, recargos o ajustes de precio en facturas",
       },
       {
-        key: "clientes",
-        label: "Gestión de Clientes",
-        hint: "Registra, edita y administra la información comercial de tus clientes",
+        key: "proformas",
+        label: "Proformas",
+        hint: "Crea cotizaciones para clientes y conviértelas en facturas cuando se confirme la venta",
       },
       {
-        key: "proveedores",
-        label: "Proveedores",
-        hint: "Registra, edita y administra datos de proveedores con RUC, dirección y contacto",
+        key: "recurrentes",
+        label: "Facturación Recurrente",
+        hint: "Automatiza facturas periódicas (mensuales, anuales) para suscripciones o servicios",
+      },
+      {
+        key: "retenciones",
+        label: "Retenciones",
+        hint: "Emite comprobantes de retención en la fuente por servicios y compras a proveedores",
+      },
+      {
+        key: "liquidaciones-compra",
+        label: "Liquidaciones de Compra",
+        hint: "Emite liquidaciones de compra para adquisición de productos agrícolas y recursos",
       },
     ],
   },
@@ -82,11 +92,36 @@ const adminSidebarGroups: SidebarGroup[] = [
       },
     ],
   },
+  {
+    title: "Contactos",
+    items: [
+      {
+        key: "clientes",
+        label: "Clientes",
+        hint: "Registra, edita y administra la información comercial de tus clientes",
+      },
+      {
+        key: "proveedores",
+        label: "Proveedores",
+        hint: "Registra, edita y administra datos de proveedores con RUC, dirección y contacto",
+      },
+    ],
+  },
+  {
+    title: "Logística",
+    items: [
+      {
+        key: "guias-remision",
+        label: "Guías de Remisión",
+        hint: "Genera guías de remisión para transporte de mercadería entre establecimientos",
+      },
+    ],
+  },
 ];
 
 const adminNavbarGroups: SidebarGroup[] = [
   {
-    title: "Configuracion General",
+    title: "Mi Empresa",
     items: [
       {
         key: "empresa",
@@ -106,7 +141,7 @@ const adminNavbarGroups: SidebarGroup[] = [
     ],
   },
   {
-    title: "Configuracion SRI",
+    title: "Configuración Fiscal SRI",
     items: [
       {
         key: "firma-electronica",
@@ -119,6 +154,11 @@ const adminNavbarGroups: SidebarGroup[] = [
         hint: "Configura ambiente de pruebas o producción para envío de comprobantes al SRI",
       },
       {
+        key: "iva",
+        label: "Códigos IVA",
+        hint: "Configura porcentajes de IVA, ICE y códigos de impuestos vigentes en Ecuador",
+      },
+      {
         key: "secuenciales",
         label: "Secuenciales",
         hint: "Define numeración inicial para facturas, notas y guías por punto de emisión",
@@ -128,54 +168,14 @@ const adminNavbarGroups: SidebarGroup[] = [
         label: "Puntos de Emisión",
         hint: "Crea puntos de emisión (cajas) asociados a cada establecimiento para facturación",
       },
-      {
-        key: "iva",
-        label: "Códigos IVA",
-        hint: "Configura porcentajes de IVA, ICE y códigos de impuestos vigentes en Ecuador",
-      },
     ],
   },
   {
-    title: "Comprobantes",
-    items: [
-      {
-        key: "retenciones",
-        label: "Retenciones",
-        hint: "Emite comprobantes de retención en la fuente por servicios y compras a proveedores",
-      },
-      {
-        key: "guias-remision",
-        label: "Guías de Remisión",
-        hint: "Genera guías de remisión para transporte de mercadería entre establecimientos",
-      },
-      {
-        key: "liquidaciones-compra",
-        label: "Liquidaciones de Compra",
-        hint: "Emite liquidaciones de compra para adquisición de productos agrícolas y recursos",
-      },
-    ],
-  },
-  {
-    title: "Operacion",
-    items: [
-      {
-        key: "proformas",
-        label: "Proformas",
-        hint: "Crea cotizaciones para clientes y conviértelas en facturas cuando se confirme la venta",
-      },
-      {
-        key: "recurrentes",
-        label: "Facturación Recurrente",
-        hint: "Automatiza facturas periódicas (mensuales, anuales) para suscripciones o servicios",
-      },
-    ],
-  },
-  {
-    title: "Auditoria",
+    title: "Centro de Control",
     items: [
       {
         key: "sri-logs",
-        label: "SRI Logs",
+        label: "Auditoría SRI",
         hint: "Consulta historial de envíos, respuestas del SRI y estado de autorización de comprobantes",
       },
     ],

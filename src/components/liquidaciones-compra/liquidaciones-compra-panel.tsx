@@ -40,7 +40,8 @@ import {
   Percent,
   Tag,
   Calculator,
-  Package
+  Package,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -64,17 +65,33 @@ import { emissionPointService } from "@/src/modules/emission-points/services/emi
 import type { PuntoEmision } from "@/src/modules/emission-points/types/emission-point.types";
 import { providerService } from "@/src/modules/providers/services/provider.service";
 import type { Proveedor } from "@/src/modules/providers/types/provider.types";
+import { productService } from "@/src/modules/products/services/product.service";
+import type { Producto } from "@/src/modules/products/types/product.types";
+import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
+import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { Loader } from "@/src/components/ui/loader";
 
 interface LiquidacionesCompraPanelProps {
   showPanel?: boolean;
 }
 
+const initialDetail = (): LiquidacionCompraFormState["detalles"][0] => ({
+  id_producto: 0,
+  codigo: "",
+  descripcion: "",
+  cantidad: 1,
+  precio_unitario: 0,
+  descuento: "0",
+  tipo_descuento: "PORCENTAJE",
+  codigo_iva: "4",
+  porcentaje_iva: 15,
+});
+
 const initialFormState: LiquidacionCompraFormState = {
   id_punto_emision: 0,
   fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0],
   id_proveedor: 0,
-  detalles: [{ codigo: "", descripcion: "", cantidad: 1, precio_unitario: 0, descuento: 0, codigo_iva: "4", porcentaje_iva: 15 }],
+  detalles: [initialDetail()],
 };
 
 const codigosIva = [
@@ -91,10 +108,11 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
   const [liquidaciones, setLiquidaciones] = useState<LiquidacionCompraItem[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editing, setEditing] = useState<LiquidacionCompraItem | null>(null);
   const [viewing, setViewing] = useState<LiquidacionCompraItem | null>(null);
@@ -104,6 +122,49 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
   const [filterEstado, setFilterEstado] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  const [productoQueries, setProductoQueries] = useState<Record<number, string>>({});
+  const [productoFocus, setProductoFocus] = useState<Record<number, boolean>>({});
+
+  const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
+  const { setActiveSection } = useDashboardSection();
+
+  const getProductoQuery = (index: number) => productoQueries[index] ?? "";
+  const setProductoQuery = (index: number, value: string) => {
+    setProductoQueries((prev) => ({ ...prev, [index]: value }));
+  };
+
+  const getFilteredProductos = (index: number) => {
+    const query = getProductoQuery(index).trim().toLowerCase();
+    if (!query) return productos.slice(0, 50);
+    return productos.filter((p) => 
+      (p.descripcion?.toLowerCase().includes(query) || p.codigo?.toLowerCase().includes(query))
+    ).slice(0, 50);
+  };
+
+  useEffect(() => {
+    if (editorOpen) {
+      const navigateTo = (section: string) => {
+        closeEditor();
+        setActiveSection(section);
+      };
+
+      setHeaderVisible(false);
+      setBreadcrumbs([
+        { label: "Inicio", onClick: () => navigateTo("dashboard") },
+        { label: "Liquidaciones de Compra", onClick: () => navigateTo("liquidaciones-compra") },
+        { label: editing ? "Editar liquidación" : "Nueva liquidación" },
+      ]);
+    } else {
+      setHeaderVisible(true);
+      setBreadcrumbs(null);
+    }
+
+    return () => {
+      setHeaderVisible(true);
+      setBreadcrumbs(null);
+    };
+  }, [editorOpen, editing, setBreadcrumbs, setHeaderVisible, setActiveSection]);
 
   useEffect(() => {
     loadLiquidaciones();
@@ -125,12 +186,14 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
   const loadCatalogs = async () => {
     setLoadingCatalogs(true);
     try {
-      const [puntosData, proveedoresData] = await Promise.all([
+      const [puntosData, proveedoresData, productosData] = await Promise.all([
         emissionPointService.listPuntos(),
         providerService.listProveedores(),
+        productService.listProductos()
       ]);
       setPuntos(puntosData);
       setProveedores(proveedoresData);
+      setProductos(productosData);
     } catch {
       toast.error("Error al cargar catálogos");
     } finally {
@@ -271,13 +334,17 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
   const openCreate = () => {
     setEditing(null);
     setForm(initialFormState);
-    setModalOpen(true);
+    setProductoQueries({});
+    setProductoFocus({});
+    setEditorOpen(true);
   };
 
   const openEdit = (liq: LiquidacionCompraItem) => {
     setEditing(liq);
     setForm(toLiquidacionFormState(liq));
-    setModalOpen(true);
+    setProductoQueries({});
+    setProductoFocus({});
+    setEditorOpen(true);
   };
 
   const openDetail = (liq: LiquidacionCompraItem) => {
@@ -285,10 +352,21 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
     setDetailOpen(true);
   };
 
-  const closeModal = () => {
-    setModalOpen(false);
+  const closeEditor = () => {
+    setEditorOpen(false);
     setEditing(null);
-    setForm(initialFormState);
+    setForm({ ...initialFormState, detalles: [initialDetail()] });
+    setProductoQueries({});
+    setProductoFocus({});
+  };
+
+  const resetForm = () => {
+    setForm({
+      ...initialFormState,
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0],
+      detalles: [initialDetail()],
+    });
+    setProductoQueries({});
   };
 
   const closeDetail = () => {
@@ -313,7 +391,7 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
       toast.error("Agregue al menos un detalle a la liquidación");
       return false;
     }
-    const invalidDetalle = form.detalles.find((d) => !d.descripcion || d.cantidad <= 0);
+    const invalidDetalle = form.detalles.find((d) => !d.descripcion || Number(d.cantidad) <= 0);
     if (invalidDetalle) {
       toast.error("Todos los detalles deben tener descripción y cantidad mayor a 0");
       return false;
@@ -321,18 +399,41 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
     return true;
   };
 
+  const buildPayload = () => {
+    const detalles = form.detalles.map((item) => {
+      return {
+        codigo: item.codigo,
+        descripcion: item.descripcion,
+        cantidad: item.cantidad,
+        precio_unitario: item.precio_unitario,
+        descuento: getDescuentoValor(item),
+        codigo_iva: item.codigo_iva,
+        porcentaje_iva: item.porcentaje_iva,
+      };
+    });
+
+    return {
+      id_punto_emision: form.id_punto_emision,
+      fecha_emision: form.fecha_emision,
+      id_proveedor: form.id_proveedor,
+      detalles,
+    };
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
+    const payload = buildPayload();
+
     try {
       if (editing) {
-        await liquidacionesCompraService.updateLiquidacion(editing.id, form);
+        await liquidacionesCompraService.updateLiquidacion(editing.id, payload);
         toast.success("Liquidación actualizada");
       } else {
-        await liquidacionesCompraService.createLiquidacion(form);
+        await liquidacionesCompraService.createLiquidacion(payload);
         toast.success("Liquidación creada");
       }
-      closeModal();
+      closeEditor();
       loadLiquidaciones();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al guardar");
@@ -371,10 +472,19 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
     }
   };
 
+  const updateDetail = (index: number, field: keyof LiquidacionCompraFormState["detalles"][0], value: string | number) => {
+    setForm((prev) => ({
+      ...prev,
+      detalles: prev.detalles.map((item, idx) =>
+        idx === index ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
   const addDetalle = () => {
     setForm((f) => ({
       ...f,
-      detalles: [...f.detalles, { codigo: "", descripcion: "", cantidad: 1, precio_unitario: 0, descuento: 0, codigo_iva: "4", porcentaje_iva: 15 }],
+      detalles: [...f.detalles, initialDetail()],
     }));
   };
 
@@ -398,22 +508,74 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
     updateDetalle(idx, { codigo_iva: codigo, porcentaje_iva: ivaOption?.porcentaje || 0 });
   };
 
+  const getProductoById = (productoId?: number) => {
+    if (!productoId) return undefined;
+    return productos.find((item) => item.id === productoId);
+  };
+
+  const getDescuentoValor = (detalle: LiquidacionCompraFormState["detalles"][0]) => {
+    const cantidad = Number(detalle.cantidad) || 0;
+    const precio = detalle.precio_unitario;
+    const raw = Math.max(Number(detalle.descuento) || 0, 0);
+    if (detalle.tipo_descuento === "PORCENTAJE") {
+      return (cantidad * precio) * (raw / 100);
+    }
+    return raw;
+  };
+
+  const getDetalleSubtotal = (detalle: LiquidacionCompraFormState["detalles"][0]) => {
+    const cantidad = Number(detalle.cantidad) || 0;
+    const precio = detalle.precio_unitario;
+    const descuentoValor = getDescuentoValor(detalle);
+    const subtotal = cantidad * precio - descuentoValor;
+    return subtotal < 0 ? 0 : subtotal;
+  };
+
+  const getDetalleTotal = (detalle: LiquidacionCompraFormState["detalles"][0]) => {
+    const base = getDetalleSubtotal(detalle);
+    const ivaPct = detalle.porcentaje_iva;
+    const iva = (base * ivaPct) / 100;
+    const producto = getProductoById(detalle.id_producto);
+    const cantidad = Number(detalle.cantidad) || 0;
+    const ice = producto?.tiene_ice
+      ? (base * (producto.porcentaje_ice ?? 0)) / 100
+      : 0;
+    const irbpnr = producto?.tiene_irbpnr
+      ? cantidad * (producto.valor_unitario_irbpnr ?? 0)
+      : 0;
+    return base + iva + ice + irbpnr;
+  };
+
   const calcularTotales = () => {
     return form.detalles.reduce(
       (acc, d) => {
-        const subtotal = d.cantidad * d.precio_unitario;
-        const descuento = (subtotal * d.descuento) / 100;
-        const base = subtotal - descuento;
-        const iva = (base * d.porcentaje_iva) / 100;
-        const total = base + iva;
+        const producto = getProductoById(d.id_producto);
+        const descuento = getDescuentoValor(d);
+        const base = getDetalleSubtotal(d);
+        const ivaPct = d.porcentaje_iva;
+        const iva = (base * ivaPct) / 100;
+        const cantidad = Number(d.cantidad) || 0;
+        const icePct = producto?.porcentaje_ice ?? 0;
+        const irbpnrVal = producto?.valor_unitario_irbpnr ?? 0;
+        const ice = producto?.tiene_ice ? (base * icePct) / 100 : 0;
+        const irbpnr = producto?.tiene_irbpnr ? cantidad * irbpnrVal : 0;
+        const total = base + iva + ice + irbpnr;
         return {
           subtotal: acc.subtotal + base,
           descuento: acc.descuento + descuento,
           iva: acc.iva + iva,
+          ice: acc.ice + ice,
+          irbpnr: acc.irbpnr + irbpnr,
+          icePcts: producto?.tiene_ice
+            ? acc.icePcts.includes(icePct) ? acc.icePcts : [...acc.icePcts, icePct]
+            : acc.icePcts,
+          irbpnrValues: producto?.tiene_irbpnr
+            ? acc.irbpnrValues.includes(irbpnrVal) ? acc.irbpnrValues : [...acc.irbpnrValues, irbpnrVal]
+            : acc.irbpnrValues,
           total: acc.total + total,
         };
       },
-      { subtotal: 0, descuento: 0, iva: 0, total: 0 }
+      { subtotal: 0, descuento: 0, iva: 0, ice: 0, irbpnr: 0, icePcts: [] as number[], irbpnrValues: [] as number[], total: 0 }
     );
   };
 
@@ -448,8 +610,10 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
 
   return (
     <section className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
+      {!editorOpen && (
+        <>
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-1 items-center gap-2 min-w-[280px] max-w-md">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
@@ -543,35 +707,35 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
         </div>
       )}
 
-      <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
-          <Dialog.Content 
-            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,900px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
-            onPointerDownOutside={(event) => event.preventDefault()}
-            onInteractOutside={(event) => event.preventDefault()}
-          >
-            {/* Header con icono y título */}
-            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Receipt className="h-6 w-6 text-app-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Dialog.Title className="text-xl font-semibold text-slate-900">
-                    {editing ? "Editar liquidación de compra" : "Crear nueva liquidación de compra"}
-                  </Dialog.Title>
-                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
-                    {editing
-                      ? "Actualiza los datos de la liquidación y sus detalles."
-                      : "Registra una nueva liquidación de compra con los datos del proveedor y los servicios/productos."}
-                  </Dialog.Description>
-                </div>
+        </>
+      )}
+
+      {editorOpen && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" type="button" onClick={closeEditor} className="h-10 w-10 p-0 text-slate-600 bg-slate-100 hover:bg-slate-200">
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-semibold text-slate-900">
+                  {editing ? "Editar liquidación de compra" : "Nueva liquidación de compra"}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Completa los datos y agrega los detalles antes de guardar.
+                </p>
               </div>
             </div>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" type="button" onClick={resetForm} className="h-9 px-3 text-xs">
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                Limpiar
+              </Button>
+            </div>
+          </div>
 
-            {/* Formulario */}
-            <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
               {/* SECCIÓN: Información general */}
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                 <div className="flex items-center gap-2">
@@ -589,7 +753,7 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
                         id="liq-punto"
                         className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
                       >
-                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un punto de emisión..."} />
+                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un punto..."} />
                         <SelectPrimitive.Icon>
                           <ChevronDown className="h-4 w-4 text-slate-400" />
                         </SelectPrimitive.Icon>
@@ -626,7 +790,7 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
                         id="liq-proveedor"
                         className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
                       >
-                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un proveedor..."} />
+                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un proveedor..."} className="truncate" />
                         <SelectPrimitive.Icon>
                           <ChevronDown className="h-4 w-4 text-slate-400" />
                         </SelectPrimitive.Icon>
@@ -665,185 +829,282 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
                 </div>
               </div>
 
-              {/* SECCIÓN: Detalles de servicios/productos */}
+              {/* SECCIÓN: Detalles */}
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Package className="h-3.5 w-3.5 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700">Detalles de servicios/productos</h3>
+                    <h3 className="text-sm font-semibold text-slate-700">Servicios/Productos</h3>
                   </div>
-                  <Button type="button" variant="secondary" className="h-9 px-3" onClick={addDetalle}>
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    Agregar detalle
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  {form.detalles.map((detalle, idx) => (
-                    <div key={idx} className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3 items-start">
-                      <div className="w-24 shrink-0">
-                        <Field label="Código" htmlFor={`liq-cod-${idx}`}>
-                          <Input
-                            id={`liq-cod-${idx}`}
-                            value={detalle.codigo}
-                            onChange={(event) => updateDetalle(idx, { codigo: event.target.value })}
-                            placeholder="SRV-001"
-                            className="bg-white shadow-none placeholder:text-slate-300"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="flex-[2] min-w-0">
-                        <Field label="Descripción *" htmlFor={`liq-desc-${idx}`}>
-                          <Input
-                            id={`liq-desc-${idx}`}
-                            value={detalle.descripcion}
-                            onChange={(event) => updateDetalle(idx, { descripcion: event.target.value })}
-                            placeholder="Servicio de consultoría"
-                            className="bg-white shadow-none placeholder:text-slate-300"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="w-20 shrink-0">
-                        <Field label="Cantidad" htmlFor={`liq-cant-${idx}`}>
-                          <Input
-                            id={`liq-cant-${idx}`}
-                            type="number"
-                            min={1}
-                            value={detalle.cantidad}
-                            onChange={(event) => updateDetalle(idx, { cantidad: Number(event.target.value) })}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="w-28 shrink-0">
-                        <Field label="Precio" htmlFor={`liq-precio-${idx}`}>
-                          <Input
-                            id={`liq-precio-${idx}`}
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={detalle.precio_unitario}
-                            onChange={(event) => updateDetalle(idx, { precio_unitario: Number(event.target.value) })}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="w-24 shrink-0">
-                        <Field label="Descuento %" htmlFor={`liq-descuento-${idx}`}>
-                          <Input
-                            id={`liq-descuento-${idx}`}
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={detalle.descuento}
-                            onChange={(event) => updateDetalle(idx, { descuento: Number(event.target.value) })}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="w-28 shrink-0">
-                        <Field label="IVA" htmlFor={`liq-iva-${idx}`}>
-                          <SelectPrimitive.Root 
-                            value={detalle.codigo_iva} 
-                            onValueChange={(val) => handleIvaChange(idx, val)}
-                          >
-                            <SelectPrimitive.Trigger 
-                              id={`liq-iva-${idx}`}
-                              className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
-                            >
-                              <SelectPrimitive.Value />
-                              <SelectPrimitive.Icon>
-                                <ChevronDown className="h-4 w-4 text-slate-400" />
-                              </SelectPrimitive.Icon>
-                            </SelectPrimitive.Trigger>
-                            <SelectPrimitive.Portal>
-                              <SelectPrimitive.Content 
-                                className="z-50 min-w-[140px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                                position="popper"
-                                sideOffset={4}
-                              >
-                                <SelectPrimitive.Viewport className="p-1">
-                                  {codigosIva.map((i) => (
-                                    <SelectPrimitive.Item 
-                                      key={i.value}
-                                      value={i.value}
-                                      className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                                    >
-                                      <SelectPrimitive.ItemText>{i.label}</SelectPrimitive.ItemText>
-                                    </SelectPrimitive.Item>
-                                  ))}
-                                </SelectPrimitive.Viewport>
-                              </SelectPrimitive.Content>
-                            </SelectPrimitive.Portal>
-                          </SelectPrimitive.Root>
-                        </Field>
-                      </div>
-
-                      <div className="pt-6">
-                        <Button
-                          variant="ghost"
-                          className="h-9 w-9 p-0 text-rose-600 hover:bg-rose-50"
-                          onClick={() => removeDetalle(idx)}
-                          disabled={form.detalles.length === 1}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <span>Descuento:</span>
+                      <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: "PORCENTAJE" as const })),
+                            }))
+                          }
+                          className={`flex h-7 w-8 items-center justify-center rounded text-xs font-bold transition-colors ${
+                            form.detalles[0]?.tipo_descuento === "PORCENTAJE"
+                              ? "bg-sky-500 text-white shadow-sm"
+                              : "text-slate-400 hover:text-slate-600"
+                          }`}
+                          title="Descuento en porcentaje"
                         >
-                          <Trash className="h-4 w-4" />
-                        </Button>
+                          %
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: "VALOR" as const })),
+                            }))
+                          }
+                          className={`flex h-7 w-8 items-center justify-center rounded text-xs font-bold transition-colors ${
+                            form.detalles[0]?.tipo_descuento === "VALOR"
+                              ? "bg-emerald-500 text-white shadow-sm"
+                              : "text-slate-400 hover:text-slate-600"
+                          }`}
+                          title="Descuento en valor monetario"
+                        >
+                          $
+                        </button>
                       </div>
                     </div>
-                  ))}
+                    <Button type="button" variant="secondary" className="h-9 px-3" onClick={addDetalle}>
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      Agregar
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Totales */}
-                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 space-y-2">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Calculator className="h-3.5 w-3.5 text-slate-500" />
-                    <h4 className="text-sm font-semibold text-slate-700">Totales</h4>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Subtotal:</span>
-                    <span className="font-medium text-slate-800">{formatCurrency(totales.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Descuento:</span>
-                    <span className="font-medium text-slate-800">{formatCurrency(totales.descuento)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">IVA:</span>
-                    <span className="font-medium text-slate-800">{formatCurrency(totales.iva)}</span>
-                  </div>
-                  <div className="flex justify-between text-base font-semibold border-t border-slate-200 pt-2 mt-2">
-                    <span className="text-slate-800">Total:</span>
-                    <span className="text-slate-900">{formatCurrency(totales.total)}</span>
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                  <div className="min-w-[960px]">
+                    <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_88px_72px_76px_62px_80px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                      <span>Código</span>
+                      <span>Descripción</span>
+                      <span>Cant.</span>
+                      <span>Precio</span>
+                      <span>IVA</span>
+                      <span>ICE</span>
+                      <span>IRBPNR</span>
+                      <span>Desc.</span>
+                      <span>Total</span>
+                      <span />
+                    </div>
+                    <div className="divide-y divide-slate-200">
+                      {form.detalles.map((detalle, idx) => {
+                        const producto = getProductoById(detalle.id_producto);
+                        const detalleTotal = getDetalleTotal(detalle);
+                        const cantidad = Number(detalle.cantidad) || 0;
+                        const base = getDetalleSubtotal(detalle);
+                        return (
+                          <div
+                            key={idx}
+                            className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_88px_72px_76px_62px_80px_44px]"
+                          >
+                            {/* Código (read-only, from product catalog) */}
+                            <span className="text-xs text-slate-500 truncate">
+                              {producto?.codigo || detalle.codigo || "-"}
+                            </span>
+
+                            {/* Descripción (Select product from catalog) */}
+                            <SelectPrimitive.Root
+                              value={detalle.id_producto === 0 ? undefined : detalle.id_producto.toString()}
+                              onValueChange={(val) => {
+                                const p = productos.find((item) => item.id === Number(val));
+                                if (p) {
+                                  const ivaCodigo = p.iva_codigo || String(p.id_iva);
+                                  const ivaPorcentaje = p.iva_porcentaje ?? p.porcentaje_iva ?? codigosIva.find((i) => i.value === ivaCodigo)?.porcentaje ?? 15;
+                                  updateDetalle(idx, {
+                                    id_producto: p.id,
+                                    codigo: p.codigo || "",
+                                    descripcion: p.descripcion || "",
+                                    precio_unitario: p.precio || 0,
+                                    codigo_iva: ivaCodigo,
+                                    porcentaje_iva: ivaPorcentaje,
+                                  });
+                                }
+                                setProductoQuery(idx, "");
+                              }}
+                              disabled={loadingCatalogs}
+                            >
+                              <SelectPrimitive.Trigger
+                                className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                              >
+                                <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un producto..."} />
+                                <SelectPrimitive.Icon>
+                                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                                </SelectPrimitive.Icon>
+                              </SelectPrimitive.Trigger>
+                              <SelectPrimitive.Portal>
+                                <SelectPrimitive.Content
+                                  className="z-50 w-[380px] max-h-72 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                                  position="popper"
+                                  side="bottom"
+                                  align="start"
+                                  sideOffset={4}
+                                >
+                                  <div className="border-b border-slate-100 p-2">
+                                    <Input
+                                      value={getProductoQuery(idx)}
+                                      onChange={(event) => setProductoQuery(idx, event.target.value)}
+                                      placeholder="Buscar por nombre o código..."
+                                      className="h-8 bg-white shadow-none w-full"
+                                      onKeyDown={(event) => event.stopPropagation()}
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                    />
+                                  </div>
+                                  <SelectPrimitive.Viewport className="p-1 max-h-56 overflow-y-auto">
+                                    {getFilteredProductos(idx).length === 0 ? (
+                                      <div className="px-3 py-2 text-xs text-slate-500">Sin resultados.</div>
+                                    ) : (
+                                      getFilteredProductos(idx).map((item) => (
+                                        <SelectPrimitive.Item
+                                          key={item.id}
+                                          value={item.id.toString()}
+                                          className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                        >
+                                          <SelectPrimitive.ItemText>
+                                            {item.descripcion} · {item.codigo}
+                                          </SelectPrimitive.ItemText>
+                                        </SelectPrimitive.Item>
+                                      ))
+                                    )}
+                                  </SelectPrimitive.Viewport>
+                                </SelectPrimitive.Content>
+                              </SelectPrimitive.Portal>
+                            </SelectPrimitive.Root>
+
+                            {/* Cantidad */}
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              value={detalle.cantidad}
+                              onChange={(event) => {
+                                let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                                if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
+                                updateDetail(idx, "cantidad", cleaned === "" ? 0 : Number(cleaned));
+                              }}
+                              placeholder="Cant."
+                              className="h-9 bg-white shadow-none"
+                            />
+
+                            {/* Precio (read-only, from catalog) */}
+                            <span className="text-sm text-slate-700">
+                              {formatCurrency(detalle.precio_unitario)}
+                            </span>
+
+                            {/* IVA (read-only, from product) */}
+                            <span className="text-xs text-slate-500">
+                              {detalle.porcentaje_iva}%
+                            </span>
+
+                            {/* ICE (read-only, calculated from product) */}
+                            <span className="text-xs text-amber-600 font-medium">
+                              {producto?.tiene_ice ? `${producto.porcentaje_ice}% · ${formatCurrency(base * ((producto.porcentaje_ice ?? 0) / 100))}` : "-"}
+                            </span>
+
+                            {/* IRBPNR (read-only, calculated from product) */}
+                            <span className="text-xs text-purple-600 font-medium">
+                              {producto?.tiene_irbpnr ? formatCurrency(cantidad * (producto.valor_unitario_irbpnr ?? 0)) : "-"}
+                            </span>
+
+                            {/* Descuento (user-editable) */}
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              value={detalle.descuento}
+                              onChange={(event) => {
+                                let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                                if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
+                                updateDetail(idx, "descuento", cleaned);
+                              }}
+                              className="h-9 bg-white shadow-none"
+                            />
+
+                            {/* Total (calculated) */}
+                            <span className="text-sm font-extrabold text-slate-900 tabular-nums">
+                              {formatCurrency(detalleTotal)}
+                            </span>
+
+                            {/* Delete */}
+                            <button
+                              type="button"
+                              onClick={() => removeDetalle(idx)}
+                              disabled={form.detalles.length === 1}
+                              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Eliminar"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Botones de acción */}
-              <div className="flex justify-end gap-3 pt-2">
-                <Button 
-                  variant="secondary" 
-                  type="button" 
-                  onClick={closeModal}
-                  className="h-10 px-4"
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  onClick={handleSubmit}
-                  className="h-10 px-4"
-                >
+            <aside className="space-y-4 lg:sticky lg:top-6">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calculator className="h-3.5 w-3.5 text-slate-500" />
+                  <h4 className="text-sm font-semibold text-slate-700">Totales</h4>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-700">Subtotal:</span>
+                  <span className="font-medium text-slate-800">{formatCurrency(totales.subtotal)}</span>
+                </div>
+                {totales.descuento > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-700">Descuento:</span>
+                    <span className="font-medium text-rose-600">{formatCurrency(totales.descuento)}</span>
+                  </div>
+                )}
+                {totales.iva > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-700">IVA:</span>
+                    <span className="font-medium text-slate-800">{formatCurrency(totales.iva)}</span>
+                  </div>
+                )}
+                {totales.ice > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-700">
+                      {totales.icePcts.length === 1 ? `ICE (${totales.icePcts[0]}%):` : "ICE:"}
+                    </span>
+                    <span className="font-medium text-amber-600">{formatCurrency(totales.ice)}</span>
+                  </div>
+                )}
+                {totales.irbpnr > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-700">
+                      {totales.irbpnrValues.length === 1 ? `IRBPNR ($${totales.irbpnrValues[0].toFixed(2)}):` : "IRBPNR:"}
+                    </span>
+                    <span className="font-medium text-purple-600">{formatCurrency(totales.irbpnr)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2">
+                  <span className="text-sm font-bold text-slate-800">Total:</span>
+                  <span className="text-xl font-extrabold text-sky-700">{formatCurrency(totales.total)}</span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <Button onClick={handleSubmit} className="h-10 w-full">
                   {editing ? "Guardar cambios" : "Crear liquidación"}
                 </Button>
               </div>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+            </aside>
+          </div>
+        </div>
+      )}
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>

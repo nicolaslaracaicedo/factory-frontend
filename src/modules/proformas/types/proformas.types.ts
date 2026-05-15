@@ -85,6 +85,7 @@ export interface ProformaConvertirInput {
   forma_pago: string;
   tipo_pago: string;
   fecha_emision?: string;
+  dias_plazo?: number;
 }
 
 export interface ProformaFormState {

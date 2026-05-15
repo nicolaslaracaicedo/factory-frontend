@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
+import * as Popover from "@radix-ui/react-popover";
 import {
   ChevronLeft,
   ChevronRight,
@@ -29,7 +30,8 @@ import {
   Calendar,
   Package,
   Route,
-  Trash
+  Trash,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -66,6 +68,9 @@ import type { Cliente } from "@/src/modules/clients/types/client.types";
 import { productService } from "@/src/modules/products/services/product.service";
 import type { Producto } from "@/src/modules/products/types/product.types";
 import { Loader } from "@/src/components/ui/loader";
+import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
+import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
+import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 
 interface GuiasRemisionPanelProps {
   showPanel?: boolean;
@@ -106,17 +111,40 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editing, setEditing] = useState<GuiaRemisionItem | null>(null);
   const [viewing, setViewing] = useState<GuiaRemisionItem | null>(null);
   const [form, setForm] = useState<GuiaFormState>(initialFormState);
+  const [clienteQuery, setClienteQuery] = useState("");
+  const [clienteSearchResults, setClienteSearchResults] = useState<Cliente[]>([]);
+  const [clienteSearching, setClienteSearching] = useState(false);
+  const clienteSearchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const [productoQueries, setProductoQueries] = useState<Record<number, string>>({});
+  const [productoFocus, setProductoFocus] = useState<Record<number, boolean>>({});
+
+  const getProductoQuery = (index: number) => productoQueries[index] ?? "";
+  const setProductoQuery = (index: number, value: string) => {
+    setProductoQueries((prev) => ({ ...prev, [index]: value }));
+  };
+
+  const getFilteredProductos = (index: number) => {
+    const query = getProductoQuery(index).trim().toLowerCase();
+    if (!query) return productos.slice(0, 50);
+    return productos.filter((p) => 
+      (p.descripcion?.toLowerCase().includes(query) || p.codigo?.toLowerCase().includes(query))
+    ).slice(0, 50);
+  };
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filterEstado, setFilterEstado] = useState<string>("");
+  const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
+  const { setActiveSection } = useDashboardSection();
 
   function SortIcon({ column }: { column: any }) {
     const s = column.getIsSorted();
@@ -258,6 +286,35 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
     initialState: { pagination: { pageSize: 10 } },
   });
 
+  const navigateTo = (section: string) => {
+    setActiveSection(section);
+  };
+
+  useEffect(() => {
+    if (editorOpen) {
+      setHeaderVisible(false);
+      setBreadcrumbs([
+        { label: "Inicio", onClick: () => navigateTo("dashboard") },
+        { label: "Guías de remisión", onClick: () => navigateTo("guias-remision") },
+        { label: editing ? "Editar guía" : "Nueva guía" },
+      ]);
+    } else {
+      setHeaderVisible(true);
+      setBreadcrumbs(null);
+    }
+
+    return () => {
+      setHeaderVisible(true);
+      setBreadcrumbs(null);
+    };
+  }, [editorOpen, editing, setBreadcrumbs, setHeaderVisible, setActiveSection]);
+
+  const getDefaultPuntoId = () => {
+    const d = useAuthStore.getState().user?.puntoEmisionDefault;
+    const n = Number(d);
+    return n > 0 && puntos.some((p) => p.id === n) ? n : (puntos[0]?.id ?? 0);
+  };
+
   const canEdit = (guia: GuiaRemisionItem) =>
     guia.estado === "BORRADOR" || guia.estado === "RECHAZADA";
   const canDelete = (guia: GuiaRemisionItem) => guia.estado === "BORRADOR";
@@ -266,14 +323,27 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
 
   const openCreate = () => {
     setEditing(null);
-    setForm(initialFormState);
-    setModalOpen(true);
+    setClienteQuery("");
+    setClienteSearchResults([]);
+    setForm({
+      ...initialFormState,
+      id_punto_emision: getDefaultPuntoId(),
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
+      detalles: [{ id_producto: 0, codigo: "", descripcion: "", cantidad: 1 }],
+    });
+    setProductoQueries({});
+    setProductoFocus({});
+    setEditorOpen(true);
   };
 
   const openEdit = (guia: GuiaRemisionItem) => {
     setEditing(guia);
     setForm(toGuiaFormState(guia));
-    setModalOpen(true);
+    setClienteQuery("");
+    setClienteSearchResults([]);
+    setProductoQueries({});
+    setProductoFocus({});
+    setEditorOpen(true);
   };
 
   const openDetail = (guia: GuiaRemisionItem) => {
@@ -281,10 +351,27 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
     setDetailOpen(true);
   };
 
-  const closeModal = () => {
-    setModalOpen(false);
+  const closeEditor = () => {
+    setEditorOpen(false);
     setEditing(null);
     setForm(initialFormState);
+    setClienteQuery("");
+    setClienteSearchResults([]);
+    setProductoQueries({});
+    setProductoFocus({});
+  };
+
+  const resetForm = () => {
+    setForm({
+      ...initialFormState,
+      id_punto_emision: getDefaultPuntoId(),
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
+      detalles: [{ id_producto: 0, codigo: "", descripcion: "", cantidad: 1 }],
+    });
+    setClienteQuery("");
+    setClienteSearchResults([]);
+    setProductoQueries({});
+    setProductoFocus({});
   };
 
   const closeDetail = () => {
@@ -340,9 +427,38 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
     return true;
   };
 
-  const handleSubmit = async () => {
+  const handleClienteSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setClienteQuery(value);
+    if (clienteSearchTimerRef.current) clearTimeout(clienteSearchTimerRef.current);
+    if (!value.trim()) {
+      setClienteSearchResults([]);
+      return;
+    }
+    clienteSearchTimerRef.current = setTimeout(async () => {
+      setClienteSearching(true);
+      try {
+        const results = await clientService.listClientes("ACTIVO", value.trim());
+        setClienteSearchResults(results);
+      } catch {
+        // ignore
+      } finally {
+        setClienteSearching(false);
+      }
+    }, 300);
+  };
+
+  const selectCliente = (cliente: Cliente) => {
+    setForm((f) => ({ ...f, id_cliente: cliente.id }));
+    setClienteQuery("");
+    setClienteSearchResults([]);
+  };
+
+  const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!validateForm()) return;
 
+    setSaving(true);
     try {
       const payload = {
         ...form,
@@ -360,10 +476,12 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
         await guiasRemisionService.createGuia(payload);
         toast.success("Guía de remisión creada");
       }
-      closeModal();
-      loadGuias();
+      await loadGuias();
+      closeEditor();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al guardar");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -436,18 +554,6 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
     }
   };
 
-  const getClienteLabel = (id: number) => {
-    const c = clientes.find((x) => x.id === id);
-    return c ? `${c.razon_social} (${c.identificacion})` : "-";
-  };
-
-  if (!showPanel) return null;
-
-  useEffect(() => {
-    loadGuias();
-    loadCatalogs();
-  }, []);
-
   const loadGuias = async () => {
     setLoading(true);
     try {
@@ -477,6 +583,477 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
       setLoadingCatalogs(false);
     }
   };
+
+  const getClienteLabel = (id: number) => {
+    const c = clientes.find((x) => x.id === id);
+    return c ? `${c.razon_social} (${c.identificacion})` : "-";
+  };
+
+  useEffect(() => {
+    loadGuias();
+    loadCatalogs();
+  }, []);
+
+  if (!showPanel) return null;
+
+  if (editorOpen) {
+    return (
+      <section className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={closeEditor}
+              className="h-10 w-10 p-0 text-slate-600 bg-slate-100 hover:bg-slate-200"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-semibold text-slate-900">
+                {editing ? "Editar guía de remisión" : "Nueva guía de remisión"}
+              </p>
+              <p className="text-xs text-slate-500">
+                Completa los datos y agrega los productos antes de guardar.
+              </p>
+            </div>
+          </div>
+          <Button variant="secondary" type="button" onClick={resetForm} className="h-9 px-3 text-xs">
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+            Limpiar
+          </Button>
+        </div>
+
+        <form className="space-y-6" onSubmit={submitForm}>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Información general</h3>
+                </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Field label="Punto de emisión *" htmlFor="guia-punto">
+                    <SelectPrimitive.Root
+                      value={form.id_punto_emision === 0 ? undefined : form.id_punto_emision.toString()}
+                      onValueChange={(val) => setForm((f) => ({ ...f, id_punto_emision: Number(val) }))}
+                      disabled={Boolean(editing) || loadingCatalogs}
+                    >
+                      <SelectPrimitive.Trigger
+                        id="guia-punto"
+                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                      >
+                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un punto de emisión..."} />
+                        <SelectPrimitive.Icon>
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </SelectPrimitive.Icon>
+                      </SelectPrimitive.Trigger>
+                      <SelectPrimitive.Portal>
+                        <SelectPrimitive.Content
+                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                          position="popper"
+                          sideOffset={4}
+                        >
+                          <SelectPrimitive.Viewport className="p-1">
+                            {puntos.map((p) => (
+                              <SelectPrimitive.Item
+                                key={p.id}
+                                value={p.id.toString()}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                              >
+                                <SelectPrimitive.ItemText>{p.codigo} - {p.descripcion}</SelectPrimitive.ItemText>
+                              </SelectPrimitive.Item>
+                            ))}
+                          </SelectPrimitive.Viewport>
+                        </SelectPrimitive.Content>
+                      </SelectPrimitive.Portal>
+                    </SelectPrimitive.Root>
+                  </Field>
+
+                  <Field label="Fecha de emisión *" htmlFor="guia-fecha">
+                    <Input
+                      id="guia-fecha"
+                      type="date"
+                      value={form.fecha_emision}
+                      onChange={(event) => setForm((f) => ({ ...f, fecha_emision: event.target.value }))}
+                      className="bg-white shadow-none"
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <User className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Cliente</h3>
+                </div>
+
+                {form.id_cliente > 0 && clienteSearchResults.length === 0 && !clienteQuery.trim() ? (
+                  <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                      <span className="text-sm font-medium text-slate-800 truncate">{getClienteLabel(form.id_cliente)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm((prev) => ({ ...prev, id_cliente: 0 }));
+                          setClienteQuery("");
+                          setClienteSearchResults([]);
+                        }}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                        title="Cambiar cliente"
+                      >
+                        <Search size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1 min-w-0 relative">
+                      <Field label="Buscar cliente *" htmlFor="cliente_search">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                          <input
+                            id="cliente_search"
+                            type="text"
+                            value={clienteQuery}
+                            onChange={handleClienteSearchChange}
+                            placeholder="Buscar por cédula, RUC o razón social..."
+                            className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
+                          />
+                          {clienteSearching && (
+                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
+                            </div>
+                          )}
+                        </div>
+                      </Field>
+                      {clienteSearchResults.length > 0 && (
+                        <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
+                          {clienteSearchResults.map((cliente) => (
+                            <button
+                              key={cliente.id}
+                              type="button"
+                              onClick={() => selectCliente(cliente)}
+                              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
+                            >
+                              <div className="font-medium text-slate-800">{cliente.razon_social}</div>
+                              <div className="text-xs text-slate-500">{cliente.identificacion}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Datos del transporte</h3>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field label="RUC Transportista *" htmlFor="guia-ruc">
+                    <Input
+                      id="guia-ruc"
+                      value={form.ruc_transportista}
+                      onChange={(event) => setForm((f) => ({ ...f, ruc_transportista: event.target.value }))}
+                      placeholder="1712345678001"
+                      className="bg-white shadow-none placeholder:text-slate-300"
+                    />
+                  </Field>
+
+                  <Field label="Razón Social Transportista *" htmlFor="guia-razon">
+                    <Input
+                      id="guia-razon"
+                      value={form.razon_social_transportista}
+                      onChange={(event) => setForm((f) => ({ ...f, razon_social_transportista: event.target.value }))}
+                      placeholder="Transportes SA"
+                      className="bg-white shadow-none placeholder:text-slate-300"
+                    />
+                  </Field>
+
+                  <Field label="Placa Vehículo *" htmlFor="guia-placa">
+                    <Input
+                      id="guia-placa"
+                      value={form.placa}
+                      onChange={(event) => setForm((f) => ({ ...f, placa: event.target.value.toUpperCase() }))}
+                      placeholder="ABC-1234"
+                      className="bg-white shadow-none placeholder:text-slate-300"
+                    />
+                  </Field>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Fecha inicio transporte *" htmlFor="guia-ini">
+                    <Input
+                      id="guia-ini"
+                      type="date"
+                      value={form.fecha_ini_transporte}
+                      onChange={(event) => setForm((f) => ({ ...f, fecha_ini_transporte: event.target.value }))}
+                      className="bg-white shadow-none"
+                    />
+                  </Field>
+
+                  <Field label="Fecha fin transporte *" htmlFor="guia-fin">
+                    <Input
+                      id="guia-fin"
+                      type="date"
+                      value={form.fecha_fin_transporte}
+                      onChange={(event) => setForm((f) => ({ ...f, fecha_fin_transporte: event.target.value }))}
+                      className="bg-white shadow-none"
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Destino</h3>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Motivo de traslado *" htmlFor="guia-motivo">
+                    <SelectPrimitive.Root
+                      value={form.motivo_traslado}
+                      onValueChange={(val) => setForm((f) => ({ ...f, motivo_traslado: val }))}
+                    >
+                      <SelectPrimitive.Trigger
+                        id="guia-motivo"
+                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                      >
+                        <SelectPrimitive.Value />
+                        <SelectPrimitive.Icon>
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </SelectPrimitive.Icon>
+                      </SelectPrimitive.Trigger>
+                      <SelectPrimitive.Portal>
+                        <SelectPrimitive.Content
+                          className="z-50 min-w-[280px] max-h-60 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                          position="popper"
+                          sideOffset={4}
+                        >
+                          <SelectPrimitive.Viewport className="p-1 max-h-52 overflow-y-auto">
+                            {motivosTraslado.map((m) => (
+                              <SelectPrimitive.Item
+                                key={m}
+                                value={m}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                              >
+                                <SelectPrimitive.ItemText>{m}</SelectPrimitive.ItemText>
+                              </SelectPrimitive.Item>
+                            ))}
+                          </SelectPrimitive.Viewport>
+                        </SelectPrimitive.Content>
+                      </SelectPrimitive.Portal>
+                    </SelectPrimitive.Root>
+                  </Field>
+
+                  <Field label="Ruta" htmlFor="guia-ruta">
+                    <Input
+                      id="guia-ruta"
+                      value={form.ruta}
+                      onChange={(event) => setForm((f) => ({ ...f, ruta: event.target.value }))}
+                      placeholder="Quito - Guayaquil"
+                      className="bg-white shadow-none placeholder:text-slate-300"
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Dirección de destino *" htmlFor="guia-dir">
+                  <Input
+                    id="guia-dir"
+                    value={form.direccion_destino}
+                    onChange={(event) => setForm((f) => ({ ...f, direccion_destino: event.target.value }))}
+                    placeholder="Av. 9 de Octubre 123"
+                    className="bg-white shadow-none placeholder:text-slate-300"
+                  />
+                </Field>
+              </div>
+
+              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Productos a transportar</h3>
+                  </div>
+                  <Button type="button" variant="secondary" className="h-9 px-3" onClick={addDetalle}>
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Agregar producto
+                  </Button>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                  <div className="min-w-[700px]">
+                    <div className="grid grid-cols-[minmax(250px,1fr)_120px_minmax(150px,1fr)_100px_50px] gap-3 bg-slate-50 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-700 border-b border-slate-200">
+                      <span>Buscar Producto</span>
+                      <span>Código</span>
+                      <span>Descripción</span>
+                      <span className="text-center">Cant.</span>
+                      <span />
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {form.detalles.map((detalle, idx) => (
+                        <div key={idx} className="grid grid-cols-[minmax(250px,1fr)_120px_minmax(150px,1fr)_100px_50px] items-center gap-3 bg-white px-4 py-2">
+                          {/* Buscar Producto */}
+                          <div className="relative">
+                            {detalle.id_producto > 0 ? (
+                              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-sm font-medium text-slate-800 truncate" title={detalle.descripcion}>{detalle.descripcion}</span>
+                                  <span className="text-[10px] text-slate-500">{detalle.codigo}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    updateDetalle(idx, { id_producto: 0, codigo: "", descripcion: "" });
+                                    setProductoQuery(idx, "");
+                                  }}
+                                  className="ml-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <Popover.Root
+                                  open={productoFocus[idx]}
+                                  onOpenChange={(open) => setProductoFocus((prev) => ({ ...prev, [idx]: open }))}
+                                >
+                                  <Popover.Anchor asChild>
+                                    <div className="relative">
+                                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                      <input
+                                        type="text"
+                                        value={getProductoQuery(idx)}
+                                        onChange={(e) => setProductoQuery(idx, e.target.value)}
+                                        onFocus={() => setProductoFocus((prev) => ({ ...prev, [idx]: true }))}
+                                        placeholder="Nombre o código..."
+                                        className="w-full pl-8 pr-3 py-1.5 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all shadow-none"
+                                      />
+                                    </div>
+                                  </Popover.Anchor>
+                                  <Popover.Portal>
+                                    <Popover.Content
+                                      className="z-[100] w-[320px] rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto p-0"
+                                      align="start"
+                                      sideOffset={4}
+                                      onOpenAutoFocus={(e) => e.preventDefault()}
+                                      onCloseAutoFocus={(e) => e.preventDefault()}
+                                    >
+                                      {getFilteredProductos(idx).length === 0 ? (
+                                        <div className="px-3 py-2 text-xs text-slate-500">Sin resultados.</div>
+                                      ) : (
+                                        getFilteredProductos(idx).map((p) => (
+                                          <button
+                                            key={p.id}
+                                            type="button"
+                                            onClick={() => {
+                                              updateDetalle(idx, {
+                                                id_producto: p.id,
+                                                codigo: p.codigo || "",
+                                                descripcion: p.descripcion || "",
+                                              });
+                                              setProductoQuery(idx, "");
+                                              setProductoFocus((prev) => ({ ...prev, [idx]: false }));
+                                            }}
+                                            className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0 flex flex-col"
+                                          >
+                                            <span className="font-medium text-slate-800 truncate">{p.descripcion}</span>
+                                            <span className="text-[10px] text-slate-500">{p.codigo}</span>
+                                          </button>
+                                        ))
+                                      )}
+                                    </Popover.Content>
+                                  </Popover.Portal>
+                                </Popover.Root>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Código */}
+                          <div className="text-sm font-medium text-slate-700 truncate" title={detalle.codigo || "-"}>
+                            {detalle.codigo || "-"}
+                          </div>
+
+                          {/* Descripción */}
+                          <div className="text-sm font-medium text-slate-700 truncate" title={detalle.descripcion || "-"}>
+                            {detalle.descripcion || "-"}
+                          </div>
+
+                          {/* Cantidad */}
+                          <div>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={detalle.cantidad}
+                              onChange={(event) => updateDetalle(idx, { cantidad: Number(event.target.value) })}
+                              className="h-9 bg-white shadow-none text-center"
+                            />
+                          </div>
+
+                          {/* Delete */}
+                          <div className="flex justify-center">
+                            <button
+                              type="button"
+                              onClick={() => removeDetalle(idx)}
+                              disabled={form.detalles.length === 1}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Eliminar"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <aside className="space-y-4 lg:sticky lg:top-6">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="h-3.5 w-3.5 text-slate-500" />
+                  <h4 className="text-sm font-semibold text-slate-700">Resumen</h4>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-slate-500">Cliente</span>
+                    <span className="font-medium text-slate-800">{form.id_cliente ? getClienteLabel(form.id_cliente) : "No seleccionado"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-slate-500">Destino</span>
+                    <span className="font-medium text-slate-800 truncate" title={form.direccion_destino}>{form.direccion_destino || "-"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-slate-500">Transportista</span>
+                    <span className="font-medium text-slate-800">{form.razon_social_transportista || "-"}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-slate-200 pt-3 mt-3">
+                    <span className="text-slate-600 font-medium">Total Productos</span>
+                    <span className="font-bold text-slate-800">{form.detalles.reduce((acc, d) => acc + (Number(d.cantidad) || 0), 0)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <Button type="submit" disabled={saving} className="h-10 w-full">
+                  {saving ? "Guardando..." : editing ? "Guardar guía" : "Crear guía"}
+                </Button>
+              </div>
+            </aside>
+          </div>
+        </form>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-4">
@@ -584,396 +1161,6 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
           </div>
         </div>
       )}
-
-      <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
-          <Dialog.Content 
-            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,900px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
-            onPointerDownOutside={(event) => event.preventDefault()}
-            onInteractOutside={(event) => event.preventDefault()}
-          >
-            {/* Header con icono y título */}
-            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Truck className="h-6 w-6 text-app-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Dialog.Title className="text-xl font-semibold text-slate-900">
-                    {editing ? "Editar guía de remisión" : "Crear nueva guía de remisión"}
-                  </Dialog.Title>
-                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
-                    {editing
-                      ? "Actualiza los datos de la guía de remisión existente."
-                      : "Registra una nueva guía de remisión con los datos del transporte y los productos a transportar."}
-                  </Dialog.Description>
-                </div>
-              </div>
-            </div>
-
-            {/* Formulario */}
-            <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {/* SECCIÓN: Información general */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <FileCheck className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Información general</h3>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <Field label="Punto de emisión *" htmlFor="guia-punto">
-                    <SelectPrimitive.Root 
-                      value={form.id_punto_emision === 0 ? undefined : form.id_punto_emision.toString()} 
-                      onValueChange={(val) => setForm((f) => ({ ...f, id_punto_emision: Number(val) }))}
-                      disabled={Boolean(editing) || loadingCatalogs}
-                    >
-                      <SelectPrimitive.Trigger 
-                        id="guia-punto"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                      >
-                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un punto de emisión..."} />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content 
-                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((p) => (
-                              <SelectPrimitive.Item 
-                                key={p.id}
-                                value={p.id.toString()}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{p.codigo} - {p.descripcion}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-
-                  <Field label="Cliente *" htmlFor="guia-cliente">
-                    <SelectPrimitive.Root 
-                      value={form.id_cliente === 0 ? undefined : form.id_cliente.toString()} 
-                      onValueChange={(val) => setForm((f) => ({ ...f, id_cliente: Number(val) }))}
-                      disabled={loadingCatalogs}
-                    >
-                      <SelectPrimitive.Trigger 
-                        id="guia-cliente"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                      >
-                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un cliente..."} />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content 
-                          className="z-50 min-w-[320px] max-h-72 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <SelectPrimitive.Viewport className="p-1 max-h-60 overflow-y-auto">
-                            {clientes.map((c) => (
-                              <SelectPrimitive.Item 
-                                key={c.id}
-                                value={c.id.toString()}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{c.razon_social} ({c.identificacion})</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-
-                  <Field label="Fecha de emisión *" htmlFor="guia-fecha">
-                    <Input
-                      id="guia-fecha"
-                      type="date"
-                      value={form.fecha_emision}
-                      onChange={(event) => setForm((f) => ({ ...f, fecha_emision: event.target.value }))}
-                      className="bg-white shadow-none"
-                    />
-                  </Field>
-                </div>
-              </div>
-
-              {/* SECCIÓN: Datos del transporte */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Datos del transporte</h3>
-                </div>
-                
-                {/* Transportista */}
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <Field label="RUC Transportista *" htmlFor="guia-ruc">
-                    <Input
-                      id="guia-ruc"
-                      value={form.ruc_transportista}
-                      onChange={(event) => setForm((f) => ({ ...f, ruc_transportista: event.target.value }))}
-                      placeholder="1712345678001"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
-                  </Field>
-
-                  <Field label="Razón Social Transportista *" htmlFor="guia-razon">
-                    <Input
-                      id="guia-razon"
-                      value={form.razon_social_transportista}
-                      onChange={(event) => setForm((f) => ({ ...f, razon_social_transportista: event.target.value }))}
-                      placeholder="Transportes SA"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
-                  </Field>
-
-                  <Field label="Placa Vehículo *" htmlFor="guia-placa">
-                    <Input
-                      id="guia-placa"
-                      value={form.placa}
-                      onChange={(event) => setForm((f) => ({ ...f, placa: event.target.value.toUpperCase() }))}
-                      placeholder="ABC-1234"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
-                  </Field>
-                </div>
-
-                {/* Fechas */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Fecha inicio transporte *" htmlFor="guia-ini">
-                    <Input
-                      id="guia-ini"
-                      type="date"
-                      value={form.fecha_ini_transporte}
-                      onChange={(event) => setForm((f) => ({ ...f, fecha_ini_transporte: event.target.value }))}
-                      className="bg-white shadow-none"
-                    />
-                  </Field>
-
-                  <Field label="Fecha fin transporte *" htmlFor="guia-fin">
-                    <Input
-                      id="guia-fin"
-                      type="date"
-                      value={form.fecha_fin_transporte}
-                      onChange={(event) => setForm((f) => ({ ...f, fecha_fin_transporte: event.target.value }))}
-                      className="bg-white shadow-none"
-                    />
-                  </Field>
-                </div>
-              </div>
-
-              {/* SECCIÓN: Destino */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Destino</h3>
-                </div>
-                
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <Field label="Motivo de traslado *" htmlFor="guia-motivo">
-                      <SelectPrimitive.Root 
-                        value={form.motivo_traslado} 
-                        onValueChange={(val) => setForm((f) => ({ ...f, motivo_traslado: val }))}
-                      >
-                        <SelectPrimitive.Trigger 
-                          id="guia-motivo"
-                          className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
-                        >
-                          <SelectPrimitive.Value />
-                          <SelectPrimitive.Icon>
-                            <ChevronDown className="h-4 w-4 text-slate-400" />
-                          </SelectPrimitive.Icon>
-                        </SelectPrimitive.Trigger>
-                        <SelectPrimitive.Portal>
-                          <SelectPrimitive.Content 
-                            className="z-50 min-w-[280px] max-h-60 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                            position="popper"
-                            sideOffset={4}
-                          >
-                            <SelectPrimitive.Viewport className="p-1 max-h-52 overflow-y-auto">
-                              {motivosTraslado.map((m) => (
-                                <SelectPrimitive.Item 
-                                  key={m}
-                                  value={m}
-                                  className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                                >
-                                  <SelectPrimitive.ItemText>{m}</SelectPrimitive.ItemText>
-                                </SelectPrimitive.Item>
-                              ))}
-                            </SelectPrimitive.Viewport>
-                          </SelectPrimitive.Content>
-                        </SelectPrimitive.Portal>
-                      </SelectPrimitive.Root>
-                    </Field>
-                  </div>
-
-                  <Field label="Ruta" htmlFor="guia-ruta">
-                    <Input
-                      id="guia-ruta"
-                      value={form.ruta}
-                      onChange={(event) => setForm((f) => ({ ...f, ruta: event.target.value }))}
-                      placeholder="Quito - Guayaquil"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
-                  </Field>
-                </div>
-
-                <Field label="Dirección de destino *" htmlFor="guia-dir">
-                  <Input
-                    id="guia-dir"
-                    value={form.direccion_destino}
-                    onChange={(event) => setForm((f) => ({ ...f, direccion_destino: event.target.value }))}
-                    placeholder="Av. 9 de Octubre 123"
-                    className="bg-white shadow-none placeholder:text-slate-300"
-                  />
-                </Field>
-              </div>
-
-              {/* SECCIÓN: Productos a transportar */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-3.5 w-3.5 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700">Productos a transportar</h3>
-                  </div>
-                  <Button type="button" variant="secondary" className="h-9 px-3" onClick={addDetalle}>
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    Agregar producto
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  {form.detalles.map((detalle, idx) => (
-                    <div key={idx} className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3 items-start">
-                      <div className="flex-[2] min-w-0">
-                        <Field label="Producto *" htmlFor={`guia-prod-${idx}`}>
-                          <SelectPrimitive.Root
-                            value={detalle.id_producto === 0 ? undefined : detalle.id_producto.toString()}
-                            onValueChange={(val) => {
-                              const id_producto = Number(val);
-                              const producto = productos.find((p) => p.id === id_producto);
-                              updateDetalle(idx, {
-                                id_producto,
-                                codigo: producto?.codigo || "",
-                                descripcion: producto?.descripcion || "",
-                              });
-                            }}
-                          >
-                            <SelectPrimitive.Trigger
-                              id={`guia-prod-${idx}`}
-                              className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
-                            >
-                              <SelectPrimitive.Value placeholder="Selecciona un producto..." className="truncate" />
-                              <SelectPrimitive.Icon>
-                                <ChevronDown className="h-4 w-4 text-slate-400" />
-                              </SelectPrimitive.Icon>
-                            </SelectPrimitive.Trigger>
-                            <SelectPrimitive.Portal>
-                              <SelectPrimitive.Content
-                                className="z-50 min-w-[320px] max-h-60 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                                position="popper"
-                                sideOffset={4}
-                              >
-                                <SelectPrimitive.Viewport className="p-1 max-h-52 overflow-y-auto">
-                                  {productos.map((p) => (
-                                    <SelectPrimitive.Item
-                                      key={p.id}
-                                      value={p.id.toString()}
-                                      className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                                    >
-                                      <SelectPrimitive.ItemText>{p.codigo} - {p.descripcion}</SelectPrimitive.ItemText>
-                                    </SelectPrimitive.Item>
-                                  ))}
-                                </SelectPrimitive.Viewport>
-                              </SelectPrimitive.Content>
-                            </SelectPrimitive.Portal>
-                          </SelectPrimitive.Root>
-                        </Field>
-                      </div>
-
-                      <div className="w-28 shrink-0">
-                        <Field label="Código" htmlFor={`guia-cod-${idx}`}>
-                          <Input
-                            id={`guia-cod-${idx}`}
-                            value={detalle.codigo}
-                            onChange={(event) => updateDetalle(idx, { codigo: event.target.value })}
-                            placeholder="P001"
-                            className="bg-white shadow-none placeholder:text-slate-300"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <Field label="Descripción" htmlFor={`guia-desc-${idx}`}>
-                          <Input
-                            id={`guia-desc-${idx}`}
-                            value={detalle.descripcion}
-                            onChange={(event) => updateDetalle(idx, { descripcion: event.target.value })}
-                            placeholder="Producto A"
-                            className="bg-white shadow-none placeholder:text-slate-300"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="w-24 shrink-0">
-                        <Field label="Cantidad" htmlFor={`guia-cant-${idx}`}>
-                          <Input
-                            id={`guia-cant-${idx}`}
-                            type="number"
-                            min={1}
-                            value={detalle.cantidad}
-                            onChange={(event) => updateDetalle(idx, { cantidad: Number(event.target.value) })}
-                            className="bg-white shadow-none"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="pt-6">
-                        <Button
-                          variant="ghost"
-                          className="h-9 w-9 p-0 text-rose-600 hover:bg-rose-50"
-                          onClick={() => removeDetalle(idx)}
-                          disabled={form.detalles.length === 1}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Botones de acción */}
-              <div className="flex justify-end gap-3 pt-2">
-                <Button 
-                  variant="secondary" 
-                  type="button" 
-                  onClick={closeModal}
-                  className="h-10 px-4"
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  onClick={handleSubmit}
-                  className="h-10 px-4"
-                >
-                  {editing ? "Guardar cambios" : "Crear guía"}
-                </Button>
-              </div>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>

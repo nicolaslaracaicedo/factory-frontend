@@ -30,9 +30,12 @@ export async function PATCH(
   const token = request.cookies.get("factory_token")?.value;
   const { id } = await params;
 
+  const bodyText = await request.text();
+
   const backendResponse = await fetch(`${API_URL}/api/recurrentes/${id}/estado`, {
     method: "PATCH",
-    headers: getAuthHeaders(token),
+    headers: { ...getAuthHeaders(token), ...(bodyText ? { "Content-Type": "application/json" } : {}) },
+    ...(bodyText ? { body: bodyText } : {}),
     cache: "no-store",
   });
 
