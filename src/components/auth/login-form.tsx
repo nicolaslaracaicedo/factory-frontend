@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -194,6 +195,22 @@ export function LoginForm() {
               {form.formState.isSubmitting ? "Ingresando..." : "Ingresar al sistema"}
             </Button>
           </form>
+
+          <div className="relative flex items-center gap-3">
+            <div className="flex-1 border-t border-slate-200" />
+            <span className="text-xs text-slate-400">o</span>
+            <div className="flex-1 border-t border-slate-200" />
+          </div>
+
+          <p className="text-center text-xs text-slate-500">
+            ¿No tienes cuenta?{" "}
+            <Link
+              href="/auth/register"
+              className="font-semibold text-sky-700 hover:text-sky-800 transition-colors"
+            >
+              Crear una cuenta
+            </Link>
+          </p>
         </div>
       </AuthShell>
     </>
