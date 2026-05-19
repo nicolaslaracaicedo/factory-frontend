@@ -51,6 +51,7 @@ import { useDashboardSection } from "@/src/components/dashboard/dashboard-sectio
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 import { ClientFormModal } from "@/src/components/clients/client-form-modal";
 import { ProductFormModal } from "@/src/components/products/product-form-modal";
+import { confirmAction } from "@/src/lib/confirm";
 
 const initialDetail = (): FacturaDetalleDraft => ({
   mode: "CATALOGO",
@@ -601,6 +602,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
   };
 
   const toggleEstado = async (factura: FacturaItem) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta factura?")) return;
     try {
       await invoiceService.toggleEstado(factura.id);
       await refresh();
@@ -636,6 +638,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
   };
 
   const deleteFactura = async (factura: FacturaItem) => {
+    if (!await confirmAction({ title: "Eliminar factura", message: "¿Estás seguro de que deseas eliminar esta factura? Esta acción no se puede deshacer.", confirmText: "Eliminar", destructive: true })) return;
     try {
       await invoiceService.deleteFactura(factura.id);
       await refresh();

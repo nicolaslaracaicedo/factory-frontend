@@ -36,6 +36,7 @@ import { emissionPointService } from "@/src/modules/emission-points/services/emi
 import { establishmentService } from "@/src/modules/establishments/services/establishment.service";
 import type { Establecimiento } from "@/src/modules/establishments/types/establishment.types";
 import { Loader } from "@/src/components/ui/loader";
+import { confirmAction } from "@/src/lib/confirm";
 
 const initialForm: PuntoEmisionFormInput = {
   id_establecimiento: 0,
@@ -316,6 +317,7 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
   };
 
   const toggleEstado = async (punto: PuntoEmision) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este punto de emisión?")) return;
     try {
       await emissionPointService.toggleEstado(punto.id);
       if (estFilter > 0) {

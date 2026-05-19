@@ -28,6 +28,7 @@ import {
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
 import { Switch } from "@/src/components/ui/switch";
+import { confirmAction } from "@/src/lib/confirm";
 import type {
   Producto,
   ProductoFormInput,
@@ -482,6 +483,8 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
   };
 
   const toggleActivo = async (producto: Producto) => {
+    const action = producto.estado === "ACTIVO" ? "desactivar" : "activar";
+    if (!await confirmAction(`¿Estás seguro de que deseas ${action} este producto?`)) return;
     try {
       await productService.toggleProductoActivo(producto.id, producto.estado ?? "ACTIVO");
       const estado = filter === "TODOS" ? undefined : filter;

@@ -47,6 +47,7 @@ import { ClientFormModal } from "@/src/components/clients/client-form-modal";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
+import { confirmAction } from "@/src/lib/confirm";
 
 const initialMotivo = (): NotaDebitoMotivoDraft => ({
   razon: "",
@@ -485,6 +486,7 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
   };
 
   const toggleEstado = async (nota: NotaDebitoItem) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta nota de débito?")) return;
     try {
       await debitNoteService.toggleEstado(nota.id);
       await refresh();
@@ -509,6 +511,7 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
   };
 
   const deleteNota = async (nota: NotaDebitoItem) => {
+    if (!await confirmAction({ title: "Eliminar nota de débito", message: "¿Estás seguro de que deseas eliminar esta nota de débito? Esta acción no se puede deshacer.", confirmText: "Eliminar", destructive: true })) return;
     try {
       await debitNoteService.deleteNota(nota.id);
       await refresh();

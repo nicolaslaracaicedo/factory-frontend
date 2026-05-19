@@ -76,6 +76,7 @@ import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 import { ClientFormModal } from "@/src/components/clients/client-form-modal";
+import { confirmAction } from "@/src/lib/confirm";
 
 interface RecurrenteDetalleDraft {
   id_producto?: number;
@@ -673,7 +674,7 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
   };
 
   const handleDelete = async (rec: RecurrenteItem) => {
-    if (!confirm(`¿Eliminar el recurrente "${rec.descripcion}"?`)) return;
+    if (!await confirmAction({ title: "Eliminar recurrente", message: `¿Estás seguro de que deseas eliminar el recurrente "${rec.descripcion}"? Esta acción no se puede deshacer.`, confirmText: "Eliminar", destructive: true })) return;
     try {
       await recurrentesService.deleteRecurrente(rec.id);
       toast.success("Recurrente eliminado");
@@ -684,8 +685,10 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
   };
 
   const handleToggleEstado = async (rec: RecurrenteItem) => {
+    const nuevoEstado = rec.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
+    const action = nuevoEstado === "ACTIVO" ? "activar" : "desactivar";
+    if (!await confirmAction(`¿Estás seguro de que deseas ${action} este recurrente?`)) return;
     try {
-      const nuevoEstado = rec.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
       await recurrentesService.cambiarEstado(rec.id, nuevoEstado);
       toast.success(`Recurrente ${nuevoEstado === "ACTIVO" ? "activado" : "desactivado"}`);
       const data = await recurrentesService.listRecurrentes(filterEstado || undefined);

@@ -27,6 +27,7 @@ import {
 } from "@/src/components/ui/dropdown-menu";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
+import { confirmAction } from "@/src/lib/confirm";
 import type {
   Proveedor,
   ProveedorFormInput,
@@ -317,6 +318,7 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
   };
 
   const toggleEstado = async (proveedor: Proveedor) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este proveedor?")) return;
     try {
       await providerService.toggleProveedorEstado(proveedor.id);
       const estado = filter === "TODOS" ? undefined : filter;

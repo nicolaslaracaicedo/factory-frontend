@@ -59,6 +59,7 @@ import { roleIdToName } from "@/src/modules/auth/utils/role.utils";
 import { Loader } from "@/src/components/ui/loader";
 import { emissionPointService } from "@/src/modules/emission-points/services/emission-point.service";
 import type { PuntoEmision } from "@/src/modules/emission-points/types/emission-point.types";
+import { confirmAction } from "@/src/lib/confirm";
 
 const initialForm: UsuarioFormInput = {
   id_rol: 0,
@@ -348,9 +349,11 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
   };
 
   const toggleEstado = async (usuario: UsuarioItem) => {
+    const current = usuario.estado?.toUpperCase() === "INACTIVO" ? "INACTIVO" : "ACTIVO";
+    const next = current === "ACTIVO" ? "INACTIVO" : "ACTIVO";
+    const action = next === "ACTIVO" ? "activar" : "desactivar";
+    if (!await confirmAction(`¿Estás seguro de que deseas ${action} este usuario?`)) return;
     try {
-      const current = usuario.estado?.toLowerCase() === "inactivo" ? "inactivo" : "activo";
-      const next = current === "activo" ? "inactivo" : "activo";
       await userService.toggleEstado(usuario.id, next);
       await refresh();
       toast.success("Estado actualizado.");

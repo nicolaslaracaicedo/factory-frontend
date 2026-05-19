@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, IBM_Plex_Mono, Roboto, Inter, Poppins } from "next/font/google";
 import { Toaster } from "sonner";
+import { AlertCircle, CheckCircle2, TriangleAlert, Info } from "lucide-react";
 import { CompanyThemeSync } from "@/src/components/company/company-theme-sync";
 import "./globals.css";
 
@@ -56,7 +57,22 @@ export default function RootLayout({
       <body className="m-0 min-h-full flex flex-col text-app-foreground">
         <CompanyThemeSync />
         {children}
-        <Toaster position="top-right" richColors />
+        <Toaster
+          position="bottom-right"
+          icons={{
+            success: <CheckCircle2 className="h-5 w-5 text-emerald-500" />,
+            error: <AlertCircle className="h-5 w-5 text-red-500" />,
+            warning: <TriangleAlert className="h-5 w-5 text-amber-500" />,
+            info: <Info className="h-5 w-5 text-blue-500" />,
+          }}
+          toastOptions={{
+            style: {
+              border: "none",
+              background: "white",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+            },
+          }}
+        />
       </body>
     </html>
   );

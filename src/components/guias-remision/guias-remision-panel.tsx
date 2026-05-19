@@ -71,6 +71,7 @@ import { Loader } from "@/src/components/ui/loader";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
+import { confirmAction } from "@/src/lib/confirm";
 
 interface GuiasRemisionPanelProps {
   showPanel?: boolean;
@@ -486,7 +487,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
   };
 
   const handleDelete = async (guia: GuiaRemisionItem) => {
-    if (!confirm(`¿Eliminar la guía ${guia.numero_comprobante || guia.id}?`)) return;
+    if (!await confirmAction({ title: "Eliminar guía de remisión", message: `¿Estás seguro de que deseas eliminar la guía ${guia.numero_comprobante || guia.id}? Esta acción no se puede deshacer.`, confirmText: "Eliminar", destructive: true })) return;
     try {
       await guiasRemisionService.deleteGuia(guia.id);
       toast.success("Guía eliminada");
@@ -497,6 +498,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
   };
 
   const handleToggleEstado = async (guia: GuiaRemisionItem) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta guía de remisión?")) return;
     try {
       await guiasRemisionService.toggleEstado(guia.id);
       toast.success("Estado actualizado");

@@ -271,7 +271,7 @@ export function LoginForm() {
           {/* Background image + overlay */}
           <div className="absolute inset-0 z-0">
             <img
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdRCnaCW6nwflVY6iPBgSz1yftfdF5mkmqm0iGC0eN_-cA5QZbIfEH2EM5R9pLKhsQ80pvnSoVo-IcZKmzqBKCmBcPyVEuV4QZ53_CS6BCcgaeXqupsfMIVTsf1d9073kkliQf9_LLOzsNxyqSPgGO_EBktBgMw1ycScelhDVre44YAAAUe9CwkggEuFKUDSZHAMsYKesjFcaUxuYaP3Icbkz22tkEeeY_UluM5y-HPoLpzyVCnfnoZdhiYzrafonRPrjwyhEBbks"
+              src="/fondo1-login.jpg"
               alt=""
               className="h-full w-full object-cover"
             />

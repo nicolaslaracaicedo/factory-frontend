@@ -70,6 +70,7 @@ import type { Producto } from "@/src/modules/products/types/product.types";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { Loader } from "@/src/components/ui/loader";
+import { confirmAction } from "@/src/lib/confirm";
 
 interface LiquidacionesCompraPanelProps {
   showPanel?: boolean;
@@ -441,7 +442,7 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
   };
 
   const handleDelete = async (liq: LiquidacionCompraItem) => {
-    if (!confirm(`¿Eliminar la liquidación ${liq.numero_comprobante || liq.id}?`)) return;
+    if (!await confirmAction({ title: "Eliminar liquidación", message: `¿Estás seguro de que deseas eliminar la liquidación ${liq.numero_comprobante || liq.id}? Esta acción no se puede deshacer.`, confirmText: "Eliminar", destructive: true })) return;
     try {
       await liquidacionesCompraService.deleteLiquidacion(liq.id);
       toast.success("Liquidación eliminada");
@@ -452,6 +453,7 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
   };
 
   const handleToggleEstado = async (liq: LiquidacionCompraItem) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta liquidación de compra?")) return;
     try {
       await liquidacionesCompraService.toggleEstado(liq.id);
       toast.success("Estado actualizado");

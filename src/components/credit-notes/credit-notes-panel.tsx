@@ -45,6 +45,7 @@ import { ClientFormModal } from "@/src/components/clients/client-form-modal";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
+import { confirmAction } from "@/src/lib/confirm";
 
 const initialDetail = (): NotaCreditoDetalleDraft => ({
   codigo: "",
@@ -641,6 +642,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
   };
 
   const toggleEstado = async (nota: NotaCreditoItem) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta nota de crédito?")) return;
     try {
       await creditNoteService.toggleEstado(nota.id);
       await refresh();
@@ -665,6 +667,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
   };
 
   const deleteNota = async (nota: NotaCreditoItem) => {
+    if (!await confirmAction({ title: "Eliminar nota de crédito", message: "¿Estás seguro de que deseas eliminar esta nota de crédito? Esta acción no se puede deshacer.", confirmText: "Eliminar", destructive: true })) return;
     try {
       await creditNoteService.deleteNota(nota.id);
       await refresh();

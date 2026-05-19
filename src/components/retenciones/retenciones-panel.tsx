@@ -42,6 +42,7 @@ import { Loader } from "@/src/components/ui/loader";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
+import { confirmAction } from "@/src/lib/confirm";
 
 const initialDetalle = (): RetencionDetalleDraft => ({
   tipo: "1",
@@ -479,7 +480,7 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
   };
 
   const handleDelete = async (retencion: RetencionItem) => {
-    if (!window.confirm("¿Eliminar esta retención? Solo se pueden eliminar borradores.")) return;
+    if (!await confirmAction({ title: "Eliminar retención", message: "¿Estás seguro de que deseas eliminar esta retención? Solo se pueden eliminar borradores.", confirmText: "Eliminar", destructive: true })) return;
     try {
       await retencionesService.deleteRetencion(retencion.id);
       toast.success("Retención eliminada");
@@ -490,6 +491,7 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
   };
 
   const handleToggleEstado = async (retencion: RetencionItem) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta retención?")) return;
     try {
       await retencionesService.toggleEstado(retencion.id);
       toast.success("Estado actualizado");

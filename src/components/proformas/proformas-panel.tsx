@@ -77,6 +77,7 @@ import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 import { ClientFormModal } from "@/src/components/clients/client-form-modal";
+import { confirmAction } from "@/src/lib/confirm";
 
 interface ProformaDetalleDraft {
   id_producto?: number;
@@ -639,7 +640,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
   };
 
   const handleDelete = async (prof: ProformaItem) => {
-    if (!confirm(`¿Eliminar la proforma ${prof.numero || prof.id}?`)) return;
+    if (!await confirmAction({ title: "Eliminar proforma", message: `¿Estás seguro de que deseas eliminar la proforma ${prof.numero || prof.id}? Esta acción no se puede deshacer.`, confirmText: "Eliminar", destructive: true })) return;
     try {
       await proformasService.deleteProforma(prof.id);
       toast.success("Proforma eliminada");
@@ -650,6 +651,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
   };
 
   const handleToggleEstado = async (prof: ProformaItem) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta proforma?")) return;
     try {
       await proformasService.toggleEstado(prof.id);
       toast.success("Estado actualizado");

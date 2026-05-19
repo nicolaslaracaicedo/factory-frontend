@@ -37,6 +37,7 @@ import type { PuntoEmision } from "@/src/modules/emission-points/types/emission-
 import { ambienteService } from "@/src/modules/ambiente/services/ambiente.service";
 import type { AmbienteItem } from "@/src/modules/ambiente/types/ambiente.types";
 import { Loader } from "@/src/components/ui/loader";
+import { confirmAction } from "@/src/lib/confirm";
 
 const initialForm: SecuencialFormInput = {
   id_punto_emision: 0,
@@ -343,6 +344,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
   };
 
   const toggleEstado = async (item: SecuencialItem) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este secuencial?")) return;
     try {
       await secuencialesService.toggleEstado(item.id);
       await reloadSecuenciales();

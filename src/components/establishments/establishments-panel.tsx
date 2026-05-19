@@ -35,6 +35,7 @@ import type {
 import { toEstablecimientoFormInput } from "@/src/modules/establishments/utils/establishment-payload.utils";
 import { establishmentService } from "@/src/modules/establishments/services/establishment.service";
 import { Loader } from "@/src/components/ui/loader";
+import { confirmAction } from "@/src/lib/confirm";
 
 const initialForm: EstablecimientoFormInput = {
   codigo: "",
@@ -293,6 +294,7 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
   };
 
   const toggleEstado = async (establecimiento: Establecimiento) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este establecimiento?")) return;
     try {
       await establishmentService.toggleEstado(establecimiento.id);
       const estado = filter === "TODOS" ? undefined : filter;

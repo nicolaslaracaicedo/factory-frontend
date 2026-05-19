@@ -26,6 +26,7 @@ import {
 } from "@/src/components/ui/dropdown-menu";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
+import { confirmAction } from "@/src/lib/confirm";
 import type {
   GrupoProducto,
   GrupoProductoFormInput,
@@ -235,6 +236,7 @@ export function ProductGroupsPanel({ showPanel = true }: ProductGroupsPanelProps
   };
 
   const toggleEstado = async (grupo: GrupoProducto) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este grupo?")) return;
     try {
       await productGroupService.toggleGrupoEstado(grupo.id);
       const estado = filter === "TODOS" ? undefined : filter;

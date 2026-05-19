@@ -79,6 +79,7 @@ import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 import { ClientFormModal } from "@/src/components/clients/client-form-modal";
+import { confirmAction } from "@/src/lib/confirm";
 
 interface DetalleDraft {
   mode: "CATALOGO" | "MANUAL";
@@ -709,7 +710,7 @@ export function NotasVentaPanel({ showPanel = true }: NotasVentaPanelProps) {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Está seguro de eliminar esta nota de venta?")) return;
+    if (!await confirmAction({ title: "Eliminar nota de venta", message: "¿Estás seguro de que deseas eliminar esta nota de venta? Esta acción no se puede deshacer.", confirmText: "Eliminar", destructive: true })) return;
 
     try {
       await notasVentaService.deleteNotaVenta(id);

@@ -27,6 +27,7 @@ import type { Cliente } from "@/src/modules/clients/types/client.types";
 import { clientService } from "@/src/modules/clients/services/client.service";
 import { Loader } from "@/src/components/ui/loader";
 import { ClientFormModal } from "@/src/components/clients/client-form-modal";
+import { confirmAction } from "@/src/lib/confirm";
 
 const tipoIdentificacionOptions = [
   { value: "05", label: "05 - Cedula" },
@@ -242,6 +243,7 @@ export function ClientsPanel({ showPanel = true }: ClientsPanelProps) {
   };
 
   const toggleEstado = async (cliente: Cliente) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este cliente?")) return;
     try {
       await clientService.toggleClienteEstado(cliente.id);
       const estado = filter === "TODOS" ? undefined : filter;

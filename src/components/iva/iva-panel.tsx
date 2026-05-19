@@ -26,6 +26,7 @@ import {
 } from "@/src/components/ui/dropdown-menu";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
+import { confirmAction } from "@/src/lib/confirm";
 import type {
   CodigoIva,
   CodigoIvaFormInput,
@@ -258,6 +259,7 @@ export function IvaPanel({ showPanel = true }: IvaPanelProps) {
   };
 
   const toggleActivo = async (codigo: CodigoIva) => {
+    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este código de IVA?")) return;
     try {
       await ivaService.toggleActivo(codigo.id);
       const activo = filter === "TODOS" ? undefined : filter === "ACTIVO";
