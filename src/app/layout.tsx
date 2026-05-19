@@ -50,7 +50,10 @@ export default function RootLayout({
       lang="es"
       className={`${manrope.variable} ${ibmPlexMono.variable} ${roboto.variable} ${inter.variable} ${poppins.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-app-background text-app-foreground">
+      <head>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,0..1&display=swap" />
+      </head>
+      <body className="m-0 min-h-full flex flex-col text-app-foreground">
         <CompanyThemeSync />
         {children}
         <Toaster position="top-right" richColors />

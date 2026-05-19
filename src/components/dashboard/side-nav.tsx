@@ -68,12 +68,21 @@ export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {
   const [company, setCompany] = useState<Company | null>(null);
 
   useEffect(() => {
+    // Cargar caché inmediatamente para mostrar el logo sin esperar a la API
+    const cached = localStorage.getItem("factory_company_cache");
+    if (cached) {
+      try {
+        setCompany(JSON.parse(cached));
+      } catch {}
+    }
+
     const loadCompany = async () => {
       try {
         const response = await companyService.getCompany();
         setCompany(response);
+        localStorage.setItem("factory_company_cache", JSON.stringify(response));
       } catch {
-        setCompany(null);
+        if (!cached) setCompany(null);
       }
     };
 

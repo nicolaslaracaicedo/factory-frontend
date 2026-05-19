@@ -26,9 +26,22 @@
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-app-sans), sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Table headers always lowercase */
@@ -465,8 +478,8 @@ table thead th:first-letter {
 }
 
 #cbx:checked ~ .cbx {
-  border-color: transparent;
-  background: #6871f1;
+  border-color: transparent !important;
+  background: #00517c !important;
   animation: jelly 0.6s ease;
 }
 
@@ -505,4 +518,8 @@ table thead th:first-letter {
 
 .hidden-xs-up {
   display: none !important;
+}
+
+.fill-icon {
+  font-variation-settings: 'FILL' 1;
 }

@@ -10,7 +10,7 @@ interface AuthShellProps {
 
 export function AuthShell({ title, subtitle, children, footer }: AuthShellProps) {
   return (
-    <section className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl lg:grid-cols-[3fr_2fr]">
+    <section className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-xl lg:grid-cols-[3fr_2fr]">
       <div className="hidden bg-gradient-to-br from-sky-900 via-sky-700 to-sky-500 p-10 text-sky-50 lg:flex lg:flex-col lg:justify-center lg:gap-10">
         <div>
           <h1 className="text-4xl font-bold leading-tight">

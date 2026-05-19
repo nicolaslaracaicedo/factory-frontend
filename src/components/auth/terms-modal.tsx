@@ -4,9 +4,10 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X, FileText } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 
+import { useState, useRef, useEffect } from "react";
+
 interface TermsModalProps {
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  onAccept?: () => void;
 }
 
 const sections = [
@@ -67,17 +68,49 @@ const sections = [
   },
 ];
 
-export function TermsModal({ open, onOpenChange }: TermsModalProps) {
+export function TermsModal({ onAccept }: TermsModalProps) {
+  const [open, setOpen] = useState(false);
+  const [canAccept, setCanAccept] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = () => {
+    if (!contentRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
+    if (scrollTop + clientHeight >= scrollHeight - 20) {
+      setCanAccept(true);
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => {
+        if (contentRef.current) {
+          const { scrollHeight, clientHeight } = contentRef.current;
+          setCanAccept(scrollHeight <= clientHeight + 10);
+        }
+      }, 50);
+    }
+  }, [open]);
+
+  const handleAccept = () => {
+    if (!canAccept) return;
+    if (onAccept) onAccept();
+    setOpen(false);
+  };
+
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <span className="cursor-pointer font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-800 transition-colors">
+        <span className="cursor-pointer font-semibold text-[#006591] underline underline-offset-2 hover:text-[#003959] transition-colors">
           Términos y Condiciones
         </span>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,800px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <Dialog.Content 
+          onPointerDownOutside={(e) => e.preventDefault()}
+          className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,800px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        >
           <div className="bg-slate-100 border-b border-slate-200 px-6 py-5 shrink-0">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
@@ -102,7 +135,11 @@ export function TermsModal({ open, onOpenChange }: TermsModalProps) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          <div 
+            ref={contentRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto px-6 py-5 space-y-5"
+          >
             {sections.map((section, index) => (
               <section key={index}>
                 <div className="flex items-start gap-3">
@@ -132,12 +169,19 @@ export function TermsModal({ open, onOpenChange }: TermsModalProps) {
             ))}
           </div>
 
-          <div className="border-t border-slate-200 px-6 py-4 flex justify-end shrink-0">
+          <div className="border-t border-slate-200 px-6 py-4 flex justify-end gap-3 shrink-0">
             <Dialog.Close asChild>
               <Button variant="secondary" className="h-9 px-5">
-                Cerrar
+                Cancelar
               </Button>
             </Dialog.Close>
+            <Button 
+              onClick={handleAccept} 
+              disabled={!canAccept}
+              className="h-9 px-5 bg-[#0EA5E9] hover:bg-[#0284c7] text-white disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
+            >
+              Aceptar términos
+            </Button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

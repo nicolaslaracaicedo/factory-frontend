@@ -62,4 +62,30 @@ export const authService = {
       method: "POST",
     });
   },
+
+  async solicitarRecuperacion(data: { ruc: string; cedula: string }): Promise<{ success: boolean; message: string }> {
+    const response = await fetch("/api/auth/solicitar-recuperacion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.message || "No se pudo solicitar la recuperación.");
+    }
+    return payload;
+  },
+
+  async restablecerContrasena(data: { ruc: string; cedula: string; codigo: string; nuevaContrasena: string; confirmarContrasena: string }): Promise<{ success: boolean; message: string }> {
+    const response = await fetch("/api/auth/restablecer-contrasena", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.message || "No se pudo restablecer la contraseña.");
+    }
+    return payload;
+  },
 };
