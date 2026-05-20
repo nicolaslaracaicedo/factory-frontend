@@ -83,10 +83,16 @@ function ToggleField({ name, label, description, checked, onChange }: ToggleProp
 const wizardTotalSteps = 4;
 const fontOptions = ["Manrope", "Roboto", "Inter", "Poppins"] as const;
 const regimenOptions = [
-  "GENERAL",
-  "RIMPE_NEGOCIO_POPULAR",
-  "RIMPE_EMPRENDEDOR",
+  { value: "GENERAL", label: "General" },
+  { value: "RIMPE_NEGOCIO", label: "RIMPE Negocio Popular" },
+  { value: "RIMPE_EMPRENDEDOR", label: "RIMPE Emprendedor" },
 ] as const;
+
+const regimenLabelMap: Record<string, string> = {
+  GENERAL: "General",
+  RIMPE_NEGOCIO: "RIMPE Negocio Popular",
+  RIMPE_EMPRENDEDOR: "RIMPE Emprendedor",
+};
 const ambienteOptions = [
   { value: 1, label: "Pruebas" },
   { value: 2, label: "Producción" },
@@ -205,7 +211,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
       } as CompanyFormInput;
 
       if (name === "rimpe" && value) {
-        nextState.regimen = "RIMPE_NEGOCIO_POPULAR";
+        nextState.regimen = "RIMPE_NEGOCIO";
       }
 
       if (name === "rimpe" && !value) {
@@ -234,7 +240,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
       regimen: form.rimpe
         ? form.regimen.startsWith("RIMPE")
           ? form.regimen
-          : "RIMPE_NEGOCIO_POPULAR"
+          : "RIMPE_NEGOCIO"
         : "GENERAL",
       nro_contribuyente_esp: form.contribuyente_especial
         ? form.nro_contribuyente_esp
@@ -426,7 +432,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-slate-500 uppercase">Régimen</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.regimen?.replace(/_/g, " ") || "-"}</p>
+                        <p className="text-sm font-medium text-slate-800 mt-0.5">{regimenLabelMap[company.regimen ?? ""] || company.regimen?.replace(/_/g, " ") || "-"}</p>
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-slate-500 uppercase">RIMPE</p>
@@ -675,43 +681,26 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
                         <h3 className="text-sm font-semibold text-slate-700">Configuración fiscal</h3>
                       </div>
 
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label="Régimen" htmlFor="regimen">
-                          <SelectPrimitive.Root
-                            value={form.regimen}
-                            onValueChange={(val) => updateField("regimen", val)}
-                            disabled={form.rimpe}
-                          >
-                            <SelectPrimitive.Trigger
-                              id="regimen"
-                              className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                            >
-                              <SelectPrimitive.Value placeholder="Selecciona régimen..." />
-                              <SelectPrimitive.Icon>
-                                <ChevronDown className="h-4 w-4 text-slate-400" />
-                              </SelectPrimitive.Icon>
-                            </SelectPrimitive.Trigger>
-                            <SelectPrimitive.Portal>
-                              <SelectPrimitive.Content
-                                className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                                position="popper"
-                                sideOffset={4}
+                      <div className="grid gap-4">
+                        <Field label="Régimen" htmlFor="">
+                          <div className="flex flex-nowrap whitespace-nowrap rounded-lg bg-white p-1 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] w-full text-sm">
+                            {regimenOptions.map((option) => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => updateField("regimen", option.value)}
+                                className={`flex-1 text-center cursor-pointer rounded-lg border-none py-2 transition-all duration-150 ease-in-out ${
+                                  form.regimen === option.value
+                                    ? "bg-app-primary text-white font-semibold"
+                                    : "bg-transparent text-slate-700"
+                                }`}
                               >
-                                <SelectPrimitive.Viewport className="p-1">
-                                  {regimenOptions.map((regimen) => (
-                                    <SelectPrimitive.Item
-                                      key={regimen}
-                                      value={regimen}
-                                      className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                                    >
-                                      <SelectPrimitive.ItemText>{regimen.replace(/_/g, " ")}</SelectPrimitive.ItemText>
-                                    </SelectPrimitive.Item>
-                                  ))}
-                                </SelectPrimitive.Viewport>
-                              </SelectPrimitive.Content>
-                            </SelectPrimitive.Portal>
-                          </SelectPrimitive.Root>
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
                         </Field>
+
                       </div>
 
                       <div className="space-y-3">
@@ -731,12 +720,6 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <ToggleField
-                            name="rimpe"
-                            label="RIMPE"
-                            checked={form.rimpe}
-                            onChange={updateToggle}
-                          />
                           <ToggleField
                             name="contribuyente_especial"
                             label="Contribuyente especial"
@@ -1214,41 +1197,23 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
 
               {wizardStep === 3 ? (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Régimen" htmlFor="wizard-regimen">
-                    <SelectPrimitive.Root
-                      value={form.regimen}
-                      onValueChange={(val: string) => updateField("regimen", val)}
-                      disabled={form.rimpe}
-                    >
-                      <SelectPrimitive.Trigger
-                        id="wizard-regimen"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                      >
-                        <SelectPrimitive.Value placeholder="Selecciona régimen..." />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content
-                          className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
+                  <Field label="Régimen" htmlFor="">
+                    <div className="flex flex-nowrap whitespace-nowrap rounded-lg bg-white p-1 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] w-full text-sm">
+                      {regimenOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => updateField("regimen", option.value)}
+                          className={`flex-1 text-center cursor-pointer rounded-lg border-none py-2 transition-all duration-150 ease-in-out ${
+                            form.regimen === option.value
+                              ? "bg-app-primary text-white font-semibold"
+                              : "bg-transparent text-slate-700"
+                          }`}
                         >
-                          <SelectPrimitive.Viewport className="p-1">
-                            {regimenOptions.map((regimen) => (
-                              <SelectPrimitive.Item
-                                key={regimen}
-                                value={regimen}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{regimen.replace(/_/g, " ")}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </Field>
 
                   <Field label="Fuente principal" htmlFor="wizard-fuente-principal">
@@ -1359,12 +1324,6 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
                       name="agente_retencion"
                       label="Agente de retención"
                       checked={form.agente_retencion}
-                      onChange={updateToggle}
-                    />
-                    <ToggleField
-                      name="rimpe"
-                      label="RIMPE"
-                      checked={form.rimpe}
                       onChange={updateToggle}
                     />
                   </div>

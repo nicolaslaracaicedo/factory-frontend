@@ -146,14 +146,16 @@ export function TopNavbar({
               <DropdownMenu.Separator className="my-1 h-px bg-slate-200" />
 
               <DropdownMenu.Item
-                className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-rose-600 outline-none transition-colors hover:bg-rose-50"
+                className="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] font-semibold text-rose-600 outline-none transition-colors hover:bg-rose-50"
                 onSelect={async (event) => {
                   event.preventDefault();
                   await onLogout();
                 }}
               >
-                <LogOut className="h-4 w-4" />
-                Cerrar sesión
+                <span className="rounded-md p-[3px] bg-rose-100 text-rose-600">
+                  <LogOut className="h-4 w-4" />
+                </span>
+                <span>Cerrar sesión</span>
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>

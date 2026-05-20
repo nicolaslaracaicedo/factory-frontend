@@ -344,6 +344,10 @@ export function NotasVentaPanel({ showPanel = true }: NotasVentaPanelProps) {
                 )}
                 {n.estado === "AUTORIZADO" && (
                   <>
+                    <DropdownMenuItem onClick={() => viewEmissionInfo(n)} className="text-emerald-600 focus:bg-emerald-50 focus:text-emerald-700 font-medium">
+                      <FileCheck size={14} className="mr-2" />
+                      Ver autorización
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => window.open(`/api/notas-venta/${n.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700 font-medium">
                       <FileText size={14} className="mr-2" />
                       Nota PDF
@@ -751,6 +755,11 @@ export function NotasVentaPanel({ showPanel = true }: NotasVentaPanelProps) {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al emitir");
     }
+  };
+
+  const viewEmissionInfo = (nota: NotaVentaItem) => {
+    setEmissionData(nota);
+    setEmissionInfoOpen(true);
   };
 
   const refresh = async () => {
@@ -1657,14 +1666,14 @@ export function NotasVentaPanel({ showPanel = true }: NotasVentaPanelProps) {
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
           <Dialog.Content 
-            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,760px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
             onPointerDownOutside={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
           >
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 shrink-0">
-                  <FileCheck className="h-6 w-6" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                  <FileCheck className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -1677,63 +1686,90 @@ export function NotasVentaPanel({ showPanel = true }: NotasVentaPanelProps) {
               </div>
             </div>
 
-            <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
               {emissionData && (
-                <>
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-sm font-semibold text-emerald-800">Clave de acceso</span>
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          navigator.clipboard.writeText(emissionData.clave_acceso || "");
-                          toast.success("Clave de acceso copiada.");
-                        }}
-                        disabled={!emissionData.clave_acceso}
-                        className="h-8 px-3 text-xs"
-                      >
-                        <Copy className="mr-1.5 h-3.5 w-3.5" />
-                        Copiar
-                      </Button>
-                    </div>
-                    <p className="break-all font-mono text-xs text-emerald-700">
-                      {emissionData.clave_acceso || "No disponible"}
-                    </p>
-                  </div>
-
+                <div className="space-y-4">
                   <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                     <div className="flex items-center gap-2">
                       <FileCheck className="h-3.5 w-3.5 text-slate-500" />
-                      <h3 className="text-sm font-semibold text-slate-700">Información SRI</h3>
+                      <h3 className="text-sm font-semibold text-slate-700">Autorización SRI</h3>
                     </div>
                     <dl className="grid gap-4 text-sm sm:grid-cols-2">
-                      {emissionData.numero_autorizacion ? (
-                        <div className="rounded-lg bg-white/80 px-3 py-2">
-                          <dt className="text-xs font-semibold text-slate-500">N° Autorización</dt>
-                          <dd className="mt-2 text-sm font-semibold text-slate-800">{emissionData.numero_autorizacion}</dd>
-                        </div>
-                      ) : null}
-                      {emissionData.fecha_autorizacion ? (
-                        <div className="rounded-lg bg-white/80 px-3 py-2">
-                          <dt className="text-xs font-semibold text-slate-500">Fecha autorización</dt>
-                          <dd className="mt-2 text-sm font-semibold text-slate-800">
-                            {new Date(emissionData.fecha_autorizacion).toLocaleDateString("es-EC", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </dd>
-                        </div>
-                      ) : null}
+                      <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                        <dt className="text-xs font-semibold text-slate-500">N° Comprobante</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {emissionData.numero_comprobante || "-"}
+                        </dd>
+                      </div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Estado</dt>
+                        <dd className="mt-2">
+                          <span className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">
+                            {emissionData.estado || "AUTORIZADO"}
+                          </span>
+                        </dd>
+                      </div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <dt className="text-xs font-semibold text-slate-500">Fecha de autorización</dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-800">
+                          {emissionData.fecha_autorizacion
+                            ? new Date(emissionData.fecha_autorizacion).toLocaleDateString("es-EC", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "-"}
+                        </dd>
+                      </div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                        <dt className="text-xs font-semibold text-slate-500">Clave de acceso</dt>
+                        <dd className="mt-2 flex items-center gap-2">
+                          <span className="text-xs font-mono font-semibold text-slate-800 break-all flex-1">
+                            {emissionData.clave_acceso || "No disponible"}
+                          </span>
+                          {emissionData.clave_acceso && (
+                            <button
+                              type="button"
+                              onClick={() => { navigator.clipboard.writeText(emissionData.clave_acceso ?? ""); toast.success("Clave copiada."); }}
+                              className="shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                              title="Copiar clave de acceso"
+                            >
+                              <Copy size={12} />
+                            </button>
+                          )}
+                        </dd>
+                      </div>
                     </dl>
                   </div>
-                </>
+
+                  {emissionData.pdf_url && (
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Documento PDF</h3>
+                      </div>
+                      <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                        <div className="rounded-lg bg-white/80 px-3 py-2 sm:col-span-2">
+                          <a
+                            href={emissionData.pdf_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 hover:text-sky-700"
+                          >
+                            <Printer className="h-4 w-4" />
+                            Descargar PDF
+                          </a>
+                        </div>
+                      </dl>
+                    </div>
+                  )}
+                </div>
               )}
 
-              <div className="flex justify-end pt-2">
-                <Button variant="secondary" type="button" onClick={() => setEmissionInfoOpen(false)} className="h-10 px-4">
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="secondary" type="button" onClick={() => setEmissionInfoOpen(false)}>
                   Cerrar
                 </Button>
               </div>

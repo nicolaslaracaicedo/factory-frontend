@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LayoutGrid } from "lucide-react";
 import { ModuleCard } from "@/src/components/dashboard/module-card";
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
@@ -62,13 +63,59 @@ function RoleDashboardContent({
   const config = roleDashboardConfig[role];
   const sidebarGroups = roleSidebarItems[role];
   const navbarGroups = roleNavbarItems[role];
-  const [activeSection, setActiveSection] = useState("dashboard");
   const { headerVisible } = useBreadcrumbs();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchString = searchParams.toString();
+
+  const allItems = useMemo(() => {
+    return [...sidebarGroups, ...navbarGroups].flatMap((group) => group.items);
+  }, [navbarGroups, sidebarGroups]);
+
+  const validSections = useMemo(() => {
+    return new Set(["dashboard", ...allItems.map((item) => item.key)]);
+  }, [allItems]);
+
+  const activeSection = useMemo(() => {
+    const sectionParam = new URLSearchParams(searchString).get("section");
+    if (sectionParam && validSections.has(sectionParam)) {
+      return sectionParam;
+    }
+    return "dashboard";
+  }, [searchString, validSections]);
+
+  const setActiveSection = useCallback((section: string) => {
+    const nextSection = validSections.has(section) ? section : "dashboard";
+    const currentParam = new URLSearchParams(searchString).get("section");
+    if (nextSection === activeSection) {
+      if (nextSection === "dashboard" && !currentParam) return;
+      if (currentParam === nextSection) return;
+    }
+
+    const params = new URLSearchParams(searchString);
+    if (nextSection === "dashboard") {
+      params.delete("section");
+    } else {
+      params.set("section", nextSection);
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [activeSection, pathname, router, searchString, validSections]);
+
+  useEffect(() => {
+    const sectionParam = new URLSearchParams(searchString).get("section");
+    if (sectionParam && !validSections.has(sectionParam)) {
+      const params = new URLSearchParams(searchString);
+      params.delete("section");
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    }
+  }, [pathname, router, searchString, validSections]);
 
   const activeItem = useMemo(() => {
-    const allItems = [...sidebarGroups, ...navbarGroups].flatMap((group) => group.items);
     return allItems.find((item) => item.key === activeSection) ?? allItems[0];
-  }, [activeSection, navbarGroups, sidebarGroups]);
+  }, [activeSection, allItems]);
 
   const ActiveIcon = iconByKey[activeSection] ?? LayoutGrid;
   const breadcrumbs = activeSection === "dashboard"
