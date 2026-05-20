@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Edit, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Building2, MapPin, Tag, Star, Eye } from "lucide-react";
+import { Edit, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Store, MapPin, Tag, Star, Eye } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -151,7 +151,7 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
       ),
       cell: ({ row }) => (
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
             row.original.es_matriz
               ? "bg-sky-100 text-sky-700"
               : "bg-slate-100 text-slate-600"
@@ -174,7 +174,7 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
       ),
       cell: ({ row }) => (
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
             row.original.estado === "INACTIVO"
               ? "bg-rose-100 text-rose-700"
               : "bg-emerald-100 text-emerald-700"
@@ -200,16 +200,17 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => openEdit(row.original)}>
                 <Edit size={14} className="mr-2" />
                 Editar
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => toggleEstado(row.original)}>
-                <Power size={14} className="mr-2" />
-                {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
+                  <Power size={14} className="mr-2" />
+                  {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+                </DropdownMenuItem>
+              </>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -294,7 +295,7 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
   };
 
   const toggleEstado = async (establecimiento: Establecimiento) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este establecimiento?")) return;
+    if (!await confirmAction({ message: "¿Estás seguro de que deseas cambiar el estado de este establecimiento?", variant: "warning" })) return;
     try {
       await establishmentService.toggleEstado(establecimiento.id);
       const estado = filter === "TODOS" ? undefined : filter;
@@ -373,7 +374,7 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
                 <SelectPrimitive.Viewport className="p-1">
                   {estadoFilters.map((estado) => (
                     <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado.charAt(0) + estado.slice(1).toLowerCase()}</SelectPrimitive.ItemText>
                     </SelectPrimitive.Item>
                   ))}
                 </SelectPrimitive.Viewport>
@@ -494,7 +495,7 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Building2 className="h-6 w-6 text-app-primary" />
+                  <Store className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -602,7 +603,7 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Building2 className="h-6 w-6 text-app-primary" />
+                  <Store className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -619,7 +620,7 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
               <div className="space-y-4">
                 <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                   <div className="flex items-center gap-2">
-                    <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                    <Store className="h-3.5 w-3.5 text-slate-500" />
                     <h3 className="text-sm font-semibold text-slate-700">Información del establecimiento</h3>
                   </div>
                   <dl className="grid gap-4 text-sm sm:grid-cols-2">
@@ -645,7 +646,7 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
                       <dt className="text-xs font-semibold text-slate-500">Estado</dt>
                       <dd className="mt-2">
                         <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
                             detailData?.estado === "INACTIVO"
                               ? "bg-rose-100 text-rose-700"
                               : "bg-emerald-100 text-emerald-700"
@@ -659,7 +660,7 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
                       <dt className="text-xs font-semibold text-slate-500">Es matriz</dt>
                       <dd className="mt-2">
                         <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
                             detailData?.es_matriz
                               ? "bg-sky-100 text-sky-700"
                               : "bg-slate-100 text-slate-600"

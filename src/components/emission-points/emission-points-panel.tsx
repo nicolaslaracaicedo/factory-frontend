@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Edit, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Radio, Building2, Tag, Hash, Eye } from "lucide-react";
+import { Edit, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, MapPinHouse, Building2, Tag, Hash, Eye } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -58,7 +58,7 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
   const [loading, setLoading] = useState(true);
   const [loadingEst, setLoadingEst] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState<EstadoFiltro>("ACTIVO");
+  const [filter, setFilter] = useState<EstadoFiltro>("TODOS");
   const [modalOpen, setModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailData, setDetailData] = useState<PuntoEmision | null>(null);
@@ -194,7 +194,7 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
       ),
       cell: ({ row }) => (
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
             row.original.estado === "INACTIVO"
               ? "bg-rose-100 text-rose-700"
               : "bg-emerald-100 text-emerald-700"
@@ -220,16 +220,17 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => openEdit(row.original)}>
                 <Edit size={14} className="mr-2" />
                 Editar
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => toggleEstado(row.original)}>
-                <Power size={14} className="mr-2" />
-                {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
+                  <Power size={14} className="mr-2" />
+                  {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+                </DropdownMenuItem>
+              </>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -317,7 +318,7 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
   };
 
   const toggleEstado = async (punto: PuntoEmision) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este punto de emisión?")) return;
+    if (!await confirmAction({ message: "¿Estás seguro de que deseas cambiar el estado de este punto de emisión?", variant: "warning" })) return;
     try {
       await emissionPointService.toggleEstado(punto.id);
       if (estFilter > 0) {
@@ -403,7 +404,7 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
                 <SelectPrimitive.Viewport className="p-1">
                   {estadoFilters.map((estado) => (
                     <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado.charAt(0) + estado.slice(1).toLowerCase()}</SelectPrimitive.ItemText>
                     </SelectPrimitive.Item>
                   ))}
                 </SelectPrimitive.Viewport>
@@ -547,12 +548,12 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
             {/* Header con icono y título */}
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Radio className="h-6 w-6 text-app-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Dialog.Title className="text-xl font-semibold text-slate-900">
-                    {editing ? "Editar punto de emisión" : "Crear nuevo punto de emisión"}
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                <MapPinHouse className="h-6 w-6 text-app-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <Dialog.Title className="text-xl font-semibold text-slate-900">
+                  {editing ? "Editar punto de emisión" : "Crear nuevo punto de emisión"}
                   </Dialog.Title>
                   <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
                     {editing
@@ -668,12 +669,12 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
           >
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Radio className="h-6 w-6 text-app-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Dialog.Title className="text-xl font-semibold text-slate-900">
-                    Detalle del punto de emisión
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                <MapPinHouse className="h-6 w-6 text-app-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <Dialog.Title className="text-xl font-semibold text-slate-900">
+                  Detalle del punto de emisión
                   </Dialog.Title>
                   <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
                     Información registrada del punto de emisión.
@@ -686,7 +687,7 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
               <div className="space-y-4">
                 <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                   <div className="flex items-center gap-2">
-                    <Radio className="h-3.5 w-3.5 text-slate-500" />
+                    <MapPinHouse className="h-3.5 w-3.5 text-slate-500" />
                     <h3 className="text-sm font-semibold text-slate-700">Información del punto</h3>
                   </div>
                   <dl className="grid gap-4 text-sm sm:grid-cols-2">
@@ -712,7 +713,7 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
                       <dt className="text-xs font-semibold text-slate-500">Estado</dt>
                       <dd className="mt-2">
                         <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
                             detailData?.estado === "INACTIVO"
                               ? "bg-rose-100 text-rose-700"
                               : "bg-emerald-100 text-emerald-700"

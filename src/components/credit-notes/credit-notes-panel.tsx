@@ -79,14 +79,15 @@ const initialForm: NotaCreditoFormState = {
   detalles: [initialDetail()],
 };
 
-const estadoFilters = ["TODOS", "BORRADOR", "AUTORIZADO", "RECHAZADA", "INACTIVO"] as const;
+const estadoFilters = ["TODOS", "BORRADOR", "ENVIADO", "AUTORIZADO", "RECHAZADA", "ANULADA"] as const;
 
 const getEstadoColor = (estado?: string) => {
   switch (estado?.toUpperCase()) {
     case "AUTORIZADO": return "bg-emerald-100 text-emerald-700";
     case "RECHAZADA": return "bg-rose-100 text-rose-700";
     case "BORRADOR": return "bg-amber-100 text-amber-700";
-    case "INACTIVO": return "bg-rose-100 text-rose-700";
+    case "ENVIADO": return "bg-blue-100 text-blue-700";
+    case "ANULADA": return "bg-slate-100 text-slate-600";
     default: return "bg-sky-100 text-sky-700";
   }
 };
@@ -201,7 +202,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getEstadoColor(row.original.estado)}`}>
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getEstadoColor(row.original.estado)}`}>
           {row.original.estado || "BORRADOR"}
         </span>
       ),
@@ -223,29 +224,13 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                 Ver
               </DropdownMenuItem>
               {row.original.estado?.toUpperCase() === "BORRADOR" && (
-                <>
-                  <DropdownMenuItem onClick={() => openEdit(row.original)}>
-                    <Edit size={14} className="mr-2" />
-                    Editar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => deleteNota(row.original)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700">
-                    <Trash2 size={14} className="mr-2" />
-                    Eliminar
-                  </DropdownMenuItem>
-                </>
-              )}
-              {row.original.estado?.toUpperCase() !== "AUTORIZADO" && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => emitirNota(row.original)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium">
-                    <Send size={14} className="mr-2" />
-                    Emitir
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                  <Edit size={14} className="mr-2" />
+                  Editar
+                </DropdownMenuItem>
               )}
               {row.original.estado?.toUpperCase() === "AUTORIZADO" && (
                 <>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => window.open(`/api/notas-credito/${row.original.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700 font-medium">
                     <FileText size={14} className="mr-2" />
                     Descargar PDF
@@ -253,6 +238,25 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                   <DropdownMenuItem onClick={() => window.open(`/api/notas-credito/${row.original.id}/recibo`, '_blank')} className="text-teal-600 focus:bg-teal-50 focus:text-teal-700 font-medium">
                     <Printer size={14} className="mr-2" />
                     Imprimir Recibo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAnular(row.original)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
+                    <X size={14} className="mr-2" />
+                    Anular
+                  </DropdownMenuItem>
+                </>
+              )}
+              {row.original.estado?.toUpperCase() !== "AUTORIZADO" && row.original.estado?.toUpperCase() !== "ANULADA" && (
+                <DropdownMenuItem onClick={() => emitirNota(row.original)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium">
+                  <Send size={14} className="mr-2" />
+                  Emitir al SRI
+                </DropdownMenuItem>
+              )}
+              {row.original.estado?.toUpperCase() === "BORRADOR" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => deleteNota(row.original)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700">
+                    <Trash2 size={14} className="mr-2" />
+                    Eliminar
                   </DropdownMenuItem>
                 </>
               )}
@@ -642,7 +646,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
   };
 
   const toggleEstado = async (nota: NotaCreditoItem) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta nota de crédito?")) return;
+    if (!await confirmAction({ message: "¿Estás seguro de que deseas cambiar el estado de esta nota de crédito?", variant: "warning" })) return;
     try {
       await creditNoteService.toggleEstado(nota.id);
       await refresh();
@@ -655,6 +659,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
   };
 
   const emitirNota = async (nota: NotaCreditoItem) => {
+    if (!await confirmAction({ title: "Emitir al SRI", message: "¿Estás seguro de que deseas emitir esta nota de crédito al SRI?", confirmText: "Emitir", variant: "info" })) return;
     try {
       await creditNoteService.emitirNota(nota.id);
       await refresh();
@@ -667,7 +672,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
   };
 
   const deleteNota = async (nota: NotaCreditoItem) => {
-    if (!await confirmAction({ title: "Eliminar nota de crédito", message: "¿Estás seguro de que deseas eliminar esta nota de crédito? Esta acción no se puede deshacer.", confirmText: "Eliminar", destructive: true })) return;
+    if (!await confirmAction({ title: "Eliminar nota de crédito", message: "¿Estás seguro de que deseas eliminar esta nota de crédito? Esta acción no se puede deshacer.", confirmText: "Eliminar", variant: "danger" })) return;
     try {
       await creditNoteService.deleteNota(nota.id);
       await refresh();
@@ -675,6 +680,19 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "No se pudo eliminar la nota.";
+      toast.error(message);
+    }
+  };
+
+  const handleAnular = async (nota: NotaCreditoItem) => {
+    if (!await confirmAction({ title: "Anular nota de crédito", message: "Esta acción cambiará el estado a Anulado en el sistema. Asegúrate de haber realizado la anulación también en el portal del SRI en Línea.\n\nEsta acción es irreversible.", confirmText: "Anular", variant: "danger" })) return;
+    try {
+      await creditNoteService.cambiarEstado(nota.id, "ANULADA");
+      await refresh();
+      toast.success("Nota anulada.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Error al anular la nota.";
       toast.error(message);
     }
   };
@@ -1318,7 +1336,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                 <SelectPrimitive.Viewport className="p-1">
                   {estadoFilters.map((estado) => (
                     <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado.charAt(0) + estado.slice(1).toLowerCase()}</SelectPrimitive.ItemText>
                     </SelectPrimitive.Item>
                   ))}
                 </SelectPrimitive.Viewport>
@@ -1393,7 +1411,7 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={row.id} className={`hover:bg-slate-50/60 transition-colors${row.original.estado?.toUpperCase() === "ANULADA" ? " bg-slate-50" : ""}`}>
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-3 align-top">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -1484,6 +1502,14 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
             <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
               {detail ? (
                 <>
+                  {detail.estado?.toUpperCase() === "ANULADA" && (
+                    <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                      <X className="h-4 w-4 text-amber-600 shrink-0" />
+                      <p className="text-xs font-semibold text-amber-800">
+                        Este documento fue marcado como <strong>Anulado</strong> y no puede ser modificado.
+                      </p>
+                    </div>
+                  )}
                   {/* SECCIÓN: Información general */}
                   <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                     <div className="flex items-center gap-2">

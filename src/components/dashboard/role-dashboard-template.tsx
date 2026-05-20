@@ -14,7 +14,6 @@ import { ProductsPanel } from "@/src/components/products/products-panel";
 import { IvaPanel } from "@/src/components/iva/iva-panel";
 import { EstablishmentsPanel } from "@/src/components/establishments/establishments-panel";
 import { EmissionPointsPanel } from "@/src/components/emission-points/emission-points-panel";
-import { AmbientePanel } from "@/src/components/ambiente/ambiente-panel";
 import { SignaturePanel } from "@/src/components/signature/signature-panel";
 import { SecuencialesPanel } from "@/src/components/secuenciales/secuenciales-panel";
 import { InvoicesPanel } from "@/src/components/invoices/invoices-panel";
@@ -158,8 +157,6 @@ function RoleDashboardContent({
         {activeSection === "puntos-emision" ? (
           <EmissionPointsPanel showPanel={true} />
         ) : null}
-
-        {activeSection === "ambiente" ? <AmbientePanel showPanel={true} /> : null}
 
         {activeSection === "firma-electronica" ? (
           <SignaturePanel showPanel={true} />

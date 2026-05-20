@@ -108,6 +108,23 @@ export const debitNoteService = {
     return normalizeNotaDebitoResponse(payload).data;
   },
 
+  async cambiarEstado(id: number, estado: string): Promise<NotaDebitoItem> {
+    const response = await fetch(`/api/notas-debito/${id}/estado`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ estado }),
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload));
+    }
+
+    return normalizeNotaDebitoResponse(payload).data;
+  },
+
   async emitirNota(id: number, input?: NotaDebitoCreateInput): Promise<NotaDebitoItem> {
     const response = await fetch(`/api/notas-debito/${id}/emitir`, {
       method: "POST",

@@ -143,7 +143,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [filterEstado, setFilterEstado] = useState<string>("");
+  const [filterEstado, setFilterEstado] = useState<string>("TODOS");
   const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
   const { setActiveSection } = useDashboardSection();
 
@@ -155,7 +155,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
   }
 
   const filteredByEstado = useMemo(() => {
-    if (!filterEstado) return guias;
+    if (filterEstado === "TODOS") return guias;
     return guias.filter((g) => g.estado === filterEstado);
   }, [guias, filterEstado]);
 
@@ -182,7 +182,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getEstadoClasses(row.original.estado)}`}>
+        <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${getEstadoClasses(row.original.estado)}`}>
           {row.original.estado || "N/A"}
         </span>
       ),
@@ -252,18 +252,23 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => openDetail(g)}><Eye size={14} className="mr-2" /> Ver detalle</DropdownMenuItem>
-                {canEmitir(g) && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => handleEmitir(g)} className="text-emerald-700 focus:text-emerald-700"><Send size={14} className="mr-2" /> Emitir al SRI</DropdownMenuItem></>)}
-                {canEdit(g) && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => openEdit(g)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem></>)}
-                {canDelete(g) && (<DropdownMenuItem onClick={() => handleDelete(g)} className="text-rose-600 focus:text-rose-600"><Trash2 size={14} className="mr-2" /> Eliminar</DropdownMenuItem>)}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleToggleEstado(g)}><Power size={14} className="mr-2" /> Cambiar estado</DropdownMenuItem>
+                {canEdit(g) && <DropdownMenuItem onClick={() => openEdit(g)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
                 {g.estado?.toUpperCase() === "AUTORIZADO" && (
+                  <DropdownMenuItem onClick={() => window.open(`/api/guias-remision/${g.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700 font-medium">
+                    <FileText size={14} className="mr-2" />
+                    Descargar PDF
+                  </DropdownMenuItem>
+                )}
+                {canEmitir(g) && <DropdownMenuItem onClick={() => handleEmitir(g)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium"><Send size={14} className="mr-2" /> Emitir al SRI</DropdownMenuItem>}
+                {(g.estado?.toUpperCase() === "AUTORIZADO" || canDelete(g)) && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => window.open(`/api/guias-remision/${g.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700 font-medium">
-                      <FileText size={14} className="mr-2" />
-                      Descargar PDF
-                    </DropdownMenuItem>
+                    {g.estado?.toUpperCase() === "AUTORIZADO" && (
+                      <DropdownMenuItem onClick={() => handleAnular(g)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
+                        <X size={14} className="mr-2" /> Anular
+                      </DropdownMenuItem>
+                    )}
+                    {canDelete(g) && <DropdownMenuItem onClick={() => handleDelete(g)} className="text-rose-600 focus:text-rose-600"><Trash2 size={14} className="mr-2" /> Eliminar</DropdownMenuItem>}
                   </>
                 )}
               </DropdownMenuContent>
@@ -487,7 +492,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
   };
 
   const handleDelete = async (guia: GuiaRemisionItem) => {
-    if (!await confirmAction({ title: "Eliminar guía de remisión", message: `¿Estás seguro de que deseas eliminar la guía ${guia.numero_comprobante || guia.id}? Esta acción no se puede deshacer.`, confirmText: "Eliminar", destructive: true })) return;
+    if (!await confirmAction({ title: "Eliminar guía de remisión", message: `¿Estás seguro de que deseas eliminar la guía ${guia.numero_comprobante || guia.id}? Esta acción no se puede deshacer.`, confirmText: "Eliminar", variant: "danger" })) return;
     try {
       await guiasRemisionService.deleteGuia(guia.id);
       toast.success("Guía eliminada");
@@ -497,19 +502,19 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
     }
   };
 
-  const handleToggleEstado = async (guia: GuiaRemisionItem) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta guía de remisión?")) return;
+  const handleAnular = async (guia: GuiaRemisionItem) => {
+    if (!await confirmAction({ title: "Anular", message: "Esta acción cambiará el estado a Anulado en el sistema. Asegúrate de haber realizado la anulación también en el portal del SRI en Línea.\n\nEsta acción es irreversible.", confirmText: "Anular", variant: "danger" })) return;
     try {
-      await guiasRemisionService.toggleEstado(guia.id);
-      toast.success("Estado actualizado");
+      await guiasRemisionService.cambiarEstado(guia.id, "ANULADA");
+      toast.success("Guía anulada");
       loadGuias();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al cambiar estado");
+      toast.error(error instanceof Error ? error.message : "Error al anular");
     }
   };
 
   const handleEmitir = async (guia: GuiaRemisionItem) => {
-    if (!confirm(`¿Emitir la guía ${guia.numero_comprobante || guia.id} al SRI?`)) return;
+    if (!await confirmAction({ title: "Emitir al SRI", message: `¿Estás seguro de que deseas emitir la guía ${guia.numero_comprobante || guia.id} al SRI?`, confirmText: "Emitir", variant: "info" })) return;
     try {
       await guiasRemisionService.emitirGuia(guia.id);
       toast.success("Guía emitida al SRI");
@@ -547,9 +552,11 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
         return "bg-emerald-100 text-emerald-700";
       case "BORRADOR":
         return "bg-amber-100 text-amber-700";
+      case "ENVIADO":
+        return "bg-blue-100 text-blue-700";
       case "RECHAZADA":
         return "bg-rose-100 text-rose-700";
-      case "INACTIVO":
+      case "ANULADA":
         return "bg-slate-100 text-slate-600";
       default:
         return "bg-slate-100 text-slate-700";
@@ -1081,7 +1088,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
       {showFilters && (
         <div className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg">
           <div className="text-xs font-medium text-slate-500">Filtrar por:</div>
-          <SelectPrimitive.Root value={filterEstado || ""} onValueChange={(val) => setFilterEstado(val)}>
+          <SelectPrimitive.Root value={filterEstado} onValueChange={(val) => setFilterEstado(val)}>
             <SelectPrimitive.Trigger className="inline-flex h-8 min-w-[160px] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-200">
               <SelectPrimitive.Value placeholder="Todos los estados" />
               <SelectPrimitive.Icon><ChevronDown size={14} className="text-slate-400" /></SelectPrimitive.Icon>
@@ -1089,7 +1096,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
             <SelectPrimitive.Portal>
               <SelectPrimitive.Content className="z-50 min-w-[160px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm" position="popper" sideOffset={4}>
                 <SelectPrimitive.Viewport className="p-1">
-                  <SelectPrimitive.Item value="" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                  <SelectPrimitive.Item value="TODOS" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
                     <SelectPrimitive.ItemText>Todos los estados</SelectPrimitive.ItemText>
                   </SelectPrimitive.Item>
                   <SelectPrimitive.Item value="BORRADOR" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
@@ -1101,8 +1108,11 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
                   <SelectPrimitive.Item value="RECHAZADA" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
                     <SelectPrimitive.ItemText>Rechazada</SelectPrimitive.ItemText>
                   </SelectPrimitive.Item>
-                  <SelectPrimitive.Item value="INACTIVO" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                    <SelectPrimitive.ItemText>Inactivo</SelectPrimitive.ItemText>
+                  <SelectPrimitive.Item value="ENVIADO" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                    <SelectPrimitive.ItemText>Enviado</SelectPrimitive.ItemText>
+                  </SelectPrimitive.Item>
+                  <SelectPrimitive.Item value="ANULADA" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                    <SelectPrimitive.ItemText>Anulada</SelectPrimitive.ItemText>
                   </SelectPrimitive.Item>
                 </SelectPrimitive.Viewport>
               </SelectPrimitive.Content>
@@ -1130,7 +1140,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={row.id} className={`hover:bg-slate-50/60 transition-colors${row.original.estado?.toUpperCase() === "ANULADA" ? " bg-slate-50" : ""}`}>
                     {row.getVisibleCells().map((cell) => <td key={cell.id} className="px-4 py-3 align-top">{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>)}
                   </tr>
                 ))}
@@ -1192,6 +1202,14 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
             <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
               {viewing && (
                 <>
+                  {viewing.estado?.toUpperCase() === "ANULADA" && (
+                    <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                      <X className="h-4 w-4 text-amber-600 shrink-0" />
+                      <p className="text-xs font-semibold text-amber-800">
+                        Este documento fue marcado como <strong>Anulado</strong> y no puede ser modificado.
+                      </p>
+                    </div>
+                  )}
                   {/* SECCIÓN: Información general */}
                   <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                     <div className="flex items-center gap-2">

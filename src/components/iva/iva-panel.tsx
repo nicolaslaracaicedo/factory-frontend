@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Edit, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Percent, Hash, Tag, Receipt } from "lucide-react";
+import { Edit, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Percent, Tag } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -53,7 +53,7 @@ export function IvaPanel({ showPanel = true }: IvaPanelProps) {
   const [codigos, setCodigos] = useState<CodigoIva[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState<EstadoFiltro>("ACTIVO");
+  const [filter, setFilter] = useState<EstadoFiltro>("TODOS");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CodigoIva | null>(null);
   const [form, setForm] = useState<CodigoIvaFormInput>(initialForm);
@@ -156,7 +156,7 @@ export function IvaPanel({ showPanel = true }: IvaPanelProps) {
       ),
       cell: ({ row }) => (
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
             row.original.activo === false
               ? "bg-rose-100 text-rose-700"
               : "bg-emerald-100 text-emerald-700"
@@ -183,7 +183,7 @@ export function IvaPanel({ showPanel = true }: IvaPanelProps) {
                 Editar
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => toggleActivo(row.original)}>
+              <DropdownMenuItem onClick={() => toggleActivo(row.original)} className={row.original.activo === false ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
                 <Power size={14} className="mr-2" />
                 {row.original.activo === false ? "Activar" : "Desactivar"}
               </DropdownMenuItem>
@@ -259,7 +259,7 @@ export function IvaPanel({ showPanel = true }: IvaPanelProps) {
   };
 
   const toggleActivo = async (codigo: CodigoIva) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este código de IVA?")) return;
+    if (!await confirmAction({ message: "¿Estás seguro de que deseas cambiar el estado de este código de IVA?", variant: "warning" })) return;
     try {
       await ivaService.toggleActivo(codigo.id);
       const activo = filter === "TODOS" ? undefined : filter === "ACTIVO";
@@ -338,7 +338,7 @@ export function IvaPanel({ showPanel = true }: IvaPanelProps) {
                 <SelectPrimitive.Viewport className="p-1">
                   {estadoFilters.map((estado) => (
                     <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado.charAt(0) + estado.slice(1).toLowerCase()}</SelectPrimitive.ItemText>
                     </SelectPrimitive.Item>
                   ))}
                 </SelectPrimitive.Viewport>
@@ -459,7 +459,7 @@ export function IvaPanel({ showPanel = true }: IvaPanelProps) {
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Receipt className="h-6 w-6 text-app-primary" />
+                  <Percent className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">

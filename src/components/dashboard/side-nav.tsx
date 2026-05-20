@@ -16,13 +16,13 @@ import {
   ReceiptText,
   Redo2,
   RefreshCw,
-  Settings,
   ShieldCheck,
   ShoppingCart,
   Signature,
   Store,
   Truck,
   Undo2,
+  UserCog,
   Users,
   Wallet,
 } from "lucide-react";
@@ -61,7 +61,7 @@ export const iconByKey: Record<string, ComponentType<{ className?: string }>> = 
   "sri-logs": FileSearch,
   impuestos: FileCode,
   reportes: FileText,
-  usuarios: Settings,
+  usuarios: UserCog,
 };
 
 export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {

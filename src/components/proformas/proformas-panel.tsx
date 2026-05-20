@@ -120,7 +120,7 @@ const initialForm: ProformaFormDraft = {
   detalles: [initialDetail()],
 };
 
-const estadoFilters = ["TODOS", "PENDIENTE", "APROBADA", "RECHAZADA", "VENCIDA", "CONVERTIDA", "INACTIVO"] as const;
+const estadoFilters = ["TODOS", "PENDIENTE", "APROBADA", "RECHAZADA", "VENCIDA", "CONVERTIDA"] as const;
 
 interface ProformasPanelProps {
   showPanel?: boolean;
@@ -176,7 +176,6 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
       case "CONVERTIDA": return "bg-violet-100 text-violet-700";
       case "VENCIDA": return "bg-amber-100 text-amber-700";
       case "RECHAZADA": return "bg-rose-100 text-rose-700";
-      case "INACTIVO": return "bg-slate-100 text-slate-600";
       default: return "bg-slate-100 text-slate-700";
     }
   };
@@ -209,7 +208,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getEstadoClasses(row.original.estado || "")}`}>{row.original.estado}</span>
+        <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${getEstadoClasses(row.original.estado || "")}`}>{row.original.estado}</span>
       ),
     },
     {
@@ -268,11 +267,17 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => openDetail(p)}><Eye size={14} className="mr-2" /> Ver detalle</DropdownMenuItem>
+                {canEditDelete(p) && <DropdownMenuItem onClick={() => openEdit(p)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
+                {p.estado === "PENDIENTE" && <DropdownMenuItem onClick={() => handleAprobar(p)} className="text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700 font-medium"><FileCheck size={14} className="mr-2" /> Aprobar</DropdownMenuItem>}
+                {(p.estado === "PENDIENTE" || p.estado === "APROBADA") && <DropdownMenuItem onClick={() => handleRechazar(p)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700"><X size={14} className="mr-2" /> Rechazar</DropdownMenuItem>}
+                {canConvertir(p) && <DropdownMenuItem onClick={() => openConvert(p)} className="text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700 font-medium"><FileCheck size={14} className="mr-2" /> Convertir a Factura</DropdownMenuItem>}
                 <DropdownMenuItem onClick={() => window.open(`/api/proformas/${p.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700"><FileText size={14} className="mr-2" /> Descargar PDF</DropdownMenuItem>
-                {p.estado === "PENDIENTE" && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => handleAprobar(p)} className="text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700 font-medium"><FileCheck size={14} className="mr-2" /> Aprobar</DropdownMenuItem></>)}
-                {(p.estado === "PENDIENTE" || p.estado === "APROBADA") && (<DropdownMenuItem onClick={() => handleRechazar(p)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700"><X size={14} className="mr-2" /> Rechazar</DropdownMenuItem>)}
-                {canConvertir(p) && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => openConvert(p)} className="text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700 font-medium"><FileCheck size={14} className="mr-2" /> Convertir a Factura</DropdownMenuItem></>)}
-                {canEditDelete(p) && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => openEdit(p)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem><DropdownMenuItem onClick={() => handleDelete(p)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700"><Trash2 size={14} className="mr-2" /> Eliminar</DropdownMenuItem></>)}
+                {canEditDelete(p) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleDelete(p)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700"><Trash2 size={14} className="mr-2" /> Eliminar</DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -640,7 +645,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
   };
 
   const handleDelete = async (prof: ProformaItem) => {
-    if (!await confirmAction({ title: "Eliminar proforma", message: `¿Estás seguro de que deseas eliminar la proforma ${prof.numero || prof.id}? Esta acción no se puede deshacer.`, confirmText: "Eliminar", destructive: true })) return;
+    if (!await confirmAction({ title: "Eliminar proforma", message: `¿Estás seguro de que deseas eliminar la proforma ${prof.numero || prof.id}? Esta acción no se puede deshacer.`, confirmText: "Eliminar", variant: "danger" })) return;
     try {
       await proformasService.deleteProforma(prof.id);
       toast.success("Proforma eliminada");
@@ -651,7 +656,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
   };
 
   const handleToggleEstado = async (prof: ProformaItem) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta proforma?")) return;
+    if (!await confirmAction({ message: "¿Estás seguro de que deseas cambiar el estado de esta proforma?", variant: "warning" })) return;
     try {
       await proformasService.toggleEstado(prof.id);
       toast.success("Estado actualizado");
@@ -663,6 +668,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
   };
 
   const handleAprobar = async (prof: ProformaItem) => {
+    if (!await confirmAction({ title: "Aprobar proforma", message: `¿Estás seguro de que deseas aprobar la proforma ${prof.numero || prof.id}?`, confirmText: "Aprobar", variant: "success" })) return;
     try {
       await proformasService.cambiarEstado(prof.id, "APROBADA");
       toast.success("Proforma aprobada");
@@ -674,6 +680,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
   };
 
   const handleRechazar = async (prof: ProformaItem) => {
+    if (!await confirmAction({ title: "Rechazar proforma", message: `¿Estás seguro de que deseas rechazar la proforma ${prof.numero || prof.id}?`, confirmText: "Rechazar", variant: "warning" })) return;
     try {
       await proformasService.cambiarEstado(prof.id, "RECHAZADA");
       toast.success("Proforma rechazada");
@@ -1410,11 +1417,11 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <FileCheck className="h-6 w-6 text-app-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Dialog.Title className="text-xl font-semibold text-slate-900">
-                    Convertir a Factura
+                  <FileText className="h-6 w-6 text-app-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Dialog.Title className="text-xl font-semibold text-slate-900">
+                      Convertir a Factura
                   </Dialog.Title>
                   <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
                     Configura los datos de facturación para la proforma #{converting?.numero || converting?.id}.

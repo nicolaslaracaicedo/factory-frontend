@@ -108,6 +108,22 @@ export const liquidacionesCompraService = {
     return normalizeLiquidacionCompraResponse(payload).data;
   },
 
+  async cambiarEstado(id: number, estado: string): Promise<LiquidacionCompraItem> {
+    const response = await fetch(`/api/liquidaciones-compra/${id}/estado`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+      cache: "no-store",
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload));
+    }
+
+    return normalizeLiquidacionCompraResponse(payload).data;
+  },
+
   async emitirLiquidacion(id: number): Promise<LiquidacionCompraItem> {
     const response = await fetch(`/api/liquidaciones-compra/${id}/emitir`, {
       method: "POST",

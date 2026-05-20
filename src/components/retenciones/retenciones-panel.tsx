@@ -91,14 +91,15 @@ const codigosIVAEcuador: RetencionCodigoOption[] = [
   { value: "1", label: "1 - Retención IVA 30%", porcentaje: 30 },
 ];
 
-const estadoFilters = ["TODOS", "BORRADOR", "AUTORIZADO", "RECHAZADA", "INACTIVO"] as const;
+const estadoFilters = ["TODOS", "BORRADOR", "ENVIADO", "AUTORIZADO", "RECHAZADA", "ANULADA"] as const;
 
 const getEstadoColor = (estado?: string) => {
   switch (estado?.toUpperCase()) {
     case "AUTORIZADO": return "bg-emerald-100 text-emerald-700";
     case "RECHAZADA": return "bg-rose-100 text-rose-700";
     case "BORRADOR": return "bg-amber-100 text-amber-700";
-    case "INACTIVO": return "bg-rose-100 text-rose-700";
+    case "ENVIADO": return "bg-blue-100 text-blue-700";
+    case "ANULADA": return "bg-slate-100 text-slate-600";
     default: return "bg-sky-100 text-sky-700";
   }
 };
@@ -161,7 +162,7 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getEstadoColor(row.original.estado)}`}>
+        <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${getEstadoColor(row.original.estado)}`}>
           {row.original.estado || "N/A"}
         </span>
       ),
@@ -222,18 +223,23 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => openDetail(r)}><Eye size={14} className="mr-2" /> Ver detalle</DropdownMenuItem>
-                {canEmitir(r) && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => handleEmitir(r)} className="text-emerald-700 focus:text-emerald-700"><Send size={14} className="mr-2" /> Emitir al SRI</DropdownMenuItem></>)}
-                {canEdit(r) && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => openEdit(r)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem></>)}
-                {canDelete(r) && (<DropdownMenuItem onClick={() => handleDelete(r)} className="text-rose-600 focus:text-rose-600"><Trash2 size={14} className="mr-2" /> Eliminar</DropdownMenuItem>)}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleToggleEstado(r)}><Power size={14} className="mr-2" /> Cambiar estado</DropdownMenuItem>
+                {canEdit(r) && <DropdownMenuItem onClick={() => openEdit(r)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
                 {r.estado?.toUpperCase() === "AUTORIZADO" && (
+                  <DropdownMenuItem onClick={() => window.open(`/api/retenciones/${r.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700 font-medium">
+                    <FileText size={14} className="mr-2" />
+                    Descargar PDF
+                  </DropdownMenuItem>
+                )}
+                {canEmitir(r) && <DropdownMenuItem onClick={() => handleEmitir(r)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium"><Send size={14} className="mr-2" /> Emitir al SRI</DropdownMenuItem>}
+                {(r.estado?.toUpperCase() === "AUTORIZADO" || canDelete(r)) && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => window.open(`/api/retenciones/${r.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700 font-medium">
-                      <FileText size={14} className="mr-2" />
-                      Descargar PDF
-                    </DropdownMenuItem>
+                    {r.estado?.toUpperCase() === "AUTORIZADO" && (
+                      <DropdownMenuItem onClick={() => handleAnular(r)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
+                        <X size={14} className="mr-2" /> Anular
+                      </DropdownMenuItem>
+                    )}
+                    {canDelete(r) && <DropdownMenuItem onClick={() => handleDelete(r)} className="text-rose-600 focus:text-rose-600"><Trash2 size={14} className="mr-2" /> Eliminar</DropdownMenuItem>}
                   </>
                 )}
               </DropdownMenuContent>
@@ -480,7 +486,7 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
   };
 
   const handleDelete = async (retencion: RetencionItem) => {
-    if (!await confirmAction({ title: "Eliminar retención", message: "¿Estás seguro de que deseas eliminar esta retención? Solo se pueden eliminar borradores.", confirmText: "Eliminar", destructive: true })) return;
+    if (!await confirmAction({ title: "Eliminar retención", message: "¿Estás seguro de que deseas eliminar esta retención? Solo se pueden eliminar borradores.", confirmText: "Eliminar", variant: "danger" })) return;
     try {
       await retencionesService.deleteRetencion(retencion.id);
       toast.success("Retención eliminada");
@@ -490,19 +496,19 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
     }
   };
 
-  const handleToggleEstado = async (retencion: RetencionItem) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta retención?")) return;
+  const handleAnular = async (retencion: RetencionItem) => {
+    if (!await confirmAction({ title: "Anular", message: "Esta acción cambiará el estado a Anulado en el sistema. Asegúrate de haber realizado la anulación también en el portal del SRI en Línea.\n\nEsta acción es irreversible.", confirmText: "Anular", variant: "danger" })) return;
     try {
-      await retencionesService.toggleEstado(retencion.id);
-      toast.success("Estado actualizado");
+      await retencionesService.cambiarEstado(retencion.id, "ANULADA");
+      toast.success("Retención anulada");
       await loadRetenciones();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al cambiar estado");
+      toast.error(error instanceof Error ? error.message : "Error al anular");
     }
   };
 
   const handleEmitir = async (retencion: RetencionItem) => {
-    if (!window.confirm("¿Emitir esta retención al SRI?")) return;
+    if (!await confirmAction({ title: "Emitir al SRI", message: "¿Estás seguro de que deseas emitir esta retención al SRI?", confirmText: "Emitir", variant: "info" })) return;
     try {
       await retencionesService.emitirRetencion(retencion.id);
       toast.success("Retención emitida exitosamente");
@@ -1008,7 +1014,7 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={row.id} className={`hover:bg-slate-50/60 transition-colors${row.original.estado?.toUpperCase() === "ANULADA" ? " bg-slate-50" : ""}`}>
                     {row.getVisibleCells().map((cell) => <td key={cell.id} className="px-4 py-3 align-top">{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>)}
                   </tr>
                 ))}
@@ -1070,6 +1076,14 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
             <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
               {detail ? (
                 <>
+                  {detail.estado?.toUpperCase() === "ANULADA" && (
+                    <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                      <X className="h-4 w-4 text-amber-600 shrink-0" />
+                      <p className="text-xs font-semibold text-amber-800">
+                        Este documento fue marcado como <strong>Anulado</strong> y no puede ser modificado.
+                      </p>
+                    </div>
+                  )}
                   {/* SECCIÓN: Información general */}
                   <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                     <div className="flex items-center gap-2">

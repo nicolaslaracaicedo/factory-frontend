@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { toast } from "sonner";
-import { Building2, ChevronDown, Phone, Shield } from "lucide-react";
+import { Users, ChevronDown, Phone, Shield } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
@@ -45,6 +45,12 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
   const [foundClient, setFoundClient] = useState<Cliente | null>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const editing = !!client;
+
+  useEffect(() => {
+    if (open) {
+      setForm(client ? toClienteFormInput(client) : initialForm);
+    }
+  }, [open, client]);
 
   const updateField = (name: keyof ClienteFormInput, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -120,7 +126,7 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
           <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                <Building2 className="h-6 w-6 text-app-primary" />
+                <Users className="h-6 w-6 text-app-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <Dialog.Title className="text-xl font-semibold text-slate-900">

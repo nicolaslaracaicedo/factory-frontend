@@ -108,6 +108,23 @@ export const notasVentaService = {
     return normalizeNotaVentaResponse(payload).data;
   },
 
+  async cambiarEstado(id: number, estado: string): Promise<NotaVentaItem> {
+    const response = await fetch(`/api/notas-venta/${id}/estado`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ estado }),
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload));
+    }
+
+    return normalizeNotaVentaResponse(payload).data;
+  },
+
   async emitirNotaVenta(id: number): Promise<NotaVentaItem> {
     const response = await fetch(`/api/notas-venta/${id}/emitir`, {
       method: "POST",

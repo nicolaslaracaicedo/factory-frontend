@@ -108,6 +108,23 @@ export const creditNoteService = {
     return normalizeNotaCreditoResponse(payload).data;
   },
 
+  async cambiarEstado(id: number, estado: string): Promise<NotaCreditoItem> {
+    const response = await fetch(`/api/notas-credito/${id}/estado`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ estado }),
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload));
+    }
+
+    return normalizeNotaCreditoResponse(payload).data;
+  },
+
   async emitirNota(id: number, input?: NotaCreditoCreateInput): Promise<NotaCreditoItem> {
     const response = await fetch(`/api/notas-credito/${id}/emitir`, {
       method: "POST",

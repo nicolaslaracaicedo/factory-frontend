@@ -16,7 +16,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Truck, Search, ChevronLeft, ChevronRight, Edit3, Power, Plus, X, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, Check, MoreVertical, Phone, Mail, MapPin, Shield, Eye, FileText } from "lucide-react";
+import { Handshake, Search, ChevronLeft, ChevronRight, Edit3, Power, Plus, X, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, Check, MoreVertical, Phone, Mail, MapPin, Shield, Eye, FileText } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -143,7 +143,7 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${
           row.getValue("estado") === "INACTIVO"
             ? "bg-rose-100 text-rose-700"
             : "bg-emerald-100 text-emerald-700"
@@ -168,15 +168,17 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => openEdit(row.original)}>
                 <Edit3 size={14} className="mr-2" />
                 Editar
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toggleEstado(row.original)}>
-                <Power size={14} className="mr-2" />
-                {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
+                  <Power size={14} className="mr-2" />
+                  {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+                </DropdownMenuItem>
+              </>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -318,7 +320,7 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
   };
 
   const toggleEstado = async (proveedor: Proveedor) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este proveedor?")) return;
+    if (!await confirmAction({ message: "¿Estás seguro de que deseas cambiar el estado de este proveedor?", variant: "warning" })) return;
     try {
       await providerService.toggleProveedorEstado(proveedor.id);
       const estado = filter === "TODOS" ? undefined : filter;
@@ -399,7 +401,7 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
                 <SelectPrimitive.Viewport className="p-1">
                   {estadoFilters.map((estado) => (
                     <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado.charAt(0) + estado.slice(1).toLowerCase()}</SelectPrimitive.ItemText>
                     </SelectPrimitive.Item>
                   ))}
                 </SelectPrimitive.Viewport>
@@ -444,7 +446,7 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
       ) : table.getFilteredRowModel().rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
-            <Truck size={24} className="text-slate-400" />
+            <Handshake size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay proveedores para este filtro.</p>
           <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
@@ -552,7 +554,7 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Truck className="h-6 w-6 text-app-primary" />
+                  <Handshake className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -716,7 +718,7 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Truck className="h-6 w-6 text-app-primary" />
+                  <Handshake className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -752,7 +754,7 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
                     <div className="rounded-lg bg-white/80 px-3 py-2">
                       <dt className="text-xs font-semibold text-slate-500">Estado</dt>
                       <dd className="mt-2">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
                           detailData?.estado === "INACTIVO"
                             ? "bg-rose-100 text-rose-700"
                             : "bg-emerald-100 text-emerald-700"

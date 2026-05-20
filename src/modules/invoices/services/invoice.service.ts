@@ -109,6 +109,23 @@ export const invoiceService = {
     return normalizeFacturaResponse(payload).data;
   },
 
+  async cambiarEstado(id: number, estado: string): Promise<FacturaItem> {
+    const response = await fetch(`/api/facturas/${id}/estado`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ estado }),
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload));
+    }
+
+    return normalizeFacturaResponse(payload).data;
+  },
+
   async emitirFactura(id: number): Promise<FacturaItem> {
     const response = await fetch(`/api/facturas/${id}/emitir`, {
       method: "POST",

@@ -193,7 +193,7 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
   const getEstadoClasses = (estado: string) => {
     switch (estado) {
       case "ACTIVO": return "bg-emerald-100 text-emerald-700";
-      case "INACTIVO": return "bg-slate-100 text-slate-600";
+      case "INACTIVO": return "bg-rose-100 text-rose-700";
       default: return "bg-slate-100 text-slate-700";
     }
   };
@@ -226,7 +226,7 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getEstadoClasses(row.original.estado || "")}`}>{row.original.estado}</span>
+        <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${getEstadoClasses(row.original.estado || "")}`}>{row.original.estado}</span>
       ),
     },
     {
@@ -294,10 +294,13 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => openDetail(r)}><Eye size={14} className="mr-2" /> Ver detalle</DropdownMenuItem>
-                {r.estado === "ACTIVO" && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => openGenerar(r)} className="text-emerald-700 focus:text-emerald-700"><RefreshCw size={14} className="mr-2" /> Generar Factura</DropdownMenuItem></>)}
-                {(r.estado === "ACTIVO" || r.estado === "INACTIVO") && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => openEdit(r)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem><DropdownMenuItem onClick={() => handleDelete(r)} className="text-rose-600 focus:text-rose-600"><Trash2 size={14} className="mr-2" /> Eliminar</DropdownMenuItem></>)}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleToggleEstado(r)}><Power size={14} className="mr-2" /> {r.estado === "ACTIVO" ? "Desactivar" : "Activar"}</DropdownMenuItem>
+                {(r.estado === "ACTIVO" || r.estado === "INACTIVO") && <DropdownMenuItem onClick={() => openEdit(r)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
+                {r.estado === "ACTIVO" && <DropdownMenuItem onClick={() => openGenerar(r)} className="text-emerald-700 focus:text-emerald-700"><RefreshCw size={14} className="mr-2" /> Generar Factura</DropdownMenuItem>}
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleToggleEstado(r)} className={r.estado === "ACTIVO" ? "text-orange-600 focus:text-orange-600" : "text-emerald-600 focus:text-emerald-600"}><Power size={14} className="mr-2" /> {r.estado === "ACTIVO" ? "Desactivar" : "Activar"}</DropdownMenuItem>
+                  {(r.estado === "ACTIVO" || r.estado === "INACTIVO") && <DropdownMenuItem onClick={() => handleDelete(r)} className="text-rose-600 focus:text-rose-600"><Trash2 size={14} className="mr-2" /> Eliminar</DropdownMenuItem>}
+                </>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -674,7 +677,7 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
   };
 
   const handleDelete = async (rec: RecurrenteItem) => {
-    if (!await confirmAction({ title: "Eliminar recurrente", message: `¿Estás seguro de que deseas eliminar el recurrente "${rec.descripcion}"? Esta acción no se puede deshacer.`, confirmText: "Eliminar", destructive: true })) return;
+    if (!await confirmAction({ title: "Eliminar recurrente", message: `¿Estás seguro de que deseas eliminar el recurrente "${rec.descripcion}"? Esta acción no se puede deshacer.`, confirmText: "Eliminar", variant: "danger" })) return;
     try {
       await recurrentesService.deleteRecurrente(rec.id);
       toast.success("Recurrente eliminado");
@@ -687,7 +690,7 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
   const handleToggleEstado = async (rec: RecurrenteItem) => {
     const nuevoEstado = rec.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
     const action = nuevoEstado === "ACTIVO" ? "activar" : "desactivar";
-    if (!await confirmAction(`¿Estás seguro de que deseas ${action} este recurrente?`)) return;
+    if (!await confirmAction({ message: `¿Estás seguro de que deseas ${action} este recurrente?`, variant: action === "desactivar" ? "danger" : "success" })) return;
     try {
       await recurrentesService.cambiarEstado(rec.id, nuevoEstado);
       toast.success(`Recurrente ${nuevoEstado === "ACTIVO" ? "activado" : "desactivado"}`);

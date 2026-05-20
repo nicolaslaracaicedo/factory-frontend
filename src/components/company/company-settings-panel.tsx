@@ -562,7 +562,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
                               </div>
                             ) : (
                               <>
-                                <span className="rounded-full bg-sky-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+                                <span className="rounded-md bg-sky-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
                                   Logo
                                 </span>
                                 <span className="text-sm font-medium text-slate-700">
@@ -868,7 +868,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
                     >
                       <div className="flex items-start gap-3">
                         <div
-                          className={`mt-0.5 rounded-full p-1.5 ${form.ambiente === 2 ? "bg-orange-100 text-orange-600" : "bg-sky-100 text-sky-600"
+                          className={`mt-0.5 rounded-md p-1.5 ${form.ambiente === 2 ? "bg-orange-100 text-orange-600" : "bg-sky-100 text-sky-600"
                             }`}
                         >
                           {form.ambiente === 2 ? (
@@ -917,7 +917,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
                                 {form.ambiente === 2 ? "Ambiente: Producción" : "Ambiente: Pruebas"}
                               </span>
                               <span
-                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${form.ambiente === 2
+                                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-xs font-medium ${form.ambiente === 2
                                   ? "bg-orange-100 text-orange-700"
                                   : "bg-sky-100 text-sky-700"
                                   }`}
@@ -936,11 +936,11 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
                             </p>
                           </div>
 
-                          <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
+                          <div className="flex items-center rounded-md border border-slate-200 bg-slate-50 p-1">
                             <button
                               type="button"
                               onClick={() => updateField("ambiente", 1)}
-                              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${form.ambiente === 1
+                              className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold transition-colors ${form.ambiente === 1
                                 ? "bg-sky-600 text-white"
                                 : "text-slate-600 hover:text-slate-800"
                                 }`}
@@ -951,7 +951,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
                             <button
                               type="button"
                               onClick={() => updateField("ambiente", 2)}
-                              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${form.ambiente === 2
+                              className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold transition-colors ${form.ambiente === 2
                                 ? "bg-orange-600 text-white"
                                 : "text-slate-600 hover:text-slate-800"
                                 }`}
@@ -1090,7 +1090,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
             <Dialog.Title className="sr-only">Configuración inicial de empresa</Dialog.Title>
             <header className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <p className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">
+                <p className="inline-flex items-center gap-1 rounded-md bg-sky-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">
                   <Sparkles className="h-3.5 w-3.5" />
                   Configuración inicial
                 </p>
@@ -1111,9 +1111,9 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
               </Dialog.Close>
             </header>
 
-            <div className="mb-6 h-2 rounded-full bg-slate-100">
+            <div className="mb-6 h-2 rounded-md bg-slate-100">
               <div
-                className="h-full rounded-full bg-sky-600 transition-all"
+                className="h-full rounded-md bg-sky-600 transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>

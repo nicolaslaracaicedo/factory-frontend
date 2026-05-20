@@ -16,7 +16,7 @@ import {
 import * as SelectPrimitive from "@radix-ui/react-select";
 import {
   Users,
-  UserCircle,
+  UserCog,
   Edit3,
   Edit,
   Plus,
@@ -190,7 +190,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${
           row.original.estado?.toLowerCase() === "inactivo"
             ? "bg-rose-100 text-rose-700"
             : "bg-emerald-100 text-emerald-700"
@@ -213,7 +213,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => openEdit(row.original)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado?.toLowerCase() === "inactivo" ? "text-emerald-600 focus:text-emerald-600" : "text-rose-600 focus:text-rose-600"}>
+              <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado?.toLowerCase() === "inactivo" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
                 <Power size={14} className="mr-2" /> {row.original.estado?.toLowerCase() === "inactivo" ? "Activar" : "Desactivar"}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -352,7 +352,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
     const current = usuario.estado?.toUpperCase() === "INACTIVO" ? "INACTIVO" : "ACTIVO";
     const next = current === "ACTIVO" ? "INACTIVO" : "ACTIVO";
     const action = next === "ACTIVO" ? "activar" : "desactivar";
-    if (!await confirmAction(`¿Estás seguro de que deseas ${action} este usuario?`)) return;
+    if (!await confirmAction({ message: `¿Estás seguro de que deseas ${action} este usuario?`, variant: action === "desactivar" ? "danger" : "success" })) return;
     try {
       await userService.toggleEstado(usuario.id, next);
       await refresh();
@@ -475,7 +475,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <UserCircle className="h-6 w-6 text-app-primary" />
+                  <UserCog className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">

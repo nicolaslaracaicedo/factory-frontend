@@ -108,6 +108,21 @@ export const retencionesService = {
     return normalizeRetencionResponse(payload).data;
   },
 
+  async cambiarEstado(id: number, estado: string): Promise<RetencionItem> {
+    const response = await fetch(`/api/retenciones/${id}/estado`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload));
+    }
+
+    return normalizeRetencionResponse(payload).data;
+  },
+
   async emitirRetencion(id: number): Promise<RetencionItem> {
     const response = await fetch(`/api/retenciones/${id}/emitir`, {
       method: "POST",

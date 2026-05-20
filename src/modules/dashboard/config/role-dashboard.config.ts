@@ -149,11 +149,6 @@ const adminNavbarGroups: SidebarGroup[] = [
         hint: "Sube tu certificado digital (.p12), ingresa la clave y activa la firma para emitir comprobantes",
       },
       {
-        key: "ambiente",
-        label: "Ambiente SRI",
-        hint: "Configura ambiente de pruebas o producción para envío de comprobantes al SRI",
-      },
-      {
         key: "iva",
         label: "Códigos IVA",
         hint: "Configura porcentajes de IVA, ICE y códigos de impuestos vigentes en Ecuador",

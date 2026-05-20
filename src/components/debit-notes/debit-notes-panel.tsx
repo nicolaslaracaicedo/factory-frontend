@@ -68,14 +68,15 @@ const initialForm: NotaDebitoFormState = {
   motivos: [initialMotivo()],
 };
 
-const estadoFilters = ["TODOS", "BORRADOR", "AUTORIZADO", "RECHAZADA", "INACTIVO"] as const;
+const estadoFilters = ["TODOS", "BORRADOR", "ENVIADO", "AUTORIZADO", "RECHAZADA", "ANULADA"] as const;
 
 const getEstadoColor = (estado?: string) => {
   switch (estado?.toUpperCase()) {
     case "AUTORIZADO": return "bg-emerald-100 text-emerald-700";
     case "RECHAZADA": return "bg-rose-100 text-rose-700";
     case "BORRADOR": return "bg-amber-100 text-amber-700";
-    case "INACTIVO": return "bg-rose-100 text-rose-700";
+    case "ENVIADO": return "bg-blue-100 text-blue-700";
+    case "ANULADA": return "bg-slate-100 text-slate-600";
     default: return "bg-sky-100 text-sky-700";
   }
 };
@@ -189,7 +190,7 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getEstadoColor(row.original.estado)}`}>
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getEstadoColor(row.original.estado)}`}>
           {row.original.estado || "BORRADOR"}
         </span>
       ),
@@ -211,29 +212,13 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
                 Ver
               </DropdownMenuItem>
               {row.original.estado?.toUpperCase() === "BORRADOR" && (
-                <>
-                  <DropdownMenuItem onClick={() => openEdit(row.original)}>
-                    <Edit size={14} className="mr-2" />
-                    Editar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => deleteNota(row.original)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700">
-                    <Trash2 size={14} className="mr-2" />
-                    Eliminar
-                  </DropdownMenuItem>
-                </>
-              )}
-              {row.original.estado?.toUpperCase() !== "AUTORIZADO" && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => emitirNota(row.original)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium">
-                    <Send size={14} className="mr-2" />
-                    Emitir
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                  <Edit size={14} className="mr-2" />
+                  Editar
+                </DropdownMenuItem>
               )}
               {row.original.estado?.toUpperCase() === "AUTORIZADO" && (
                 <>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => window.open(`/api/notas-debito/${row.original.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700 font-medium">
                     <FileText size={14} className="mr-2" />
                     Descargar PDF
@@ -241,6 +226,25 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
                   <DropdownMenuItem onClick={() => window.open(`/api/notas-debito/${row.original.id}/recibo`, '_blank')} className="text-teal-600 focus:bg-teal-50 focus:text-teal-700 font-medium">
                     <Printer size={14} className="mr-2" />
                     Imprimir Recibo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAnular(row.original)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
+                    <X size={14} className="mr-2" />
+                    Anular
+                  </DropdownMenuItem>
+                </>
+              )}
+              {row.original.estado?.toUpperCase() !== "AUTORIZADO" && row.original.estado?.toUpperCase() !== "ANULADA" && (
+                <DropdownMenuItem onClick={() => emitirNota(row.original)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium">
+                  <Send size={14} className="mr-2" />
+                  Emitir al SRI
+                </DropdownMenuItem>
+              )}
+              {row.original.estado?.toUpperCase() === "BORRADOR" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => deleteNota(row.original)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700">
+                    <Trash2 size={14} className="mr-2" />
+                    Eliminar
                   </DropdownMenuItem>
                 </>
               )}
@@ -486,7 +490,7 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
   };
 
   const toggleEstado = async (nota: NotaDebitoItem) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta nota de débito?")) return;
+    if (!await confirmAction({ message: "¿Estás seguro de que deseas cambiar el estado de esta nota de débito?", variant: "warning" })) return;
     try {
       await debitNoteService.toggleEstado(nota.id);
       await refresh();
@@ -499,6 +503,7 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
   };
 
   const emitirNota = async (nota: NotaDebitoItem) => {
+    if (!await confirmAction({ title: "Emitir al SRI", message: "¿Estás seguro de que deseas emitir esta nota de débito al SRI?", confirmText: "Emitir", variant: "info" })) return;
     try {
       await debitNoteService.emitirNota(nota.id);
       await refresh();
@@ -511,7 +516,7 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
   };
 
   const deleteNota = async (nota: NotaDebitoItem) => {
-    if (!await confirmAction({ title: "Eliminar nota de débito", message: "¿Estás seguro de que deseas eliminar esta nota de débito? Esta acción no se puede deshacer.", confirmText: "Eliminar", destructive: true })) return;
+    if (!await confirmAction({ title: "Eliminar nota de débito", message: "¿Estás seguro de que deseas eliminar esta nota de débito? Esta acción no se puede deshacer.", confirmText: "Eliminar", variant: "danger" })) return;
     try {
       await debitNoteService.deleteNota(nota.id);
       await refresh();
@@ -519,6 +524,19 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "No se pudo eliminar la nota.";
+      toast.error(message);
+    }
+  };
+
+  const handleAnular = async (nota: NotaDebitoItem) => {
+    if (!await confirmAction({ title: "Anular nota de débito", message: "Esta acción cambiará el estado a Anulado en el sistema. Asegúrate de haber realizado la anulación también en el portal del SRI en Línea.\n\nEsta acción es irreversible.", confirmText: "Anular", variant: "danger" })) return;
+    try {
+      await debitNoteService.cambiarEstado(nota.id, "ANULADA");
+      await refresh();
+      toast.success("Nota anulada.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Error al anular la nota.";
       toast.error(message);
     }
   };
@@ -964,7 +982,7 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
                 <SelectPrimitive.Viewport className="p-1">
                   {estadoFilters.map((estado) => (
                     <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado.charAt(0) + estado.slice(1).toLowerCase()}</SelectPrimitive.ItemText>
                     </SelectPrimitive.Item>
                   ))}
                 </SelectPrimitive.Viewport>
@@ -1039,7 +1057,7 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={row.id} className={`hover:bg-slate-50/60 transition-colors${row.original.estado?.toUpperCase() === "ANULADA" ? " bg-slate-50" : ""}`}>
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-3 align-top">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -1130,6 +1148,14 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
             <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
               {detail ? (
                 <>
+                  {detail.estado?.toUpperCase() === "ANULADA" && (
+                    <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                      <X className="h-4 w-4 text-amber-600 shrink-0" />
+                      <p className="text-xs font-semibold text-amber-800">
+                        Este documento fue marcado como <strong>Anulado</strong> y no puede ser modificado.
+                      </p>
+                    </div>
+                  )}
                   {/* SECCIÓN: Información general */}
                   <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                     <div className="flex items-center gap-2">

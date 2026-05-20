@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/src/components/ui/dropdown-menu";
 import { Button } from "@/src/components/ui/button";
 import type { Cliente } from "@/src/modules/clients/types/client.types";
@@ -125,7 +126,7 @@ export function ClientsPanel({ showPanel = true }: ClientsPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${
           row.getValue("estado") === "INACTIVO"
             ? "bg-rose-100 text-rose-700"
             : "bg-emerald-100 text-emerald-700"
@@ -150,10 +151,13 @@ export function ClientsPanel({ showPanel = true }: ClientsPanelProps) {
                 <Edit3 size={14} className="mr-2" />
                 Editar
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toggleEstado(row.original)}>
-                <Power size={14} className="mr-2" />
-                {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
+                  <Power size={14} className="mr-2" />
+                  {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+                </DropdownMenuItem>
+              </>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -243,7 +247,7 @@ export function ClientsPanel({ showPanel = true }: ClientsPanelProps) {
   };
 
   const toggleEstado = async (cliente: Cliente) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este cliente?")) return;
+    if (!await confirmAction({ message: "¿Estás seguro de que deseas cambiar el estado de este cliente?", variant: "warning" })) return;
     try {
       await clientService.toggleClienteEstado(cliente.id);
       const estado = filter === "TODOS" ? undefined : filter;
@@ -322,7 +326,7 @@ export function ClientsPanel({ showPanel = true }: ClientsPanelProps) {
                 <SelectPrimitive.Viewport className="p-1">
                   {estadoFilters.map((estado) => (
                     <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado.charAt(0) + estado.slice(1).toLowerCase()}</SelectPrimitive.ItemText>
                     </SelectPrimitive.Item>
                   ))}
                 </SelectPrimitive.Viewport>

@@ -193,7 +193,7 @@ export function SriLogsPanel({ showPanel }: SriLogsPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
+        <span className="rounded-md bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
           {tipoDocumentoLabels[row.original.tipo_documento] || row.original.tipo_documento}
         </span>
       ),
@@ -209,7 +209,7 @@ export function SriLogsPanel({ showPanel }: SriLogsPanelProps) {
         const log = row.original;
         return (
           <span
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+            className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
               log.accion === "AUTORIZACION"
                 ? "bg-emerald-100 text-emerald-800"
                 : log.accion === "RECHAZO"
@@ -234,7 +234,7 @@ export function SriLogsPanel({ showPanel }: SriLogsPanelProps) {
         if (!log.estado) return <span className="text-slate-400">-</span>;
         return (
           <span
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+            className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
               log.estado === "AUTORIZADO"
                 ? "bg-emerald-100 text-emerald-800"
                 : log.estado === "RECHAZADO" || log.estado === "NO AUTORIZADO" || log.estado === "DEVUELTA"

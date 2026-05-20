@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { CheckCircle2, Eye, PlusCircle, RefreshCw, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, FileSignature, Lock, Upload, File, Building2 } from "lucide-react";
+import { CheckCircle2, Eye, PlusCircle, RefreshCw, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Signature, Lock, Upload, File, Building2 } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -147,7 +147,7 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${row.original.activo === false ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+        <span className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold ${row.original.activo === false ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
           {row.original.activo === false ? "INACTIVA" : "ACTIVA"}
         </span>
       ),
@@ -333,10 +333,6 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="secondary" onClick={refresh} className="h-9 shadow-none whitespace-nowrap">
-            <RefreshCw size={15} className="mr-1.5" />
-            Actualizar
-          </Button>
           <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
             <Plus size={15} className="mr-1.5" />
             Subir firma
@@ -455,7 +451,7 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <FileSignature className="h-6 w-6 text-app-primary" />
+                  <Signature className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -586,7 +582,7 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <FileSignature className="h-6 w-6 text-app-primary" />
+                  <Signature className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -603,7 +599,7 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
               <div className="space-y-4">
                 <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                   <div className="flex items-center gap-2">
-                    <FileSignature className="h-3.5 w-3.5 text-slate-500" />
+                    <Signature className="h-3.5 w-3.5 text-slate-500" />
                     <h3 className="text-sm font-semibold text-slate-700">Datos de la firma</h3>
                   </div>
                   <dl className="grid gap-4 text-sm sm:grid-cols-2">
@@ -617,7 +613,7 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
                       <dt className="text-xs font-semibold text-slate-500">Estado</dt>
                       <dd className="mt-2">
                         <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
                             detail?.activo === false
                               ? "bg-rose-100 text-rose-700"
                               : "bg-emerald-100 text-emerald-700"

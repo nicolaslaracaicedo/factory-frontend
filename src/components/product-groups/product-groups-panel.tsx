@@ -16,13 +16,14 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Edit3, Plus, Power, Search, ChevronLeft, ChevronRight, X, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, LayoutGrid, MoreVertical, FolderOpen, FileText } from "lucide-react";
+import { Edit3, Plus, Power, Search, ChevronLeft, ChevronRight, X, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, LayoutGrid, MoreVertical, PackageSearch, FileText } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/src/components/ui/dropdown-menu";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
@@ -112,7 +113,7 @@ export function ProductGroupsPanel({ showPanel = true }: ProductGroupsPanelProps
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+        <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
           row.getValue("estado") === "INACTIVO"
             ? "bg-rose-100 text-rose-700"
             : "bg-emerald-100 text-emerald-700"
@@ -137,10 +138,13 @@ export function ProductGroupsPanel({ showPanel = true }: ProductGroupsPanelProps
                 <Edit3 size={14} className="mr-2" />
                 Editar
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toggleEstado(row.original)}>
-                <Power size={14} className="mr-2" />
-                {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
+                  <Power size={14} className="mr-2" />
+                  {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+                </DropdownMenuItem>
+              </>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -236,7 +240,7 @@ export function ProductGroupsPanel({ showPanel = true }: ProductGroupsPanelProps
   };
 
   const toggleEstado = async (grupo: GrupoProducto) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este grupo?")) return;
+    if (!await confirmAction({ message: "¿Estás seguro de que deseas cambiar el estado de este grupo?", variant: "warning" })) return;
     try {
       await productGroupService.toggleGrupoEstado(grupo.id);
       const estado = filter === "TODOS" ? undefined : filter;
@@ -315,7 +319,7 @@ export function ProductGroupsPanel({ showPanel = true }: ProductGroupsPanelProps
                 <SelectPrimitive.Viewport className="p-1">
                   {estadoFilters.map((estado) => (
                     <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado.charAt(0) + estado.slice(1).toLowerCase()}</SelectPrimitive.ItemText>
                     </SelectPrimitive.Item>
                   ))}
                 </SelectPrimitive.Viewport>
@@ -465,7 +469,7 @@ export function ProductGroupsPanel({ showPanel = true }: ProductGroupsPanelProps
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <FolderOpen className="h-6 w-6 text-app-primary" />
+                  <PackageSearch className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -485,7 +489,7 @@ export function ProductGroupsPanel({ showPanel = true }: ProductGroupsPanelProps
               {/* SECCIÓN: Información del grupo */}
               <div className="bg-slate-100 rounded-xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <FolderOpen className="h-3.5 w-3.5 text-slate-500" />
+                  <PackageSearch className="h-3.5 w-3.5 text-slate-500" />
                   <h3 className="text-sm font-semibold text-slate-700">Información del grupo</h3>
                 </div>
                 <div className="space-y-3">

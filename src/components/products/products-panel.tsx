@@ -16,7 +16,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Package, Search, ChevronLeft, ChevronRight, Edit3, Power, Plus, X, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, MoreVertical, Tag, Layers, DollarSign, Percent, FileText, Box, Eye } from "lucide-react";
+import { Package, Search, ChevronLeft, ChevronRight, Edit3, Power, Plus, X, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, MoreVertical, Tag, Layers, DollarSign, Percent, FileText, Eye } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -90,6 +90,7 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
   const [loadingIva, setLoadingIva] = useState(true);
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<EstadoFiltro>("TODOS");
+  const [filterGrupo, setFilterGrupo] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailData, setDetailData] = useState<Producto | null>(null);
@@ -187,6 +188,8 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
     },
     {
       accessorKey: "id_grupo",
+      filterFn: (row, _columnId, filterValue: string) =>
+        row.original.id_grupo === Number(filterValue),
       header: ({ column }) => (
         <button
           className="group inline-flex items-center gap-1 font-bold text-slate-700 hover:text-slate-900 cursor-pointer select-none"
@@ -197,7 +200,7 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getGrupoColor(row.original.id_grupo)}`}>
+        <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${getGrupoColor(row.original.id_grupo)}`}>
           {getGrupoNombre(row.original.id_grupo)}
         </span>
       ),
@@ -256,7 +259,7 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${row.getValue("estado") === "INACTIVO" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${row.getValue("estado") === "INACTIVO" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"
           }`}>
           {row.getValue("estado") || "ACTIVO"}
         </span>
@@ -278,16 +281,17 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => openEdit(row.original)}>
                 <Edit3 size={14} className="mr-2" />
                 Editar
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => toggleActivo(row.original)}>
-                <Power size={14} className="mr-2" />
-                {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => toggleActivo(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
+                  <Power size={14} className="mr-2" />
+                  {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+                </DropdownMenuItem>
+              </>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -310,9 +314,11 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
   });
 
   useEffect(() => {
-    if (filter === "TODOS") setColumnFilters([]);
-    else setColumnFilters([{ id: "estado", value: filter }]);
-  }, [filter]);
+    const filters: ColumnFiltersState = [];
+    if (filter !== "TODOS") filters.push({ id: "estado", value: filter });
+    if (filterGrupo !== 0) filters.push({ id: "id_grupo", value: String(filterGrupo) });
+    setColumnFilters(filters);
+  }, [filter, filterGrupo]);
 
   useEffect(() => {
     const loadGrupos = async () => {
@@ -484,7 +490,7 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
 
   const toggleActivo = async (producto: Producto) => {
     const action = producto.estado === "ACTIVO" ? "desactivar" : "activar";
-    if (!await confirmAction(`¿Estás seguro de que deseas ${action} este producto?`)) return;
+    if (!await confirmAction({ message: `¿Estás seguro de que deseas ${action} este producto?`, variant: action === "desactivar" ? "danger" : "success" })) return;
     try {
       await productService.toggleProductoActivo(producto.id, producto.estado ?? "ACTIVO");
       const estado = filter === "TODOS" ? undefined : filter;
@@ -563,7 +569,31 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
                 <SelectPrimitive.Viewport className="p-1">
                   {estadoFilters.map((estado) => (
                     <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado.charAt(0) + estado.slice(1).toLowerCase()}</SelectPrimitive.ItemText>
+                    </SelectPrimitive.Item>
+                  ))}
+                </SelectPrimitive.Viewport>
+              </SelectPrimitive.Content>
+            </SelectPrimitive.Portal>
+          </SelectPrimitive.Root>
+
+          {/* Filtro grupo */}
+          <SelectPrimitive.Root value={filterGrupo === 0 ? "0" : filterGrupo.toString()} onValueChange={(val) => setFilterGrupo(Number(val))}>
+            <SelectPrimitive.Trigger className="inline-flex h-8 min-w-[160px] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-none transition-all hover:bg-slate-50 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200 data-[state=open]:border-sky-400 data-[state=open]:ring-2 data-[state=open]:ring-sky-200">
+              <SelectPrimitive.Value placeholder="Todos los grupos" />
+              <SelectPrimitive.Icon>
+                <ChevronDown size={14} className="text-slate-400" />
+              </SelectPrimitive.Icon>
+            </SelectPrimitive.Trigger>
+            <SelectPrimitive.Portal>
+              <SelectPrimitive.Content className="relative z-50 min-w-[160px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2" position="popper" sideOffset={4}>
+                <SelectPrimitive.Viewport className="p-1">
+                  <SelectPrimitive.Item value="0" className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                    <SelectPrimitive.ItemText>Todos los grupos</SelectPrimitive.ItemText>
+                  </SelectPrimitive.Item>
+                  {grupos.map((grupo) => (
+                    <SelectPrimitive.Item key={grupo.id} value={grupo.id.toString()} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                      <SelectPrimitive.ItemText>{grupo.nombre}</SelectPrimitive.ItemText>
                     </SelectPrimitive.Item>
                   ))}
                 </SelectPrimitive.Viewport>
@@ -716,7 +746,7 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Box className="h-6 w-6 text-app-primary" />
+                  <Package className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -1178,7 +1208,7 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
                     <div className="rounded-lg bg-white/80 px-3 py-2">
                       <dt className="text-xs font-semibold text-slate-500">Estado</dt>
                       <dd className="mt-2">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
                           detailData?.estado === "INACTIVO"
                             ? "bg-rose-100 text-rose-700"
                             : "bg-emerald-100 text-emerald-700"
@@ -1229,7 +1259,7 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
                     <div className="rounded-lg bg-white/80 px-3 py-2">
                       <dt className="text-xs font-semibold text-slate-500">Grupo</dt>
                       <dd className="mt-2">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getGrupoColor(detailData?.id_grupo ?? 0)}`}>
+                        <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${getGrupoColor(detailData?.id_grupo ?? 0)}`}>
                           {getGrupoNombre(detailData?.id_grupo ?? 0)}
                         </span>
                       </dd>

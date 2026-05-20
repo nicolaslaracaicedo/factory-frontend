@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Eye, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Hash, Building2, FileType } from "lucide-react";
+import { Eye, PlusCircle, Power, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Building2, FileCode } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -247,7 +247,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
       ),
       cell: ({ row }) => (
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+          className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
             row.original.estado === "INACTIVO"
               ? "bg-rose-100 text-rose-700"
               : "bg-emerald-100 text-emerald-700"
@@ -273,10 +273,13 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toggleEstado(row.original)}>
-                <Power size={14} className="mr-2" />
-                {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
+                  <Power size={14} className="mr-2" />
+                  {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+                </DropdownMenuItem>
+              </>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -344,7 +347,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
   };
 
   const toggleEstado = async (item: SecuencialItem) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de este secuencial?")) return;
+    if (!await confirmAction({ message: "¿Estás seguro de que deseas cambiar el estado de este secuencial?", variant: "warning" })) return;
     try {
       await secuencialesService.toggleEstado(item.id);
       await reloadSecuenciales();
@@ -442,7 +445,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
                 <SelectPrimitive.Viewport className="p-1">
                   {estadoFilters.map((estado) => (
                     <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado.charAt(0) + estado.slice(1).toLowerCase()}</SelectPrimitive.ItemText>
                     </SelectPrimitive.Item>
                   ))}
                 </SelectPrimitive.Viewport>
@@ -587,7 +590,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Hash className="h-6 w-6 text-app-primary" />
+                  <FileCode className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -720,7 +723,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <FileText className="h-6 w-6 text-app-primary" />
+                  <FileCode className="h-6 w-6 text-app-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -772,7 +775,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
                         <dt className="text-xs font-semibold text-slate-500">Ambiente SRI</dt>
                         <dd className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
                               detailData.ambiente === 2
                                 ? "bg-orange-100 text-orange-700"
                                 : "bg-sky-100 text-sky-700"
@@ -792,7 +795,7 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
                         <dt className="text-xs font-semibold text-slate-500">Estado</dt>
                         <dd className="mt-2">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
                               detailData.estado === "INACTIVO"
                                 ? "bg-rose-100 text-rose-700"
                                 : "bg-emerald-100 text-emerald-700"

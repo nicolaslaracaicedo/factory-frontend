@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown, LayoutGrid, LogOut, PanelRightOpen, UserCircle2 } from "lucide-react";
 import type { AuthUser, UserRole } from "@/src/modules/auth/types/auth.types";
@@ -35,6 +36,16 @@ export function TopNavbar({
   const hasMenu = Boolean(menuGroups?.some((group) => group.items.length));
   const { breadcrumbs: overrideBreadcrumbs } = useBreadcrumbs();
   const breadcrumbItems = overrideBreadcrumbs ?? defaultBreadcrumbs ?? [{ label: "Inicio" }];
+  const [ambiente, setAmbiente] = useState(1);
+
+  useEffect(() => {
+    fetch("/api/empresa")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.data?.ambiente) setAmbiente(data.data.ambiente);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white/85 px-5 backdrop-blur sm:px-6">
@@ -42,7 +53,14 @@ export function TopNavbar({
         <Breadcrumbs items={breadcrumbItems} className="text-[11px]" />
       </div>
 
-      <div className="flex items-center">
+      <div className="flex items-center gap-2">
+        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+          ambiente === 2
+            ? "bg-emerald-100 text-emerald-700"
+            : "bg-amber-100 text-amber-700"
+        }`}>
+          {ambiente === 2 ? "Producción" : "Modo Pruebas"}
+        </span>
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
             <button
@@ -67,7 +85,7 @@ export function TopNavbar({
               className="z-50 min-w-[280px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
             >
               <div className="px-2 py-2 space-y-2">
-                <div className="flex items-center gap-2">
+<div className="flex items-center gap-3">
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />

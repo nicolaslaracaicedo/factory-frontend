@@ -85,7 +85,7 @@ const initialForm: FacturaFormState = {
   datos_adicionales: [],
 };
 
-const estadoFilters = ["TODOS", "BORRADOR", "AUTORIZADO", "RECHAZADA", "INACTIVO"] as const;
+const estadoFilters = ["TODOS", "BORRADOR", "ENVIADO", "AUTORIZADO", "RECHAZADA", "ANULADA"] as const;
 const tipoPagoOptions = ["CONTADO", "CREDITO"] as const;
 const formaPagoOptions = [
   { value: "01", label: "01 - Efectivo" },
@@ -143,7 +143,8 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
       case "AUTORIZADO": return "bg-emerald-100 text-emerald-700";
       case "RECHAZADA": return "bg-rose-100 text-rose-700";
       case "BORRADOR": return "bg-amber-100 text-amber-700";
-      case "INACTIVO": return "bg-rose-100 text-rose-700";
+      case "ENVIADO": return "bg-blue-100 text-blue-700";
+      case "ANULADA": return "bg-slate-100 text-slate-600";
       default: return "bg-sky-100 text-sky-700";
     }
   };
@@ -211,7 +212,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
         </button>
       ),
       cell: ({ row }) => (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getEstadoColor(row.original.estado)}`}>
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getEstadoColor(row.original.estado)}`}>
           {row.original.estado || "ACTIVO"}
         </span>
       ),
@@ -233,29 +234,13 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                 Ver
               </DropdownMenuItem>
               {row.original.estado?.toUpperCase() === "BORRADOR" && (
-                <>
-                  <DropdownMenuItem onClick={() => openEdit(row.original)}>
-                    <Edit3 size={14} className="mr-2" />
-                    Gestionar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => deleteFactura(row.original)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700">
-                    <Trash2 size={14} className="mr-2" />
-                    Eliminar
-                  </DropdownMenuItem>
-                </>
-              )}
-              {row.original.estado?.toUpperCase() !== "AUTORIZADO" && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => emitirFactura(row.original)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium">
-                    <Send size={14} className="mr-2" />
-                    Emitir
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                  <Edit3 size={14} className="mr-2" />
+                  Editar
+                </DropdownMenuItem>
               )}
               {row.original.estado?.toUpperCase() === "AUTORIZADO" && (
                 <>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => window.open(`/api/facturas/${row.original.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700 font-medium">
                     <FileText size={14} className="mr-2" />
                     Factura PDF
@@ -263,6 +248,25 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                   <DropdownMenuItem onClick={() => window.open(`/api/facturas/${row.original.id}/recibo`, '_blank')} className="text-teal-600 focus:bg-teal-50 focus:text-teal-700 font-medium">
                     <Printer size={14} className="mr-2" />
                     Imprimir Recibo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAnular(row.original)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
+                    <X size={14} className="mr-2" />
+                    Anular
+                  </DropdownMenuItem>
+                </>
+              )}
+              {row.original.estado?.toUpperCase() !== "AUTORIZADO" && row.original.estado?.toUpperCase() !== "ANULADA" && (
+                <DropdownMenuItem onClick={() => emitirFactura(row.original)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium">
+                  <Send size={14} className="mr-2" />
+                  Emitir al SRI
+                </DropdownMenuItem>
+              )}
+              {row.original.estado?.toUpperCase() === "BORRADOR" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => deleteFactura(row.original)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700">
+                    <Trash2 size={14} className="mr-2" />
+                    Eliminar
                   </DropdownMenuItem>
                 </>
               )}
@@ -602,7 +606,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
   };
 
   const toggleEstado = async (factura: FacturaItem) => {
-    if (!await confirmAction("¿Estás seguro de que deseas cambiar el estado de esta factura?")) return;
+    if (!await confirmAction({ message: "¿Estás seguro de que deseas cambiar el estado de esta factura?", variant: "warning" })) return;
     try {
       await invoiceService.toggleEstado(factura.id);
       await refresh();
@@ -615,6 +619,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
   };
 
   const emitirFactura = async (factura: FacturaItem) => {
+    if (!await confirmAction({ title: "Emitir al SRI", message: "¿Estás seguro de que deseas emitir esta factura al SRI?", confirmText: "Emitir", variant: "info" })) return;
     try {
       const emittedFactura = await invoiceService.emitirFactura(factura.id);
       await refresh();
@@ -638,7 +643,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
   };
 
   const deleteFactura = async (factura: FacturaItem) => {
-    if (!await confirmAction({ title: "Eliminar factura", message: "¿Estás seguro de que deseas eliminar esta factura? Esta acción no se puede deshacer.", confirmText: "Eliminar", destructive: true })) return;
+    if (!await confirmAction({ title: "Eliminar factura", message: "¿Estás seguro de que deseas eliminar esta factura? Esta acción no se puede deshacer.", confirmText: "Eliminar", variant: "danger" })) return;
     try {
       await invoiceService.deleteFactura(factura.id);
       await refresh();
@@ -646,6 +651,19 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "No se pudo eliminar la factura.";
+      toast.error(message);
+    }
+  };
+
+  const handleAnular = async (factura: FacturaItem) => {
+    if (!await confirmAction({ title: "Anular factura", message: "Esta acción cambiará el estado a Anulado en el sistema. Asegúrate de haber realizado la anulación también en el portal del SRI en Línea.\n\nEsta acción es irreversible.", confirmText: "Anular", variant: "danger" })) return;
+    try {
+      await invoiceService.cambiarEstado(factura.id, "ANULADA");
+      await refresh();
+      toast.success("Factura anulada.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Error al anular la factura.";
       toast.error(message);
     }
   };
@@ -1504,7 +1522,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                 <SelectPrimitive.Viewport className="p-1">
                   {estadoFilters.map((estado) => (
                     <SelectPrimitive.Item key={estado} value={estado} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado}</SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemText>{estado === "TODOS" ? "Todos los estados" : estado.charAt(0) + estado.slice(1).toLowerCase()}</SelectPrimitive.ItemText>
                     </SelectPrimitive.Item>
                   ))}
                 </SelectPrimitive.Viewport>
@@ -1576,7 +1594,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={row.id} className={`hover:bg-slate-50/60 transition-colors${row.original.estado?.toUpperCase() === "ANULADA" ? " bg-slate-50" : ""}`}>
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-3 align-top">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -1665,6 +1683,14 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
             <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
               {detail ? (
                 <div className="space-y-4">
+                  {detail.estado?.toUpperCase() === "ANULADA" && (
+                    <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                      <X className="h-4 w-4 text-amber-600 shrink-0" />
+                      <p className="text-xs font-semibold text-amber-800">
+                        Este documento fue marcado como <strong>Anulado</strong> y no puede ser modificado.
+                      </p>
+                    </div>
+                  )}
                   {/* SECCIÓN: Información general */}
                   <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                     <div className="flex items-center gap-2">
@@ -1687,7 +1713,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                       <div className="rounded-lg bg-white/80 px-3 py-2">
                         <dt className="text-xs font-semibold text-slate-500">Estado</dt>
                         <dd className="mt-2">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getEstadoColor(detail.estado)}`}>
+                          <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${getEstadoColor(detail.estado)}`}>
                             {detail.estado || "DESCONOCIDO"}
                           </span>
                         </dd>
@@ -1765,7 +1791,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                         <div className="rounded-lg bg-white/80 px-3 py-2">
                           <dt className="text-xs font-semibold text-slate-500">Tipo</dt>
                           <dd className="mt-2">
-                            <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold bg-sky-100 text-sky-700">
+                            <span className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold bg-sky-100 text-sky-700">
                               CONSUMIDOR FINAL
                             </span>
                           </dd>

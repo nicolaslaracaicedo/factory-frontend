@@ -108,6 +108,22 @@ export const guiasRemisionService = {
     return normalizeGuiaRemisionResponse(payload).data;
   },
 
+  async cambiarEstado(id: number, estado: string): Promise<GuiaRemisionItem> {
+    const response = await fetch(`/api/guias-remision/${id}/estado`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+      cache: "no-store",
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload));
+    }
+
+    return normalizeGuiaRemisionResponse(payload).data;
+  },
+
   async emitirGuia(id: number): Promise<GuiaRemisionItem> {
     const response = await fetch(`/api/guias-remision/${id}/emitir`, {
       method: "POST",
