@@ -34,6 +34,7 @@ import type {
 } from "@/src/modules/iva/types/iva.types";
 import { toCodigoIvaFormInput } from "@/src/modules/iva/utils/iva-payload.utils";
 import { ivaService } from "@/src/modules/iva/services/iva.service";
+import { Loader } from "@/src/components/ui/loader";
 
 const initialForm: CodigoIvaFormInput = {
   codigo: "",
@@ -350,7 +351,9 @@ export function IvaPanel({ showPanel = true }: IvaPanelProps) {
 
       {/* Tabla */}
       {loading ? (
-        <p className="mt-4 text-sm text-slate-500">Cargando códigos...</p>
+        <div className="py-12">
+          <Loader label="Cargando códigos IVA..." />
+        </div>
       ) : table.getFilteredRowModel().rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">

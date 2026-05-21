@@ -329,22 +329,21 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
           {loading ? (
             <Loader label="Cargando datos de empresa" className="min-h-[200px]" />
           ) : company ? (
-            <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
                 <div>
-                  <h4 className="text-lg font-bold text-slate-800">Datos de empresa</h4>
-                  <p className="text-sm text-slate-500 mt-1">Resumen de la configuracion actual y fiscal.</p>
+                  <h4 className="text-xl font-bold text-slate-900">Datos de la Empresa</h4>
+                  <p className="text-sm text-slate-500 mt-1">Configuración actual, identidad y detalles fiscales.</p>
                 </div>
-                <Button type="button" variant="secondary" onClick={openEditModal} className="h-9 shadow-sm">
+                <Button type="button" onClick={openEditModal} className="h-9 bg-app-primary hover:bg-app-primary/90 text-white shadow-sm flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
                   Editar datos
                 </Button>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-[260px_1fr] items-start">
-                {/* Columna Izquierda: Logo y Metadatos */}
-                <div className="space-y-4">
-                  {/* Tarjeta Logo (Carnet a lo ancho) */}
-                  <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-2 aspect-video shadow-sm overflow-hidden">
+              </div>              <div className="space-y-6">
+                {/* Fila 1: Logo + Información General */}
+                <div className="grid gap-6 md:grid-cols-[300px_1fr] items-stretch">
+                  {/* Tarjeta Logo */}
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-slate-50/80 p-4 min-h-[180px] overflow-hidden">
                     {company.logo ? (
                       <img
                         src={company.logo}
@@ -356,109 +355,118 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
                     )}
                   </div>
 
-                  {/* Tarjeta de Estado */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
-                    <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Estado de cuenta</h5>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-600">Estado</span>
-                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold ${company.estado === "ACTIVO" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
-                        {company.estado || "-"}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[11px] font-medium text-slate-500">Registrado en</span>
-                      <span className="text-sm font-semibold text-slate-800">{company.created_at ? new Date(company.created_at).toLocaleDateString("es-EC") : "-"}</span>
-                    </div>
-
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[11px] font-medium text-slate-500">Última actualización</span>
-                      <span className="text-sm font-semibold text-slate-800">{company.updated_at ? new Date(company.updated_at).toLocaleDateString("es-EC") : "-"}</span>
+                  {/* Info General */}
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-6 flex flex-col justify-center">
+                    <h5 className="mb-5 text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-slate-400" />
+                      Información General
+                    </h5>
+                    <div className="grid gap-y-4 gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Razón social</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{company.razon_social || "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Nombre comercial</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{company.nombre_comercial || "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">RUC</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{company.ruc || "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Identificación</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{company.identificacion || "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Correo</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{company.email || "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Teléfono</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{company.telefono || "-"}</p>
+                      </div>
+                      <div className="sm:col-span-2 lg:col-span-3">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Dirección matriz</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{company.direccion_matriz || "-"}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Columna Derecha: Información detallada */}
-                <div className="space-y-6">
-                  {/* Info General */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <h5 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">Información General</h5>
-                    <div className="grid gap-y-4 gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
-                      <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Razón social</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.razon_social || "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Nombre comercial</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.nombre_comercial || "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">RUC</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.ruc || "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Identificación</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.identificacion || "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Correo</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.email || "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Teléfono</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.telefono || "-"}</p>
-                      </div>
-                      <div className="sm:col-span-2 lg:col-span-3">
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Dirección matriz</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.direccion_matriz || "-"}</p>
-                      </div>
+                {/* Fila 2: Estado de Cuenta + Configuración Fiscal */}
+                <div className="grid gap-6 md:grid-cols-[300px_1fr] items-stretch">
+                  {/* Tarjeta de Estado */}
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-5 flex flex-col justify-between min-h-[200px]">
+                    <h5 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-slate-400" />
+                      Estado de cuenta
+                    </h5>
+
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-[11px] font-medium text-slate-500">Estado</span>
+                      <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-[10px] font-bold ${company.estado === "ACTIVO" ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-700"}`}>
+                        {company.estado || "-"}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1 border-t border-slate-200/40 pt-3">
+                      <span className="text-[10px] font-medium text-slate-500">Registrado en</span>
+                      <span className="text-xs font-semibold text-slate-700">{company.created_at ? new Date(company.created_at).toLocaleDateString("es-EC") : "-"}</span>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-medium text-slate-500">Última actualización</span>
+                      <span className="text-xs font-semibold text-slate-700">{company.updated_at ? new Date(company.updated_at).toLocaleDateString("es-EC") : "-"}</span>
                     </div>
                   </div>
 
                   {/* Info Fiscal */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <h5 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">Configuración Fiscal</h5>
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-6 flex flex-col justify-center">
+                    <h5 className="mb-5 text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <FileCheck className="h-4 w-4 text-slate-400" />
+                      Configuración Fiscal
+                    </h5>
                     <div className="grid gap-y-4 gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
                       <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Ambiente SRI</p>
-                        <div className="mt-0.5">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Ambiente SRI</p>
+                        <div className="mt-1">
                           {company.ambiente === 2 ? (
-                            <span className="inline-flex items-center rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-700">Producción</span>
+                            <span className="inline-flex items-center rounded-lg bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-700">Producción</span>
                           ) : (
-                            <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">Pruebas</span>
+                            <span className="inline-flex items-center rounded-lg bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Pruebas</span>
                           )}
                         </div>
                       </div>
                       <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Régimen</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{regimenLabelMap[company.regimen ?? ""] || company.regimen?.replace(/_/g, " ") || "-"}</p>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Régimen</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{regimenLabelMap[company.regimen ?? ""] || company.regimen?.replace(/_/g, " ") || "-"}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">RIMPE</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.rimpe ? "Sí" : "No"}</p>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">RIMPE</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{company.rimpe ? "Sí" : "No"}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Obligado contabilidad</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.obligado_contabilidad ? "Sí" : "No"}</p>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Obligado contabilidad</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{company.obligado_contabilidad ? "Sí" : "No"}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Agente retención</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.agente_retencion ? "Sí" : "No"}</p>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Agente retención</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{company.agente_retencion ? "Sí" : "No"}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Contribuyente especial</p>
-                        <p className="text-sm font-medium text-slate-800 mt-0.5">{company.contribuyente_especial ? `Sí (${company.nro_contribuyente_esp || "Sin Nro"})` : "No"}</p>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Contribuyente especial</p>
+                        <p className="text-xs font-medium text-slate-800 mt-1">{company.contribuyente_especial ? `Sí (${company.nro_contribuyente_esp || "Sin Nro"})` : "No"}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase">Servicio de Correo</p>
-                        <div className="mt-0.5">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Servicio de Correo</p>
+                        <div className="mt-1">
                           {company.smtp_configurado ? (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                               <CheckCircle2 className="h-3 w-3" /> Configurado
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
                               Sin configurar
                             </span>
                           )}

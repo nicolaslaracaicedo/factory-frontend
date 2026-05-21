@@ -386,7 +386,9 @@ export function EstablishmentsPanel({ showPanel = true }: EstablishmentsPanelPro
 
       {/* Tabla */}
       {loading ? (
-        <p className="mt-4 text-sm text-slate-500">Cargando establecimientos...</p>
+        <div className="py-12">
+          <Loader label="Cargando establecimientos..." />
+        </div>
       ) : table.getFilteredRowModel().rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">

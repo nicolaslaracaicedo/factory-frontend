@@ -63,7 +63,7 @@ import { confirmAction } from "@/src/lib/confirm";
 
 const initialForm: UsuarioFormInput = {
   id_rol: 0,
-  tipo_identificacion: "",
+  tipo_identificacion: "05",
   identificacion: "",
   nombre: "",
   apellido: "",
@@ -308,7 +308,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
   const buildUpdatePayload = (): UsuarioUpdateInput => {
     const payload: UsuarioUpdateInput = {
       id_rol: form.id_rol,
-      tipo_identificacion: form.tipo_identificacion,
+      tipo_identificacion: "05",
       identificacion: form.identificacion,
       nombre: form.nombre,
       apellido: form.apellido,
@@ -519,51 +519,17 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
                     />
                   </Field>
 
-                  <Field label="Tipo de identificación" htmlFor="tipo_identificacion">
-                    <SelectPrimitive.Root 
-                      value={form.tipo_identificacion || undefined} 
-                      onValueChange={(val) => updateField("tipo_identificacion", val)}
-                    >
-                      <SelectPrimitive.Trigger 
-                        id="tipo_identificacion"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
-                      >
-                        <SelectPrimitive.Value placeholder="Selecciona un tipo..." />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content 
-                          className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <SelectPrimitive.Viewport className="p-1">
-                            {tipoIdentificacionOptions.map((option) => (
-                              <SelectPrimitive.Item 
-                                key={option.value}
-                                value={option.value}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-
-                  <Field label="Número de identificación" htmlFor="identificacion">
-                    <Input
-                      id="identificacion"
-                      value={form.identificacion}
-                      onChange={(event) => updateField("identificacion", event.target.value)}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Ej: 1712345678"
-                    />
-                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="Número de identificación" htmlFor="identificacion">
+                      <Input
+                        id="identificacion"
+                        value={form.identificacion}
+                        onChange={(event) => updateField("identificacion", event.target.value)}
+                        className="bg-white shadow-none placeholder:text-slate-300"
+                        placeholder="Ej: 1712345678"
+                      />
+                    </Field>
+                  </div>
                 </div>
               </div>
 
