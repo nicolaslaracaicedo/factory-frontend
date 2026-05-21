@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LayoutGrid } from "lucide-react";
 import { ModuleCard } from "@/src/components/dashboard/module-card";
+import { ResumenDashboard } from "@/src/components/dashboard/resumen-dashboard";
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
 import { SideNav, iconByKey } from "@/src/components/dashboard/side-nav";
 import { TopNavbar } from "@/src/components/dashboard/top-navbar";
@@ -166,15 +167,7 @@ function RoleDashboardContent({
         ) : null}
 
         {activeSection === "dashboard" ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {config.sections.map((section) => (
-              <ModuleCard
-                key={section.title}
-                title={section.title}
-                description={section.description}
-              />
-            ))}
-          </div>
+          <ResumenDashboard />
         ) : null}
 
         {role === "Administrador" ? (

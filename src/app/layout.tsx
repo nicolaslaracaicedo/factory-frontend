@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import { Manrope, IBM_Plex_Mono, Roboto, Inter, Poppins } from "next/font/google";
+import { Manrope, IBM_Plex_Mono, Roboto, Inter, Poppins, Geist } from "next/font/google";
 import { Toaster } from "sonner";
 import { AlertCircle, CheckCircle2, TriangleAlert, Info } from "lucide-react";
 import { CompanyThemeSync } from "@/src/components/company/company-theme-sync";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -49,7 +52,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${manrope.variable} ${ibmPlexMono.variable} ${roboto.variable} ${inter.variable} ${poppins.variable} h-full antialiased`}
+      className={cn("h-full", "antialiased", manrope.variable, ibmPlexMono.variable, roboto.variable, inter.variable, poppins.variable, "font-sans", geist.variable)}
     >
       <head>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,0..1&display=swap" />
