@@ -35,6 +35,7 @@ import { Loader } from "@/src/components/ui/loader";
 
 interface SignaturePanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
 const emptyForm: FirmaUploadInput = {
@@ -43,7 +44,7 @@ const emptyForm: FirmaUploadInput = {
   nombre: "",
 };
 
-export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
+export function SignaturePanel({ showPanel = true, readOnly = false }: SignaturePanelProps) {
   const [firmas, setFirmas] = useState<FirmaElectronica[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -168,15 +169,19 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openReplace(row.original)}>
-                <RefreshCw size={14} className="mr-2" />
-                Reemplazar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => activateFirma(row.original)} className="text-emerald-600 focus:bg-emerald-50 focus:text-emerald-700">
-                <CheckCircle2 size={14} className="mr-2" />
-                Activar
-              </DropdownMenuItem>
+              {!readOnly && (
+                <>
+                  <DropdownMenuItem onClick={() => openReplace(row.original)}>
+                    <RefreshCw size={14} className="mr-2" />
+                    Reemplazar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => activateFirma(row.original)} className="text-emerald-600 focus:bg-emerald-50 focus:text-emerald-700">
+                    <CheckCircle2 size={14} className="mr-2" />
+                    Activar
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -332,12 +337,14 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
           </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Subir firma
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto flex items-center gap-2">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Subir firma
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Tabla */}
@@ -349,9 +356,11 @@ export function SignaturePanel({ showPanel = true }: SignaturePanelProps) {
             <FileText size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay firmas registradas.</p>
-          <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
-            <Plus size={15} className="mr-1.5" /> Subir firma
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
+              <Plus size={15} className="mr-1.5" /> Subir firma
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">

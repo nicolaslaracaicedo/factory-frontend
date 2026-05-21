@@ -124,9 +124,10 @@ const estadoFilters = ["TODOS", "PENDIENTE", "APROBADA", "RECHAZADA", "VENCIDA",
 
 interface ProformasPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
-export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
+export function ProformasPanel({ showPanel = true, readOnly = false }: ProformasPanelProps) {
   const [proformas, setProformas] = useState<ProformaItem[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -267,12 +268,12 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => openDetail(p)}><Eye size={14} className="mr-2" /> Ver detalle</DropdownMenuItem>
-                {canEditDelete(p) && <DropdownMenuItem onClick={() => openEdit(p)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
-                {p.estado === "PENDIENTE" && <DropdownMenuItem onClick={() => handleAprobar(p)} className="text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700 font-medium"><FileCheck size={14} className="mr-2" /> Aprobar</DropdownMenuItem>}
-                {(p.estado === "PENDIENTE" || p.estado === "APROBADA") && <DropdownMenuItem onClick={() => handleRechazar(p)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700"><X size={14} className="mr-2" /> Rechazar</DropdownMenuItem>}
-                {canConvertir(p) && <DropdownMenuItem onClick={() => openConvert(p)} className="text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700 font-medium"><FileCheck size={14} className="mr-2" /> Convertir a Factura</DropdownMenuItem>}
+                {!readOnly && canEditDelete(p) && <DropdownMenuItem onClick={() => openEdit(p)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
+                {!readOnly && p.estado === "PENDIENTE" && <DropdownMenuItem onClick={() => handleAprobar(p)} className="text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700 font-medium"><FileCheck size={14} className="mr-2" /> Aprobar</DropdownMenuItem>}
+                {!readOnly && (p.estado === "PENDIENTE" || p.estado === "APROBADA") && <DropdownMenuItem onClick={() => handleRechazar(p)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700"><X size={14} className="mr-2" /> Rechazar</DropdownMenuItem>}
+                {!readOnly && canConvertir(p) && <DropdownMenuItem onClick={() => openConvert(p)} className="text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700 font-medium"><FileCheck size={14} className="mr-2" /> Convertir a Factura</DropdownMenuItem>}
                 <DropdownMenuItem onClick={() => window.open(`/api/proformas/${p.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700"><FileText size={14} className="mr-2" /> Descargar PDF</DropdownMenuItem>
-                {canEditDelete(p) && (
+                {!readOnly && canEditDelete(p) && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => handleDelete(p)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700"><Trash2 size={14} className="mr-2" /> Eliminar</DropdownMenuItem>
@@ -284,7 +285,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
         );
       },
     },
-  ], [clientes]);
+  ], [clientes, readOnly]);
 
   const table = useReactTable({
     data: filteredByEstado,
@@ -375,6 +376,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
   const canConvertir = (prof: ProformaItem) => prof.estado === "APROBADA";
 
   const openCreate = () => {
+    if (readOnly) return;
     setEditing(null);
     setForm({
       ...initialForm,
@@ -385,6 +387,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
   };
 
   const openEdit = (prof: ProformaItem) => {
+    if (readOnly) return;
     setEditing(prof);
     const mapped = toProformaFormState(prof);
     setForm({
@@ -426,6 +429,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
   };
 
   const openConvert = (prof: ProformaItem) => {
+    if (readOnly) return;
     setConverting(prof);
     setConvertForm({
       forma_pago: "01",
@@ -1176,11 +1180,13 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
             <ListFilter size={15} className="mr-1.5" />{showFilters ? "Ocultar" : "Filtros"}
           </Button>
         </div>
-        <div className="ml-auto">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" /> Nueva Proforma
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" /> Nueva Proforma
+            </Button>
+          </div>
+        )}
       </div>
 
       {showFilters && (
@@ -1212,7 +1218,7 @@ export function ProformasPanel({ showPanel = true }: ProformasPanelProps) {
         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <FileText size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm text-slate-600">No hay proformas para este filtro.</p>
-          <Button className="mt-3 h-9 shadow-none" onClick={openCreate}><Plus size={15} className="mr-1.5" /> Nueva Proforma</Button>
+          {!readOnly && <Button className="mt-3 h-9 shadow-none" onClick={openCreate}><Plus size={15} className="mr-1.5" /> Nueva Proforma</Button>}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">

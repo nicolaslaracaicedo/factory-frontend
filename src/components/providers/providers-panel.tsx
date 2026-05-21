@@ -52,6 +52,7 @@ type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface ProvidersPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
 function SortIcon({ column }: { column: Column<Proveedor> }) {
@@ -61,7 +62,7 @@ function SortIcon({ column }: { column: Column<Proveedor> }) {
   return <ChevronsUpDown size={11} className="ml-1 text-slate-300" />;
 }
 
-export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
+export function ProvidersPanel({ showPanel = true, readOnly = false }: ProvidersPanelProps) {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [tiposIdentificacion, setTiposIdentificacion] = useState<TipoIdentificacion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,17 +169,19 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openEdit(row.original)}>
-                <Edit3 size={14} className="mr-2" />
-                Editar
-              </DropdownMenuItem>
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
-                  <Power size={14} className="mr-2" />
-                  {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-                </DropdownMenuItem>
-              </>
+              {!readOnly && (
+                <>
+                  <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                    <Edit3 size={14} className="mr-2" />
+                    Editar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
+                    <Power size={14} className="mr-2" />
+                    {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -374,13 +377,14 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
           </Button>
         </div>
 
-        {/* Botón nuevo — empujado al extremo derecho */}
-        <div className="ml-auto">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Nuevo proveedor
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Nuevo proveedor
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Panel de Filtros Expandible */}
@@ -449,10 +453,12 @@ export function ProvidersPanel({ showPanel = true }: ProvidersPanelProps) {
             <Handshake size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay proveedores para este filtro.</p>
-          <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
-            <Plus size={15} className="mr-1.5" />
-            Registrar proveedor
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
+              <Plus size={15} className="mr-1.5" />
+              Registrar proveedor
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">

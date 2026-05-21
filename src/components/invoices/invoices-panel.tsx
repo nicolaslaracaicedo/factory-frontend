@@ -97,9 +97,10 @@ type TipoPago = (typeof tipoPagoOptions)[number];
 
 interface InvoicesPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
-export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
+export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPanelProps) {
   const [facturas, setFacturas] = useState<FacturaItem[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
@@ -233,7 +234,7 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              {row.original.estado?.toUpperCase() === "BORRADOR" && (
+              {!readOnly && row.original.estado?.toUpperCase() === "BORRADOR" && (
                 <DropdownMenuItem onClick={() => openEdit(row.original)}>
                   <Edit3 size={14} className="mr-2" />
                   Editar
@@ -253,19 +254,21 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
                     <Printer size={14} className="mr-2" />
                     Imprimir Recibo
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleAnular(row.original)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
-                    <X size={14} className="mr-2" />
-                    Anular
-                  </DropdownMenuItem>
+                  {!readOnly && (
+                    <DropdownMenuItem onClick={() => handleAnular(row.original)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
+                      <X size={14} className="mr-2" />
+                      Anular
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
-              {row.original.estado?.toUpperCase() !== "AUTORIZADO" && row.original.estado?.toUpperCase() !== "ANULADA" && (
+              {!readOnly && row.original.estado?.toUpperCase() !== "AUTORIZADO" && row.original.estado?.toUpperCase() !== "ANULADA" && (
                 <DropdownMenuItem onClick={() => emitirFactura(row.original)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium">
                   <Send size={14} className="mr-2" />
                   Emitir al SRI
                 </DropdownMenuItem>
               )}
-              {row.original.estado?.toUpperCase() === "BORRADOR" && (
+              {!readOnly && row.original.estado?.toUpperCase() === "BORRADOR" && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => deleteFactura(row.original)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700">
@@ -1504,13 +1507,14 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
           </Button>
         </div>
 
-        {/* Botón nuevo — empujado al extremo derecho */}
-        <div className="ml-auto">
-          <Button onClick={openCreate} disabled={loadingCatalogs} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Nueva factura
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} disabled={loadingCatalogs} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Nueva factura
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Panel de Filtros Expandible */}
@@ -1582,9 +1586,11 @@ export function InvoicesPanel({ showPanel = true }: InvoicesPanelProps) {
             <FileText size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay facturas para este filtro.</p>
-          <Button onClick={openCreate} disabled={loadingCatalogs} className="mt-3 h-9 shadow-none">
-            <Plus size={15} className="mr-1.5" /> Crear factura
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} disabled={loadingCatalogs} className="mt-3 h-9 shadow-none">
+              <Plus size={15} className="mr-1.5" /> Crear factura
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">

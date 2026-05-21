@@ -149,9 +149,10 @@ type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface NotasVentaPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
-export function NotasVentaPanel({ showPanel = true }: NotasVentaPanelProps) {
+export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVentaPanelProps) {
   const [notas, setNotas] = useState<NotaVentaItem[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -336,7 +337,7 @@ export function NotasVentaPanel({ showPanel = true }: NotasVentaPanelProps) {
                   <Eye size={14} className="mr-2" />
                   Ver
                 </DropdownMenuItem>
-                {n.estado === "BORRADOR" && (
+                {!readOnly && n.estado === "BORRADOR" && (
                   <DropdownMenuItem onClick={() => openEdit(n)}>
                     <Edit3 size={14} className="mr-2" />
                     Editar
@@ -356,19 +357,21 @@ export function NotasVentaPanel({ showPanel = true }: NotasVentaPanelProps) {
                       <Printer size={14} className="mr-2" />
                       Imprimir Recibo
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleAnular(n.id)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
-                      <X size={14} className="mr-2" />
-                      Anular
-                    </DropdownMenuItem>
+                    {!readOnly && (
+                      <DropdownMenuItem onClick={() => handleAnular(n.id)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
+                        <X size={14} className="mr-2" />
+                        Anular
+                      </DropdownMenuItem>
+                    )}
                   </>
                 )}
-                {n.estado === "BORRADOR" && (
+                {!readOnly && n.estado === "BORRADOR" && (
                   <DropdownMenuItem onClick={() => handleEmitir(n.id)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium">
                     <Send size={14} className="mr-2" />
                     Emitir al SRI
                   </DropdownMenuItem>
                 )}
-                {n.estado === "BORRADOR" && (
+                {!readOnly && n.estado === "BORRADOR" && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => handleDelete(n.id)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700">
@@ -1366,13 +1369,14 @@ export function NotasVentaPanel({ showPanel = true }: NotasVentaPanelProps) {
           </Button>
         </div>
 
-        {/* Botón nuevo — empujado al extremo derecho */}
-        <div className="ml-auto">
-          <Button onClick={openCreate} disabled={loadingCatalogs} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Nueva nota
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} disabled={loadingCatalogs} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Nueva nota
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Panel de Filtros Expandible */}
@@ -1412,9 +1416,11 @@ export function NotasVentaPanel({ showPanel = true }: NotasVentaPanelProps) {
             <FileText size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay notas de venta para este filtro.</p>
-          <Button onClick={openCreate} disabled={loadingCatalogs} className="mt-3 h-9 shadow-none">
-            <Plus size={15} className="mr-1.5" /> Crear nota
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} disabled={loadingCatalogs} className="mt-3 h-9 shadow-none">
+              <Plus size={15} className="mr-1.5" /> Crear nota
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">

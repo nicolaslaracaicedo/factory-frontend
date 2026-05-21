@@ -177,69 +177,69 @@ const adminNavbarGroups: SidebarGroup[] = [
   },
 ];
 
+const facturadorNavbarGroups: SidebarGroup[] = [
+  {
+    title: "Mi Empresa",
+    items: [
+      {
+        key: "empresa",
+        label: "Empresa",
+        hint: "Configura razón social, RUC, dirección, logo y datos tributarios de tu empresa",
+      },
+      {
+        key: "establecimientos",
+        label: "Establecimientos",
+        hint: "Registra sucursales, matriz y puntos de venta con su código SRI y dirección",
+      },
+    ],
+  },
+  {
+    title: "Configuración Fiscal SRI",
+    items: [
+      {
+        key: "firma-electronica",
+        label: "Firma Electrónica",
+        hint: "Sube tu certificado digital (.p12), ingresa la clave y activa la firma para emitir comprobantes",
+      },
+      {
+        key: "iva",
+        label: "Códigos IVA",
+        hint: "Configura porcentajes de IVA, ICE y códigos de impuestos vigentes en Ecuador",
+      },
+      {
+        key: "secuenciales",
+        label: "Secuenciales",
+        hint: "Define numeración inicial para facturas, notas y guías por punto de emisión",
+      },
+      {
+        key: "puntos-emision",
+        label: "Puntos de Emisión",
+        hint: "Crea puntos de emisión (cajas) asociados a cada establecimiento para facturación",
+      },
+    ],
+  },
+  {
+    title: "Centro de Control",
+    items: [
+      {
+        key: "sri-logs",
+        label: "Auditoría SRI",
+        hint: "Consulta historial de envíos, respuestas del SRI y estado de autorización de comprobantes",
+      },
+    ],
+  },
+];
+
 export const roleSidebarItems: Record<UserRole, SidebarGroup[]> = {
   Administrador: adminSidebarGroups,
-  Facturador: [
-    {
-      title: "Principal",
-      items: [
-        { key: "dashboard", label: "Resumen", hint: "Visualiza métricas clave, estadísticas de ventas y estado de comprobantes emitidos" },
-        { key: "facturas", label: "Facturas", hint: "Crea borradores, emite facturas electrónicas al SRI, descarga PDFs e imprime recibos" },
-        { key: "notas-venta", label: "Notas de Venta", hint: "Registra ventas a consumidor final, emite comprobantes, descarga PDF e imprime recibos" },
-        { key: "clientes", label: "Gestión de Clientes", hint: "Registra, edita y administra la información comercial de tus clientes" },
-        { key: "productos", label: "Productos", hint: "Gestiona tu catálogo: códigos, descripciones, precios de venta, stock y configuración de impuestos" },
-      ],
-    },
-  ],
-  Contador: [
-    {
-      title: "Principal",
-      items: [
-        { key: "dashboard", label: "Resumen", hint: "Visualiza métricas clave, estadísticas de ventas y estado de comprobantes emitidos" },
-        { key: "reportes", label: "Reportes", hint: "Genera reportes financieros, cierres de caja y análisis tributario" },
-      ],
-    },
-  ],
+  Facturador: adminSidebarGroups,
+  Contador: adminSidebarGroups,
 };
 
 export const roleNavbarItems: Record<UserRole, SidebarGroup[]> = {
   Administrador: adminNavbarGroups,
-  Facturador: [
-    {
-      title: "Comprobantes",
-      items: [
-        { key: "notas-credito", label: "Notas de Crédito", hint: "Genera notas de crédito por devoluciones, anulaciones o correcciones de facturas emitidas" },
-        { key: "notas-debito", label: "Notas de Débito", hint: "Emite notas de débito por intereses, recargos o ajustes de precio en facturas" },
-      ],
-    },
-    {
-      title: "Logistica",
-      items: [
-        {
-          key: "guias-remision",
-          label: "Guías de Remisión",
-          hint: "Genera guías de remisión para transporte de mercadería entre establecimientos",
-        },
-      ],
-    },
-  ],
-  Contador: [
-    {
-      title: "Tributario",
-      items: [
-        {
-          key: "retenciones",
-          label: "Retenciones",
-          hint: "Emite comprobantes de retención en la fuente por servicios y compras a proveedores",
-        },
-        {
-          key: "impuestos",
-          label: "Impuestos",
-          hint: "Configura porcentajes de IVA, ICE y códigos de impuestos vigentes en Ecuador",
-        },
-      ],
-    },
-  ],
+  Facturador: facturadorNavbarGroups,
+  Contador: facturadorNavbarGroups,
 };
 
 export const roleDashboardConfig: Record<UserRole, DashboardRoleConfig> = {

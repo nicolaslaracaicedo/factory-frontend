@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Edit, Eye, PlusCircle, Power, RefreshCw, Search, Send, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Printer, Trash, Package, User, Calendar, FileCheck, Tag, Receipt, FileX, Calculator, DollarSign } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Edit, Edit3, Eye, PlusCircle, Power, RefreshCw, Search, Send, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Printer, Trash, Package, User, Calendar, FileCheck, Tag, Receipt, FileX, Calculator, DollarSign } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -96,9 +96,10 @@ type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface CreditNotesPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
-export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
+export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditNotesPanelProps) {
   const [notas, setNotas] = useState<NotaCreditoItem[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
@@ -223,9 +224,9 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              {row.original.estado?.toUpperCase() === "BORRADOR" && (
+              {!readOnly && row.original.estado?.toUpperCase() === "BORRADOR" && (
                 <DropdownMenuItem onClick={() => openEdit(row.original)}>
-                  <Edit size={14} className="mr-2" />
+                  <Edit3 size={14} className="mr-2" />
                   Editar
                 </DropdownMenuItem>
               )}
@@ -239,19 +240,21 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
                     <Printer size={14} className="mr-2" />
                     Imprimir Recibo
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleAnular(row.original)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
-                    <X size={14} className="mr-2" />
-                    Anular
-                  </DropdownMenuItem>
+                  {!readOnly && (
+                    <DropdownMenuItem onClick={() => handleAnular(row.original)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
+                      <X size={14} className="mr-2" />
+                      Anular
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
-              {row.original.estado?.toUpperCase() !== "AUTORIZADO" && row.original.estado?.toUpperCase() !== "ANULADA" && (
+              {!readOnly && row.original.estado?.toUpperCase() !== "AUTORIZADO" && row.original.estado?.toUpperCase() !== "ANULADA" && (
                 <DropdownMenuItem onClick={() => emitirNota(row.original)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium">
                   <Send size={14} className="mr-2" />
                   Emitir al SRI
                 </DropdownMenuItem>
               )}
-              {row.original.estado?.toUpperCase() === "BORRADOR" && (
+              {!readOnly && row.original.estado?.toUpperCase() === "BORRADOR" && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => deleteNota(row.original)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700">
@@ -1309,13 +1312,14 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
           </Button>
         </div>
 
-        {/* Botón nuevo — empujado al extremo derecho */}
-        <div className="ml-auto">
-          <Button onClick={openCreate} disabled={loadingCatalogs} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Nueva nota
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} disabled={loadingCatalogs} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Nueva nota
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Panel de Filtros Expandible */}
@@ -1384,9 +1388,11 @@ export function CreditNotesPanel({ showPanel = true }: CreditNotesPanelProps) {
             <FileText size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay notas para este filtro.</p>
-          <Button onClick={openCreate} disabled={loadingCatalogs} className="mt-3 h-9 shadow-none">
-            <Plus size={15} className="mr-1.5" /> Crear nota
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} disabled={loadingCatalogs} className="mt-3 h-9 shadow-none">
+              <Plus size={15} className="mr-1.5" /> Crear nota
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">

@@ -139,9 +139,10 @@ const formasPago = [
 
 interface RecurrentesPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
-export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
+export function RecurrentesPanel({ showPanel = true, readOnly = false }: RecurrentesPanelProps) {
   const [recurrentes, setRecurrentes] = useState<RecurrenteItem[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -294,20 +295,22 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => openDetail(r)}><Eye size={14} className="mr-2" /> Ver detalle</DropdownMenuItem>
-                {(r.estado === "ACTIVO" || r.estado === "INACTIVO") && <DropdownMenuItem onClick={() => openEdit(r)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
-                {r.estado === "ACTIVO" && <DropdownMenuItem onClick={() => openGenerar(r)} className="text-emerald-700 focus:text-emerald-700"><RefreshCw size={14} className="mr-2" /> Generar Factura</DropdownMenuItem>}
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleToggleEstado(r)} className={r.estado === "ACTIVO" ? "text-orange-600 focus:text-orange-600" : "text-emerald-600 focus:text-emerald-600"}><Power size={14} className="mr-2" /> {r.estado === "ACTIVO" ? "Desactivar" : "Activar"}</DropdownMenuItem>
-                  {(r.estado === "ACTIVO" || r.estado === "INACTIVO") && <DropdownMenuItem onClick={() => handleDelete(r)} className="text-rose-600 focus:text-rose-600"><Trash2 size={14} className="mr-2" /> Eliminar</DropdownMenuItem>}
-                </>
+                {!readOnly && (r.estado === "ACTIVO" || r.estado === "INACTIVO") && <DropdownMenuItem onClick={() => openEdit(r)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
+                {!readOnly && r.estado === "ACTIVO" && <DropdownMenuItem onClick={() => openGenerar(r)} className="text-emerald-700 focus:text-emerald-700"><RefreshCw size={14} className="mr-2" /> Generar Factura</DropdownMenuItem>}
+                {!readOnly && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleToggleEstado(r)} className={r.estado === "ACTIVO" ? "text-orange-600 focus:text-orange-600" : "text-emerald-600 focus:text-emerald-600"}><Power size={14} className="mr-2" /> {r.estado === "ACTIVO" ? "Desactivar" : "Activar"}</DropdownMenuItem>
+                    {(r.estado === "ACTIVO" || r.estado === "INACTIVO") && <DropdownMenuItem onClick={() => handleDelete(r)} className="text-rose-600 focus:text-rose-600"><Trash2 size={14} className="mr-2" /> Eliminar</DropdownMenuItem>}
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         );
       },
     },
-  ], [clientes]);
+  ], [clientes, readOnly]);
 
   const table = useReactTable({
     data: filteredByEstado,
@@ -393,6 +396,7 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
   };
 
   const openCreate = () => {
+    if (readOnly) return;
     setEditing(null);
     setForm({
       ...initialForm,
@@ -402,6 +406,7 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
   };
 
   const openEdit = (rec: RecurrenteItem) => {
+    if (readOnly) return;
     setEditing(rec);
     const mapped = toRecurrenteFormState(rec);
     setForm({
@@ -445,6 +450,7 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
   };
 
   const openGenerar = (rec: RecurrenteItem) => {
+    if (readOnly) return;
     setGenerando(rec);
     setGenerarForm({
       id_cliente: rec.id_cliente,
@@ -1068,11 +1074,13 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
             <ListFilter size={15} className="mr-1.5" />{showFilters ? "Ocultar" : "Filtros"}
           </Button>
         </div>
-        <div className="ml-auto">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" /> Nuevo Recurrente
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" /> Nuevo Recurrente
+            </Button>
+          </div>
+        )}
       </div>
 
       {showFilters && (
@@ -1104,7 +1112,7 @@ export function RecurrentesPanel({ showPanel = true }: RecurrentesPanelProps) {
         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <FileText size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm text-slate-600">No hay recurrentes para este filtro.</p>
-          <Button className="mt-3 h-9 shadow-none" onClick={openCreate}><Plus size={15} className="mr-1.5" /> Nuevo Recurrente</Button>
+          {!readOnly && <Button className="mt-3 h-9 shadow-none" onClick={openCreate}><Plus size={15} className="mr-1.5" /> Nuevo Recurrente</Button>}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">

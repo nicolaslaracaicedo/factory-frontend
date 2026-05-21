@@ -72,6 +72,7 @@ type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface ProductsPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
 function SortIcon({ column }: { column: Column<Producto> }) {
@@ -81,7 +82,7 @@ function SortIcon({ column }: { column: Column<Producto> }) {
   return <ChevronsUpDown size={11} className="ml-1 text-slate-300" />;
 }
 
-export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
+export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPanelProps) {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [grupos, setGrupos] = useState<GrupoProducto[]>([]);
   const [codigosIva, setCodigosIva] = useState<CodigoIva[]>([]);
@@ -281,17 +282,19 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openEdit(row.original)}>
-                <Edit3 size={14} className="mr-2" />
-                Editar
-              </DropdownMenuItem>
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => toggleActivo(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
-                  <Power size={14} className="mr-2" />
-                  {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-                </DropdownMenuItem>
-              </>
+              {!readOnly && (
+                <>
+                  <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                    <Edit3 size={14} className="mr-2" />
+                    Editar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => toggleActivo(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
+                    <Power size={14} className="mr-2" />
+                    {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -542,13 +545,14 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
           </Button>
         </div>
 
-        {/* Botón nuevo — empujado al extremo derecho */}
-        <div className="ml-auto">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Nuevo producto
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Nuevo producto
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Panel de Filtros Expandible */}
@@ -641,10 +645,12 @@ export function ProductsPanel({ showPanel = true }: ProductsPanelProps) {
             <Package size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay productos para este filtro.</p>
-          <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
-            <Plus size={15} className="mr-1.5" />
-            Registrar producto
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
+              <Plus size={15} className="mr-1.5" />
+              Registrar producto
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">

@@ -74,6 +74,7 @@ import { confirmAction } from "@/src/lib/confirm";
 
 interface LiquidacionesCompraPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
 const initialDetail = (): LiquidacionCompraFormState["detalles"][0] => ({
@@ -105,7 +106,7 @@ const codigosIva = [
   { value: "7", label: "Exento de IVA", porcentaje: 0 },
 ];
 
-export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesCompraPanelProps) {
+export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }: LiquidacionesCompraPanelProps) {
   const [liquidaciones, setLiquidaciones] = useState<LiquidacionCompraItem[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -291,15 +292,15 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => openDetail(l)}><Eye size={14} className="mr-2" /> Ver detalle</DropdownMenuItem>
-                {canEdit(l) && <DropdownMenuItem onClick={() => openEdit(l)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
+                {!readOnly && canEdit(l) && <DropdownMenuItem onClick={() => openEdit(l)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
                 {l.estado?.toUpperCase() === "AUTORIZADO" && (
                   <DropdownMenuItem onClick={() => window.open(`/api/liquidaciones-compra/${l.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700 font-medium">
                     <FileText size={14} className="mr-2" />
                     Descargar PDF
                   </DropdownMenuItem>
                 )}
-                {canEmitir(l) && <DropdownMenuItem onClick={() => handleEmitir(l)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium"><Send size={14} className="mr-2" /> Emitir al SRI</DropdownMenuItem>}
-                {(l.estado?.toUpperCase() === "AUTORIZADO" || canDelete(l)) && (
+                {!readOnly && canEmitir(l) && <DropdownMenuItem onClick={() => handleEmitir(l)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium"><Send size={14} className="mr-2" /> Emitir al SRI</DropdownMenuItem>}
+                {!readOnly && (l.estado?.toUpperCase() === "AUTORIZADO" || canDelete(l)) && (
                   <>
                     <DropdownMenuSeparator />
                     {l.estado?.toUpperCase() === "AUTORIZADO" && (
@@ -316,7 +317,7 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
         );
       },
     },
-  ], [proveedores]);
+  ], [proveedores, readOnly]);
 
   const table = useReactTable({
     data: filteredByEstado,
@@ -338,6 +339,7 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
     liq.estado === "BORRADOR" || liq.estado === "RECHAZADA";
 
   const openCreate = () => {
+    if (readOnly) return;
     setEditing(null);
     setForm(initialFormState);
     setProductoQueries({});
@@ -346,6 +348,7 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
   };
 
   const openEdit = (liq: LiquidacionCompraItem) => {
+    if (readOnly) return;
     setEditing(liq);
     setForm(toLiquidacionFormState(liq));
     setProductoQueries({});
@@ -633,11 +636,13 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
             <ListFilter size={15} className="mr-1.5" />{showFilters ? "Ocultar" : "Filtros"}
           </Button>
         </div>
-        <div className="ml-auto">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" /> Nueva Liquidación
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" /> Nueva Liquidación
+            </Button>
+          </div>
+        )}
       </div>
 
       {showFilters && (
@@ -669,7 +674,7 @@ export function LiquidacionesCompraPanel({ showPanel = true }: LiquidacionesComp
         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <FileText size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm text-slate-600">No hay liquidaciones para este filtro.</p>
-          <Button className="mt-3 h-9 shadow-none" onClick={openCreate}><Plus size={15} className="mr-1.5" /> Nueva Liquidación</Button>
+          {!readOnly && <Button className="mt-3 h-9 shadow-none" onClick={openCreate}><Plus size={15} className="mr-1.5" /> Nueva Liquidación</Button>}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">

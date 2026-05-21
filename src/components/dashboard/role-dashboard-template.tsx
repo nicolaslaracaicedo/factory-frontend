@@ -170,82 +170,92 @@ function RoleDashboardContent({
           <ResumenDashboard />
         ) : null}
 
-        {role === "Administrador" ? (
-          <CompanySettingsPanel showPanel={activeSection === "empresa"} />
+        {activeSection === "empresa" ? (
+          <CompanySettingsPanel showPanel={true} readOnly={role !== "Administrador"} />
         ) : null}
-
-        {activeSection === "usuarios" ? <UsersPanel showPanel={true} /> : null}
-
-        {activeSection === "clientes" ? <ClientsPanel showPanel={true} /> : null}
-
+ 
+        {activeSection === "usuarios" && role === "Administrador" ? (
+          <UsersPanel showPanel={true} />
+        ) : null}
+ 
+        {activeSection === "clientes" ? (
+          <ClientsPanel showPanel={true} readOnly={role === "Contador"} />
+        ) : null}
+ 
         {activeSection === "proveedores" ? (
-          <ProvidersPanel showPanel={true} />
+          <ProvidersPanel showPanel={true} readOnly={role === "Contador"} />
         ) : null}
-
+ 
         {activeSection === "grupos-producto" ? (
-          <ProductGroupsPanel showPanel={true} />
+          <ProductGroupsPanel showPanel={true} readOnly={role === "Contador"} />
         ) : null}
-
-        {activeSection === "productos" ? <ProductsPanel showPanel={true} /> : null}
-
-        {activeSection === "iva" ? <IvaPanel showPanel={true} /> : null}
-
+ 
+        {activeSection === "productos" ? (
+          <ProductsPanel showPanel={true} readOnly={role === "Contador"} />
+        ) : null}
+ 
+        {activeSection === "iva" ? (
+          <IvaPanel showPanel={true} readOnly={role !== "Administrador"} />
+        ) : null}
+ 
         {activeSection === "establecimientos" ? (
-          <EstablishmentsPanel showPanel={true} />
+          <EstablishmentsPanel showPanel={true} readOnly={role !== "Administrador"} />
         ) : null}
-
+ 
         {activeSection === "puntos-emision" ? (
-          <EmissionPointsPanel showPanel={true} />
+          <EmissionPointsPanel showPanel={true} readOnly={role !== "Administrador"} />
         ) : null}
-
+ 
         {activeSection === "firma-electronica" ? (
-          <SignaturePanel showPanel={true} />
+          <SignaturePanel showPanel={true} readOnly={role !== "Administrador"} />
         ) : null}
-
+ 
         {activeSection === "secuenciales" ? (
-          <SecuencialesPanel showPanel={true} />
+          <SecuencialesPanel showPanel={true} readOnly={role !== "Administrador"} />
         ) : null}
-
-        {activeSection === "facturas" ? <InvoicesPanel showPanel={true} /> : null}
-
+ 
+        {activeSection === "facturas" ? (
+          <InvoicesPanel showPanel={true} readOnly={role === "Contador"} />
+        ) : null}
+ 
         {activeSection === "notas-credito" ? (
-          <CreditNotesPanel showPanel={true} />
+          <CreditNotesPanel showPanel={true} readOnly={role === "Contador"} />
         ) : null}
-
+ 
         {activeSection === "notas-venta" ? (
-          <NotasVentaPanel showPanel={true} />
+          <NotasVentaPanel showPanel={true} readOnly={role === "Contador"} />
         ) : null}
-
+ 
         {activeSection === "notas-debito" ? (
-          <DebitNotesPanel showPanel={true} />
+          <DebitNotesPanel showPanel={true} readOnly={role === "Contador"} />
         ) : null}
-
+ 
         {activeSection === "retenciones" ? (
-          <RetencionesPanel showPanel={true} />
+          <RetencionesPanel showPanel={true} readOnly={role === "Contador"} />
         ) : null}
-
+ 
         {activeSection === "guias-remision" ? (
-          <GuiasRemisionPanel showPanel={true} />
+          <GuiasRemisionPanel showPanel={true} readOnly={role === "Contador"} />
         ) : null}
-
+ 
         {activeSection === "liquidaciones-compra" ? (
-          <LiquidacionesCompraPanel showPanel={true} />
+          <LiquidacionesCompraPanel showPanel={true} readOnly={role === "Contador"} />
         ) : null}
-
+ 
         {activeSection === "proformas" ? (
-          <ProformasPanel showPanel={true} />
+          <ProformasPanel showPanel={true} readOnly={role === "Contador"} />
         ) : null}
-
+ 
         {activeSection === "recurrentes" ? (
-          <RecurrentesPanel showPanel={true} />
+          <RecurrentesPanel showPanel={true} readOnly={role === "Contador"} />
         ) : null}
-
+ 
         {activeSection === "sri-logs" ? ( // Agregar case
           <SriLogsPanel showPanel={true} />
         ) : null}
-
+ 
         {activeSection !== "dashboard" &&
-          !(role === "Administrador" && activeSection === "empresa") &&
+          activeSection !== "empresa" &&
           activeSection !== "usuarios" &&
           activeSection !== "clientes" &&
           activeSection !== "proveedores" &&

@@ -101,6 +101,7 @@ const ambienteOptions = [
 interface CompanySettingsPanelProps {
   showPanel?: boolean;
   initialCompany?: Company | null;
+  readOnly?: boolean;
 }
 
 const hasCoreCompanyData = (form: CompanyFormInput): boolean => {
@@ -112,7 +113,7 @@ const normalizeHex = (value: string, fallback = "#1976D2") => {
   return value.startsWith("#") ? value : fallback;
 };
 
-export function CompanySettingsPanel({ showPanel = true, initialCompany = null }: CompanySettingsPanelProps) {
+export function CompanySettingsPanel({ showPanel = true, initialCompany = null, readOnly = false }: CompanySettingsPanelProps) {
   const [form, setForm] = useState<CompanyFormInput>(initialForm);
   const [company, setCompany] = useState<Company | null>(initialCompany);
   const [loading, setLoading] = useState(!initialCompany);
@@ -335,10 +336,12 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
                   <h4 className="text-xl font-bold text-slate-900">Datos de la Empresa</h4>
                   <p className="text-sm text-slate-500 mt-1">Configuración actual, identidad y detalles fiscales.</p>
                 </div>
-                <Button type="button" onClick={openEditModal} className="h-9 bg-app-primary hover:bg-app-primary/90 text-white shadow-sm flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  Editar datos
-                </Button>
+                {!readOnly && (
+                  <Button type="button" onClick={openEditModal} className="h-9 bg-app-primary hover:bg-app-primary/90 text-white shadow-sm flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Editar datos
+                  </Button>
+                )}
               </div>              <div className="space-y-6">
                 {/* Fila 1: Logo + Información General */}
                 <div className="grid gap-6 md:grid-cols-[300px_1fr] items-stretch">
@@ -482,9 +485,11 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null }
               <p className="text-sm text-slate-600">
                 Aún no hay datos de empresa. Configura la información para comenzar.
               </p>
-              <Button className="mt-3" type="button" onClick={openEditModal}>
-                Configurar empresa
-              </Button>
+              {!readOnly && (
+                <Button className="mt-3" type="button" onClick={openEditModal}>
+                  Configurar empresa
+                </Button>
+              )}
             </section>
           )}
         </div>

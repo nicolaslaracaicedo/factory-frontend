@@ -48,9 +48,10 @@ type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface IvaPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
-export function IvaPanel({ showPanel = true }: IvaPanelProps) {
+export function IvaPanel({ showPanel = true, readOnly = false }: IvaPanelProps) {
   const [codigos, setCodigos] = useState<CodigoIva[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -170,7 +171,7 @@ export function IvaPanel({ showPanel = true }: IvaPanelProps) {
     {
       id: "acciones",
       header: () => null,
-      cell: ({ row }) => (
+      cell: ({ row }) => readOnly ? null : (
         <div className="flex justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -312,13 +313,14 @@ export function IvaPanel({ showPanel = true }: IvaPanelProps) {
           </Button>
         </div>
 
-        {/* Botón nuevo — empujado al extremo derecho */}
-        <div className="ml-auto">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Nuevo código
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Nuevo código
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Panel de Filtros Expandible */}
@@ -360,9 +362,11 @@ export function IvaPanel({ showPanel = true }: IvaPanelProps) {
             <FileText size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay códigos para este filtro.</p>
-          <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
-            <Plus size={15} className="mr-1.5" /> Crear código
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
+              <Plus size={15} className="mr-1.5" /> Crear código
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">

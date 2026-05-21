@@ -75,6 +75,7 @@ import { confirmAction } from "@/src/lib/confirm";
 
 interface GuiasRemisionPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
 const initialFormState: GuiaFormState = {
@@ -105,7 +106,7 @@ const motivosTraslado = [
   "Otros",
 ];
 
-export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps) {
+export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: GuiasRemisionPanelProps) {
   const [guias, setGuias] = useState<GuiaRemisionItem[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -252,15 +253,15 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => openDetail(g)}><Eye size={14} className="mr-2" /> Ver detalle</DropdownMenuItem>
-                {canEdit(g) && <DropdownMenuItem onClick={() => openEdit(g)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
+                {!readOnly && canEdit(g) && <DropdownMenuItem onClick={() => openEdit(g)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
                 {g.estado?.toUpperCase() === "AUTORIZADO" && (
                   <DropdownMenuItem onClick={() => window.open(`/api/guias-remision/${g.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700 font-medium">
                     <FileText size={14} className="mr-2" />
                     Descargar PDF
                   </DropdownMenuItem>
                 )}
-                {canEmitir(g) && <DropdownMenuItem onClick={() => handleEmitir(g)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium"><Send size={14} className="mr-2" /> Emitir al SRI</DropdownMenuItem>}
-                {(g.estado?.toUpperCase() === "AUTORIZADO" || canDelete(g)) && (
+                {!readOnly && canEmitir(g) && <DropdownMenuItem onClick={() => handleEmitir(g)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium"><Send size={14} className="mr-2" /> Emitir al SRI</DropdownMenuItem>}
+                {!readOnly && (g.estado?.toUpperCase() === "AUTORIZADO" || canDelete(g)) && (
                   <>
                     <DropdownMenuSeparator />
                     {g.estado?.toUpperCase() === "AUTORIZADO" && (
@@ -277,7 +278,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
         );
       },
     },
-  ], [clientes]);
+  ], [clientes, readOnly]);
 
   const table = useReactTable({
     data: filteredByEstado,
@@ -328,6 +329,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
     guia.estado === "BORRADOR" || guia.estado === "RECHAZADA";
 
   const openCreate = () => {
+    if (readOnly) return;
     setEditing(null);
     setClienteQuery("");
     setClienteSearchResults([]);
@@ -343,6 +345,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
   };
 
   const openEdit = (guia: GuiaRemisionItem) => {
+    if (readOnly) return;
     setEditing(guia);
     setForm(toGuiaFormState(guia));
     setClienteQuery("");
@@ -1078,11 +1081,13 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
             <ListFilter size={15} className="mr-1.5" />{showFilters ? "Ocultar" : "Filtros"}
           </Button>
         </div>
-        <div className="ml-auto">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap" disabled={loadingCatalogs}>
-            <Plus size={15} className="mr-1.5" /> Nueva Guía
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap" disabled={loadingCatalogs}>
+              <Plus size={15} className="mr-1.5" /> Nueva Guía
+            </Button>
+          </div>
+        )}
       </div>
 
       {showFilters && (
@@ -1127,7 +1132,7 @@ export function GuiasRemisionPanel({ showPanel = true }: GuiasRemisionPanelProps
         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <Truck size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm text-slate-600">No hay guías para este filtro.</p>
-          <Button className="mt-3 h-9 shadow-none" onClick={openCreate} disabled={loadingCatalogs}><Plus size={15} className="mr-1.5" /> Nueva Guía</Button>
+          {!readOnly && <Button className="mt-3 h-9 shadow-none" onClick={openCreate} disabled={loadingCatalogs}><Plus size={15} className="mr-1.5" /> Nueva Guía</Button>}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">

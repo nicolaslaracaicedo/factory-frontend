@@ -50,9 +50,10 @@ type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface EmissionPointsPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
-export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelProps) {
+export function EmissionPointsPanel({ showPanel = true, readOnly = false }: EmissionPointsPanelProps) {
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
   const [establecimientos, setEstablecimientos] = useState<Establecimiento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -220,17 +221,19 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openEdit(row.original)}>
-                <Edit size={14} className="mr-2" />
-                Editar
-              </DropdownMenuItem>
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
-                  <Power size={14} className="mr-2" />
-                  {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-                </DropdownMenuItem>
-              </>
+              {!readOnly && (
+                <>
+                  <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                    <Edit size={14} className="mr-2" />
+                    Editar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
+                    <Power size={14} className="mr-2" />
+                    {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -377,13 +380,14 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
           </Button>
         </div>
 
-        {/* Botón nuevo — empujado al extremo derecho */}
-        <div className="ml-auto">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Nuevo punto
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Nuevo punto
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Panel de Filtros Expandible */}
@@ -447,9 +451,11 @@ export function EmissionPointsPanel({ showPanel = true }: EmissionPointsPanelPro
             <FileText size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay puntos para este filtro.</p>
-          <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
-            <Plus size={15} className="mr-1.5" /> Crear punto
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
+              <Plus size={15} className="mr-1.5" /> Crear punto
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">

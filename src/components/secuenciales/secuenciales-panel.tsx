@@ -51,9 +51,10 @@ type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface SecuencialesPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
-export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) {
+export function SecuencialesPanel({ showPanel = true, readOnly = false }: SecuencialesPanelProps) {
   const [secuenciales, setSecuenciales] = useState<SecuencialItem[]>([]);
   const [tiposDocumento, setTiposDocumento] = useState<TipoDocumentoItem[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
@@ -273,13 +274,15 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
-                  <Power size={14} className="mr-2" />
-                  {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
-                </DropdownMenuItem>
-              </>
+              {!readOnly && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => toggleEstado(row.original)} className={row.original.estado === "INACTIVO" ? "text-emerald-600 focus:text-emerald-600" : "text-orange-600 focus:text-orange-600"}>
+                    <Power size={14} className="mr-2" />
+                    {row.original.estado === "INACTIVO" ? "Activar" : "Desactivar"}
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -418,13 +421,14 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
           </Button>
         </div>
 
-        {/* Botón nuevo — empujado al extremo derecho */}
-        <div className="ml-auto">
-          <Button onClick={openCreate} disabled={!canCreate} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Nuevo secuencial
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} disabled={!canCreate} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Nuevo secuencial
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Panel de Filtros Expandible */}
@@ -488,9 +492,11 @@ export function SecuencialesPanel({ showPanel = true }: SecuencialesPanelProps) 
             <FileText size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay secuenciales para este filtro.</p>
-          <Button onClick={openCreate} disabled={!canCreate} className="mt-3 h-9 shadow-none">
-            <Plus size={15} className="mr-1.5" /> Crear secuencial
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} disabled={!canCreate} className="mt-3 h-9 shadow-none">
+              <Plus size={15} className="mr-1.5" /> Crear secuencial
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">

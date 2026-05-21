@@ -108,9 +108,10 @@ type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface RetencionesPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
-export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
+export function RetencionesPanel({ showPanel = true, readOnly = false }: RetencionesPanelProps) {
   const [retenciones, setRetenciones] = useState<RetencionItem[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
@@ -223,15 +224,15 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => openDetail(r)}><Eye size={14} className="mr-2" /> Ver detalle</DropdownMenuItem>
-                {canEdit(r) && <DropdownMenuItem onClick={() => openEdit(r)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
+                {!readOnly && canEdit(r) && <DropdownMenuItem onClick={() => openEdit(r)}><Edit size={14} className="mr-2" /> Editar</DropdownMenuItem>}
                 {r.estado?.toUpperCase() === "AUTORIZADO" && (
                   <DropdownMenuItem onClick={() => window.open(`/api/retenciones/${r.id}/pdf`, '_blank')} className="text-indigo-600 focus:bg-indigo-50 focus:text-indigo-700 font-medium">
                     <FileText size={14} className="mr-2" />
                     Descargar PDF
                   </DropdownMenuItem>
                 )}
-                {canEmitir(r) && <DropdownMenuItem onClick={() => handleEmitir(r)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium"><Send size={14} className="mr-2" /> Emitir al SRI</DropdownMenuItem>}
-                {(r.estado?.toUpperCase() === "AUTORIZADO" || canDelete(r)) && (
+                {!readOnly && canEmitir(r) && <DropdownMenuItem onClick={() => handleEmitir(r)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium"><Send size={14} className="mr-2" /> Emitir al SRI</DropdownMenuItem>}
+                {!readOnly && (r.estado?.toUpperCase() === "AUTORIZADO" || canDelete(r)) && (
                   <>
                     <DropdownMenuSeparator />
                     {r.estado?.toUpperCase() === "AUTORIZADO" && (
@@ -965,11 +966,13 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
             <ListFilter size={15} className="mr-1.5" />{showFilters ? "Ocultar" : "Filtros"}
           </Button>
         </div>
-        <div className="ml-auto">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap" disabled={loadingCatalogs}>
-            <Plus size={15} className="mr-1.5" /> Nueva Retención
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap" disabled={loadingCatalogs}>
+              <Plus size={15} className="mr-1.5" /> Nueva Retención
+            </Button>
+          </div>
+        )}
       </div>
 
       {showFilters && (
@@ -1001,7 +1004,7 @@ export function RetencionesPanel({ showPanel = true }: RetencionesPanelProps) {
         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <FileText size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm text-slate-600">No hay retenciones para este filtro.</p>
-          <Button className="mt-3 h-9 shadow-none" onClick={openCreate} disabled={loadingCatalogs}><Plus size={15} className="mr-1.5" /> Nueva Retención</Button>
+          {!readOnly && <Button className="mt-3 h-9 shadow-none" onClick={openCreate} disabled={loadingCatalogs}><Plus size={15} className="mr-1.5" /> Nueva Retención</Button>}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">

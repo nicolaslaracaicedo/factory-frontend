@@ -43,6 +43,7 @@ type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface ClientsPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
 function SortIcon({ column }: { column: Column<Cliente> }) {
@@ -52,7 +53,7 @@ function SortIcon({ column }: { column: Column<Cliente> }) {
   return <ChevronsUpDown size={11} className="ml-1 text-slate-300" />;
 }
 
-export function ClientsPanel({ showPanel = true }: ClientsPanelProps) {
+export function ClientsPanel({ showPanel = true, readOnly = false }: ClientsPanelProps) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<EstadoFiltro>("TODOS");
@@ -138,7 +139,7 @@ export function ClientsPanel({ showPanel = true }: ClientsPanelProps) {
     {
       id: "acciones",
       header: () => null,
-      cell: ({ row }) => (
+      cell: ({ row }) => readOnly ? null : (
         <div className="flex justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -299,13 +300,14 @@ export function ClientsPanel({ showPanel = true }: ClientsPanelProps) {
           </Button>
         </div>
 
-        {/* Botón nuevo — empujado al extremo derecho */}
-        <div className="ml-auto">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Nuevo cliente
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Nuevo cliente
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Panel de Filtros Expandible */}
@@ -374,10 +376,12 @@ export function ClientsPanel({ showPanel = true }: ClientsPanelProps) {
             <Users size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay clientes para este filtro.</p>
-          <Button className="mt-3" onClick={openCreate}>
-            <Plus size={18} className="mr-1.5" />
-            Registrar cliente
-          </Button>
+          {!readOnly && (
+            <Button className="mt-3" onClick={openCreate}>
+              <Plus size={18} className="mr-1.5" />
+              Registrar cliente
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">

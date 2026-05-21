@@ -85,9 +85,10 @@ type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface DebitNotesPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
-export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
+export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNotesPanelProps) {
   const [notas, setNotas] = useState<NotaDebitoItem[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
@@ -211,7 +212,7 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
                 <Eye size={14} className="mr-2" />
                 Ver
               </DropdownMenuItem>
-              {row.original.estado?.toUpperCase() === "BORRADOR" && (
+              {!readOnly && row.original.estado?.toUpperCase() === "BORRADOR" && (
                 <DropdownMenuItem onClick={() => openEdit(row.original)}>
                   <Edit size={14} className="mr-2" />
                   Editar
@@ -227,19 +228,21 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
                     <Printer size={14} className="mr-2" />
                     Imprimir Recibo
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleAnular(row.original)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
-                    <X size={14} className="mr-2" />
-                    Anular
-                  </DropdownMenuItem>
+                  {!readOnly && (
+                    <DropdownMenuItem onClick={() => handleAnular(row.original)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
+                      <X size={14} className="mr-2" />
+                      Anular
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
-              {row.original.estado?.toUpperCase() !== "AUTORIZADO" && row.original.estado?.toUpperCase() !== "ANULADA" && (
+              {!readOnly && row.original.estado?.toUpperCase() !== "AUTORIZADO" && row.original.estado?.toUpperCase() !== "ANULADA" && (
                 <DropdownMenuItem onClick={() => emitirNota(row.original)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium">
                   <Send size={14} className="mr-2" />
                   Emitir al SRI
                 </DropdownMenuItem>
               )}
-              {row.original.estado?.toUpperCase() === "BORRADOR" && (
+              {!readOnly && row.original.estado?.toUpperCase() === "BORRADOR" && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => deleteNota(row.original)} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700">
@@ -955,13 +958,14 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
           </Button>
         </div>
 
-        {/* Botón nuevo — empujado al extremo derecho */}
-        <div className="ml-auto">
-          <Button onClick={openCreate} disabled={loadingCatalogs} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Nueva nota
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} disabled={loadingCatalogs} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Nueva nota
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Panel de Filtros Expandible */}
@@ -1030,9 +1034,11 @@ export function DebitNotesPanel({ showPanel = true }: DebitNotesPanelProps) {
             <FileText size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay notas para este filtro.</p>
-          <Button onClick={openCreate} disabled={loadingCatalogs} className="mt-3 h-9 shadow-none">
-            <Plus size={15} className="mr-1.5" /> Crear nota
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} disabled={loadingCatalogs} className="mt-3 h-9 shadow-none">
+              <Plus size={15} className="mr-1.5" /> Crear nota
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">

@@ -48,6 +48,7 @@ type EstadoFiltro = (typeof estadoFilters)[number];
 
 interface ProductGroupsPanelProps {
   showPanel?: boolean;
+  readOnly?: boolean;
 }
 
 function SortIcon({ column }: { column: Column<GrupoProducto> }) {
@@ -57,7 +58,7 @@ function SortIcon({ column }: { column: Column<GrupoProducto> }) {
   return <ChevronsUpDown size={11} className="ml-1 text-slate-300" />;
 }
 
-export function ProductGroupsPanel({ showPanel = true }: ProductGroupsPanelProps) {
+export function ProductGroupsPanel({ showPanel = true, readOnly = false }: ProductGroupsPanelProps) {
   const [grupos, setGrupos] = useState<GrupoProducto[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -125,7 +126,7 @@ export function ProductGroupsPanel({ showPanel = true }: ProductGroupsPanelProps
     {
       id: "acciones",
       header: () => null,
-      cell: ({ row }) => (
+      cell: ({ row }) => readOnly ? null : (
         <div className="flex justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -292,13 +293,14 @@ export function ProductGroupsPanel({ showPanel = true }: ProductGroupsPanelProps
           </Button>
         </div>
 
-        {/* Botón nuevo — empujado al extremo derecho */}
-        <div className="ml-auto">
-          <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
-            <Plus size={15} className="mr-1.5" />
-            Nuevo grupo
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="ml-auto">
+            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap">
+              <Plus size={15} className="mr-1.5" />
+              Nuevo grupo
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Panel de Filtros Expandible */}
@@ -364,10 +366,12 @@ export function ProductGroupsPanel({ showPanel = true }: ProductGroupsPanelProps
             <LayoutGrid size={24} className="text-slate-400" />
           </div>
           <p className="text-sm text-slate-600">No hay grupos para este filtro.</p>
-          <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
-            <Plus size={15} className="mr-1.5" />
-            Registrar grupo
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} className="mt-3 h-9 shadow-none">
+              <Plus size={15} className="mr-1.5" />
+              Registrar grupo
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">
