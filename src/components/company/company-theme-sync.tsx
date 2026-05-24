@@ -7,6 +7,8 @@ import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 
 export function CompanyThemeSync() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const token = useAuthStore((state) => state.token);
+  const clearSession = useAuthStore((state) => state.clearSession);
 
   useEffect(() => {
     const syncTheme = async () => {
@@ -16,15 +18,18 @@ export function CompanyThemeSync() {
       }
 
       try {
-        const company = await companyService.getCompany();
+        const company = await companyService.getCompany(token ?? undefined);
         applyCompanyTheme(company);
-      } catch {
+      } catch (error) {
         applyCompanyTheme(null);
+        if (error instanceof Error && "status" in error && (error as { status: number }).status === 401) {
+          clearSession();
+        }
       }
     };
 
     void syncTheme();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, clearSession]);
 
   return null;
 }

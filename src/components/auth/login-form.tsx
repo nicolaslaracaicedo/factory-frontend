@@ -1,23 +1,28 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Eye, EyeOff, Mail, MessageCircle, Phone, AlertCircle } from "lucide-react";
+import { motion } from "framer-motion";
+import { Eye, EyeOff, Mail, MessageCircle, Phone, Loader2 } from "lucide-react";
 import { loginSchema } from "@/src/modules/auth/schemas/auth.schemas";
 import { authService } from "@/src/modules/auth/services/auth.service";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 import type { LoginFormValues } from "@/src/modules/auth/schemas/auth.schemas";
 import { roleToSlug } from "@/src/modules/auth/utils/role.utils";
 import { RecoverPasswordModal } from "@/src/components/auth/recover-password-modal";
+import { BrandPanel } from "@/src/components/auth/brand-panel";
+import { FloatingInput } from "@/src/components/auth/floating-input";
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export function LoginForm() {
   const router = useRouter();
   const setSession = useAuthStore((state) => state.setSession);
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
   const minLoginDelayMs = 2000;
   const contactEmail = "nalara2@espe.edu.ec";
   const contactNumber = "+593 98 481 0928";
@@ -35,6 +40,8 @@ export function LoginForm() {
   });
 
   const E = form.formState.errors;
+
+  const { register } = form;
 
   const numOnly = (e: React.FormEvent<HTMLInputElement>) => {
     e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
@@ -69,7 +76,7 @@ export function LoginForm() {
   });
 
   return (
-    <>
+    <div className="min-h-screen flex bg-white font-sans text-slate-800">
       {/* Loading overlay */}
       {form.formState.isSubmitting && (
         <div
@@ -88,222 +95,210 @@ export function LoginForm() {
         </div>
       )}
 
-      <main className="flex h-screen w-full overflow-hidden bg-[#f8f9fd]">
-        {/* ── Left: Login Form ── */}
-        <section className="flex w-full flex-col overflow-y-auto bg-white lg:w-1/2">
-          {/* Padded scrollable content */}
-          <div className="flex flex-1 flex-col justify-center px-6 py-6 lg:px-10 lg:py-10">
-            {/* Form Content */}
-            <div className="mx-auto w-full max-w-sm">
-              {/* Brand */}
-              <div className="mb-8">
-                <img src="/Factory.png" alt="Factory" className="h-16 w-auto object-contain lg:h-20" />
-              </div>
+      {/* Form Panel */}
+      <div className="flex-1 flex flex-col justify-center px-6 lg:px-12 overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full max-w-sm mx-auto"
+        >
+          {/* Logo */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="mb-8"
+          >
+            <img src="/Factory.png" alt="Factory" className="h-16 w-auto object-contain lg:h-20" />
+          </motion.div>
 
-              <header className="mb-8">
-                <h1 className="text-[32px] font-bold leading-tight text-[#191c1f]">
-                  Bienvenido de nuevo
-                </h1>
-                <p className="mt-1 text-sm text-[#41474e]">
-                  Ingresa tus credenciales para acceder al sistema.
-                </p>
-              </header>
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
+            <h1 className="text-3xl sm:text-4xl font-bold text-[#00517C] mb-2">
+              Bienvenido de nuevo
+            </h1>
+            <p className="text-gray-500 text-sm">
+              Ingresa tus credenciales para acceder al sistema.
+            </p>
+          </motion.div>
 
-              <form className="space-y-4" onSubmit={onSubmit} noValidate>
-                {/* RUC */}
-                <div className="space-y-1">
-                  <label htmlFor="ruc" className="text-xs font-semibold tracking-wide text-[#003959]">
-                    RUC
-                  </label>
-                  <input
-                    id="ruc"
-                    className={
-                      `w-full rounded-lg border bg-[#f8f9fd] px-4 py-2.5 text-sm text-[#191c1f] placeholder:text-[#71787f]/60 outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-2 focus:ring-[#0EA5E9]/10 ${
-                        E.ruc ? "border-red-400 bg-red-50/30" : "border-slate-400"
-                      }`
-                    }
-                    placeholder="17xxxxxxxx001"
-                    inputMode="numeric" pattern="[0-9]*" maxLength={13}
-                    onInput={numOnly}
-                    {...form.register("ruc")}
-                  />
-                  {E.ruc?.message && (
-                    <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.ruc.message}</span>
-                  )}
-                </div>
+          {/* Form */}
+          <form onSubmit={onSubmit} noValidate className="space-y-8">
+            {/* Fields */}
+            <div className="space-y-5">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <FloatingInput
+                  label="RUC"
+                  placeholder="1790000000001"
+                  inputMode="numeric" pattern="[0-9]*" maxLength={13}
+                  onInput={numOnly}
+                  error={!!E.ruc}
+                  {...register("ruc")}
+                />
+              </motion.div>
 
-                {/* Cédula */}
-                <div className="space-y-1">
-                  <label htmlFor="cedula" className="text-xs font-semibold tracking-wide text-[#003959]">
-                    Cédula
-                  </label>
-                  <input
-                    id="cedula"
-                    className={
-                      `w-full rounded-lg border bg-[#f8f9fd] px-4 py-2.5 text-sm text-[#191c1f] placeholder:text-[#71787f]/60 outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-2 focus:ring-[#0EA5E9]/10 ${
-                        E.cedula ? "border-red-400 bg-red-50/30" : "border-slate-400"
-                      }`
-                    }
-                    placeholder="17xxxxxxxx"
-                    inputMode="numeric" pattern="[0-9]*" maxLength={10}
-                    onInput={numOnly}
-                    {...form.register("cedula")}
-                  />
-                  {E.cedula?.message && (
-                    <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.cedula.message}</span>
-                  )}
-                </div>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <FloatingInput
+                  label="Cédula"
+                  placeholder="1710204155"
+                  inputMode="numeric" pattern="[0-9]*" maxLength={10}
+                  onInput={numOnly}
+                  error={!!E.cedula}
+                  {...register("cedula")}
+                />
+              </motion.div>
 
-                {/* Contraseña */}
-                <div className="space-y-1">
-                  <label htmlFor="clave" className="text-xs font-semibold tracking-wide text-[#003959]">
-                    Contraseña
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="clave"
-                      type={showPassword ? "text" : "password"}
-                      className={
-                        `w-full rounded-lg border bg-[#f8f9fd] px-4 py-2.5 pr-10 text-sm text-[#191c1f] placeholder:text-[#71787f]/60 outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-2 focus:ring-[#0EA5E9]/10 ${
-                          E.clave ? "border-red-400 bg-red-50/30" : "border-slate-400"
-                        }`
-                      }
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                      {...form.register("clave")}
-                    />
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <FloatingInput
+                  label="Contraseña"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  error={!!E.clave}
+                  {...register("clave")}
+                  endAdornment={
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute right-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-[#71787f] transition-colors hover:bg-slate-100"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-[#71787f] transition-colors hover:bg-slate-100"
                       aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
-                  </div>
-                  {E.clave?.message && (
-                    <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.clave.message}</span>
-                  )}
-                </div>
-
-                {/* Submit */}
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={form.formState.isSubmitting}
-                    className="w-full rounded-lg bg-[#00517c] px-4 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
-                  >
-                    {form.formState.isSubmitting ? "Ingresando..." : "Iniciar sesión"}
-                  </button>
-                </div>
-              </form>
-
-              {/* Links */}
-              <div className="flex flex-col items-center gap-2 pt-4">
-                <span className="text-sm text-[#41474e] flex items-center gap-1">
-                  ¿Olvidaste tu contraseña?
-                  <RecoverPasswordModal />
-                </span>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm text-[#41474e]">¿No tienes cuenta?</span>
-                  <Link
-                    href="/auth/register"
-                    className="text-sm font-bold text-[#003959] transition-colors hover:underline"
-                  >
-                    Crear una cuenta
-                  </Link>
-                </div>
-              </div>
+                  }
+                />
+              </motion.div>
             </div>
 
-            {/* ── Support Section ── */}
-            <div className="mt-6 flex flex-col items-center">
-              <div className="mb-6 flex w-full items-center gap-3">
-                <div className="flex-1 border-t border-[#c1c7d0]" />
-                <span className="text-xs font-medium text-[#71787f]">o</span>
-                <div className="flex-1 border-t border-[#c1c7d0]" />
-              </div>
-              <p className="mb-4 text-center text-xs text-[#41474e]">
-                <span className="font-bold text-[#006591]">¿Necesitas ayuda?</span> Solicita la creación de usuario y credenciales por estos contactos.
-              </p>
-              <div className="flex flex-col items-center gap-3">
-                <div className="flex items-center gap-3">
-                  {/* WhatsApp */}
-                  <a
-                    href={whatsappLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-all duration-300 hover:scale-110 hover:bg-[#278E98] hover:text-white hover:shadow-md active:scale-95"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    <span className="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
-                      {contactNumber}
-                    </span>
-                  </a>
-                  {/* Phone */}
-                  <a
-                    href={phoneLink}
-                    className="group relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-all duration-300 hover:scale-110 hover:bg-[#0EA5E9] hover:text-white hover:shadow-md active:scale-95"
-                  >
-                    <Phone className="h-4 w-4" />
-                    <span className="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
-                      {contactNumber}
-                    </span>
-                  </a>
-                  {/* Email */}
-                  <a
-                    href={mailLink}
-                    className="group relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-all duration-300 hover:scale-110 hover:bg-[#10365D] hover:text-white hover:shadow-md active:scale-95"
-                  >
-                    <Mail className="h-4 w-4" />
-                    <span className="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
-                      {contactEmail}
-                    </span>
-                  </a>
-                </div>
+            {/* Submit */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+              <motion.button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                className="w-full py-3 px-6 bg-gradient-to-r from-[#00517C] to-[#0967A4] text-white font-semibold rounded-xl shadow-md shadow-[#0967A4]/20 hover:shadow-lg hover:shadow-[#0967A4]/30 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                whileHover={{ scale: form.formState.isSubmitting ? 1 : 1.02 }}
+                whileTap={{ scale: form.formState.isSubmitting ? 1 : 0.98 }}
+              >
+                {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Ingresando...
+                  </>
+                ) : (
+                  "Iniciar sesión"
+                )}
+              </motion.button>
+            </motion.div>
+          </form>
+
+          {/* Links */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="flex flex-col items-center gap-2 pt-6"
+          >
+            <span className="text-xs text-[#41474e] flex items-center gap-1">
+              ¿Olvidaste tu contraseña?{" "}
+              <RecoverPasswordModal />
+            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-[#41474e]">¿No tienes cuenta?</span>
+              <Link
+                href="/auth/register"
+                className="text-xs font-bold text-[#0967A4] transition-colors hover:underline"
+              >
+                Crear una cuenta
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Support Section */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            className="mt-6 flex flex-col items-center"
+          >
+            <div className="mb-6 flex w-full items-center gap-3">
+              <div className="flex-1 border-t border-[#c1c7d0]" />
+              <span className="text-xs font-medium text-[#71787f]">o</span>
+              <div className="flex-1 border-t border-[#c1c7d0]" />
+            </div>
+            <p className="mb-4 text-center text-xs text-[#41474e]">
+              <span className="font-bold text-[#0967A4]">¿Necesitas ayuda?</span> Contáctanos
+            </p>
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center gap-3">
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-all duration-300 hover:scale-110 hover:bg-[#248C95] hover:text-white hover:shadow-md active:scale-95"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                    {contactNumber}
+                  </span>
+                </a>
+                <a
+                  href={phoneLink}
+                  className="group relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-all duration-300 hover:scale-110 hover:bg-[#0967A4] hover:text-white hover:shadow-md active:scale-95"
+                >
+                  <Phone className="h-4 w-4" />
+                  <span className="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                    {contactNumber}
+                  </span>
+                </a>
+                <a
+                  href={mailLink}
+                  className="group relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-all duration-300 hover:scale-110 hover:bg-[#00517C] hover:text-white hover:shadow-md active:scale-95"
+                >
+                  <Mail className="h-4 w-4" />
+                  <span className="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                    {contactEmail}
+                  </span>
+                </a>
               </div>
             </div>
-          </div>
-        </section>
+          </motion.div>
 
-        {/* ── Right: Marketing Panel ── */}
-        <section className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden lg:flex">
-          {/* Background image + overlay */}
-          <div className="absolute inset-0 z-0">
-            <img
-              src="/fondo1-login.jpg"
-              alt=""
-              className="h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-br from-[#003959]/95 via-[#003959]/80 to-[#006591]/60" />
-            <div className="absolute right-0 top-0 h-96 w-96 -mr-48 -mt-48 rounded-full bg-white/5 blur-3xl" />
-            <div className="absolute bottom-0 left-0 h-64 w-64 -mb-32 -ml-32 rounded-full bg-[#39b8fd]/10 blur-2xl" />
-          </div>
+          {/* Footer */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.9 }}
+            className="mt-8 text-center text-xs text-gray-400"
+          >
+            © 2026 Factory. Todos los derechos reservados.
+          </motion.p>
+        </motion.div>
+      </div>
 
-          {/* Content */}
-          <div className="relative z-10 max-w-xl px-10 text-white">
-            <h2 className="text-3xl xl:text-5xl font-bold leading-tight tracking-tight">
-              Gestión de facturación lista para escalar.
-            </h2>
-            <ul className="mt-6 xl:mt-8 space-y-4 xl:space-y-6">
-              {[
-                { icon: "hub", text: "Centraliza la operación y mantén todo bajo control en un solo entorno." },
-                { icon: "receipt_long", text: "Emite facturas electrónicas, notas de crédito y débito en minutos." },
-                { icon: "inventory_2", text: "Controla productos, clientes, proveedores y puntos de emisión desde un solo lugar." },
-                { icon: "groups", text: "Administra equipos, permisos y usuarios con trazabilidad completa." },
-                { icon: "analytics", text: "Consulta reportes e impuestos con paneles listos para auditoría." },
-              ].map((item, i) => (
-                <li key={i} className="group flex items-start gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10 transition-colors group-hover:bg-white/20">
-                    <span className="material-symbols-outlined text-white">{item.icon}</span>
-                  </div>
-                  <p className="pt-1 text-sm xl:text-base">{item.text}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      </main>
-    </>
+      {/* Brand Panel */}
+      <BrandPanel variant="login" />
+    </div>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
+import { motion } from "framer-motion";
 import { X, FileText } from "lucide-react";
-import { Button } from "@/src/components/ui/button";
 
 import { useState, useRef, useEffect } from "react";
 
@@ -101,20 +101,33 @@ export function TermsModal({ onAccept }: TermsModalProps) {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <span className="cursor-pointer font-semibold text-[#006591] underline underline-offset-2 hover:text-[#003959] transition-colors">
+        <span className="cursor-pointer font-semibold text-[#00517C] underline underline-offset-2 hover:text-[#00517C] transition-colors">
           Términos y Condiciones
         </span>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+        <Dialog.Overlay asChild>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+          />
+        </Dialog.Overlay>
         <Dialog.Content 
           onPointerDownOutside={(e) => e.preventDefault()}
           className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,800px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
         >
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="flex flex-col max-h-[90vh]"
+          >
           <div className="bg-slate-100 border-b border-slate-200 px-6 py-5 shrink-0">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                <FileText className="h-6 w-6 text-app-primary" />
+                <FileText className="h-6 w-6 text-[#00517C]" />
               </div>
               <div className="flex-1 min-w-0">
                 <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -143,7 +156,7 @@ export function TermsModal({ onAccept }: TermsModalProps) {
             {sections.map((section, index) => (
               <section key={index}>
                 <div className="flex items-start gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-app-primary text-[11px] font-bold text-white">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#00517C] text-[11px] font-bold text-white">
                     {index + 1}
                   </span>
                   <div className="min-w-0">
@@ -171,18 +184,19 @@ export function TermsModal({ onAccept }: TermsModalProps) {
 
           <div className="border-t border-slate-200 px-6 py-4 flex justify-end gap-3 shrink-0">
             <Dialog.Close asChild>
-              <Button variant="secondary" className="h-9 px-5">
+              <button className="h-9 px-5 rounded-lg text-sm font-medium border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">
                 Cancelar
-              </Button>
+              </button>
             </Dialog.Close>
-            <Button 
+            <button 
               onClick={handleAccept} 
               disabled={!canAccept}
-              className="h-9 px-5 bg-[#0EA5E9] hover:bg-[#0284c7] text-white disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
+              className="h-9 px-5 rounded-lg text-sm font-bold bg-[#00517C] hover:bg-[#003959] text-white shadow-sm transition-colors disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
             >
               Aceptar términos
-            </Button>
+            </button>
           </div>
+          </motion.div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

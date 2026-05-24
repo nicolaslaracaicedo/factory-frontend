@@ -541,7 +541,7 @@ table thead th:first-letter {
 }
 
 .lbl {
-  margin-left: 5px;
+  margin-left: 10px;
   vertical-align: middle;
   cursor: pointer;
 }
@@ -587,6 +587,14 @@ table thead th:first-letter {
 
 .hidden-xs-up {
   display: none !important;
+}
+
+/* Float label when browser autofills input */
+input:-webkit-autofill + label {
+  top: 0.5rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  transform: none !important;
 }
 
 .fill-icon {

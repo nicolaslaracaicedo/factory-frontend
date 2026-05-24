@@ -1,8 +1,8 @@
 ﻿"use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
+import { motion, AnimatePresence } from "framer-motion";
 import { X, KeyRound, ArrowLeft, EyeOff, Eye, Timer, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
-import { Button } from "@/src/components/ui/button";
 import { useState, useEffect } from "react";
 import { authService } from "@/src/modules/auth/services/auth.service";
 import { toast } from "sonner";
@@ -96,7 +96,7 @@ function FieldHint({ hint }: { hint: Hint }) {
 
 function borderCls(status: Status) {
   if (status === "error") return "border-red-400 focus:border-red-400 focus:ring-red-400/10";
-  return "border-slate-200 focus:border-[#0EA5E9] focus:ring-[#0EA5E9]/10";
+  return "border-slate-200 focus:border-[#00517C] focus:ring-[#00517C]/10";
 }
 
 
@@ -295,16 +295,29 @@ export function RecoverPasswordModal() {
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Trigger asChild>
-        <span className="cursor-pointer font-bold text-[#006591] transition-colors hover:underline">
+        <span className="cursor-pointer font-bold text-[#0967A4] transition-colors hover:underline">
           Recupérala
         </span>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px] disabled:pointer-events-none" />
+        <Dialog.Overlay asChild>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px] disabled:pointer-events-none"
+          />
+        </Dialog.Overlay>
         <Dialog.Content
           onPointerDownOutside={(e) => e.preventDefault()}
           className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,500px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden flex flex-col focus:outline-none"
         >
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="flex flex-col"
+          >
           <div className="bg-slate-100 border-b border-slate-200 px-6 py-5 shrink-0">
             <div className="flex items-center gap-4">
               {step > 1 ? (
@@ -318,7 +331,7 @@ export function RecoverPasswordModal() {
                 </button>
               ) : (
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <KeyRound className="h-6 w-6 text-app-primary" />
+                  <KeyRound className="h-6 w-6 text-[#00517C]" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
@@ -343,10 +356,17 @@ export function RecoverPasswordModal() {
           </div>
 
           <div className="px-6 py-6 bg-white">
-            {step === 1 ? (
-              <form id="recover-step-1" onSubmit={handleRequestCode} className="space-y-4">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="rec-ruc" className="text-sm font-semibold tracking-wide text-[#003959]">RUC</label>
+            <AnimatePresence mode="wait">
+              {step === 1 ? (
+                <motion.form
+                  key="step1"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  id="recover-step-1" onSubmit={(e) => e.preventDefault()} className="space-y-4">
+                  <div className="flex flex-col gap-1.5">
+                  <label htmlFor="rec-ruc" className="text-sm font-semibold tracking-wide text-[#00517C]">RUC</label>
                   <input
                     id="rec-ruc"
                     className={"w-full rounded-lg border p-3.5 text-sm outline-none transition-all duration-200 "}
@@ -362,7 +382,7 @@ export function RecoverPasswordModal() {
                   <FieldHint hint={hRuc} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="rec-cedula" className="text-sm font-semibold tracking-wide text-[#003959]">Cédula</label>
+                  <label htmlFor="rec-cedula" className="text-sm font-semibold tracking-wide text-[#00517C]">Cédula</label>
                   <input
                     id="rec-cedula"
                     className={"w-full rounded-lg border p-3.5 text-sm outline-none transition-all duration-200 "}
@@ -377,11 +397,17 @@ export function RecoverPasswordModal() {
                   />
                   <FieldHint hint={hCedula} />
                 </div>
-              </form>
+                </motion.form>
             ) : step === 2 ? (
-              <form id="recover-step-2" onSubmit={handleVerifyOtp} className="space-y-6">
+              <motion.form
+                key="step2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                id="recover-step-2" onSubmit={(e) => e.preventDefault()} className="space-y-6">
                 <div className="flex flex-col items-center gap-4">
-                  <label className="text-sm font-semibold tracking-wide text-[#003959]">Código de verificación</label>
+                  <label className="text-sm font-semibold tracking-wide text-[#00517C]">Código de verificación</label>
                   <div className="flex justify-center gap-2 items-center" dir="ltr">
                     {otpFields.map((digit, i) => (
                       <input
@@ -392,7 +418,7 @@ export function RecoverPasswordModal() {
                         pattern="[0-9]*"
                         autoComplete="one-time-code"
                         maxLength={1}
-                        className="w-12 h-14 rounded-lg border border-slate-200 text-center text-2xl font-bold text-slate-800 transition-all focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10"
+                        className="w-12 h-14 rounded-lg border border-slate-200 text-center text-2xl font-bold text-slate-800 transition-all focus:border-[#00517C] focus:ring-4 focus:ring-[#00517C]/10"
                         value={digit}
                         onChange={(e) => handleOtpChange(e.target.value, i)}
                         onKeyDown={(e) => handleOtpKeyDown(e, i)}
@@ -404,18 +430,24 @@ export function RecoverPasswordModal() {
                 </div>
                 <div className="flex flex-col items-center gap-1.5 bg-slate-50 p-4 rounded-xl border border-slate-100">
                   <div className="flex items-center gap-2 text-slate-600 font-medium">
-                    <Timer className="h-4 w-4 text-[#0EA5E9]" />
+                    <Timer className="h-4 w-4 text-[#00517C]" />
                     <span className="text-sm">El código expira en:</span>
                   </div>
                   <span className={"text-[28px] font-bold tracking-widest "}>
                     {formatTime(timeLeft)}
                   </span>
                 </div>
-              </form>
+              </motion.form>
             ) : (
-              <form id="recover-step-3" onSubmit={handleResetPassword} className="space-y-4">
+              <motion.form
+                key="step3"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                id="recover-step-3" onSubmit={(e) => e.preventDefault()} className="space-y-4">
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="rec-nueva" className="text-sm font-semibold tracking-wide text-[#003959]">Nueva contraseña</label>
+                  <label htmlFor="rec-nueva" className="text-sm font-semibold tracking-wide text-[#00517C]">Nueva contraseña</label>
                   <div className="relative">
                     <input
                       id="rec-nueva"
@@ -435,7 +467,7 @@ export function RecoverPasswordModal() {
                   <FieldHint hint={hPw} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="rec-confirmar" className="text-sm font-semibold tracking-wide text-[#003959]">Confirmar contraseña</label>
+                  <label htmlFor="rec-confirmar" className="text-sm font-semibold tracking-wide text-[#00517C]">Confirmar contraseña</label>
                   <div className="relative">
                     <input
                       id="rec-confirmar"
@@ -454,45 +486,47 @@ export function RecoverPasswordModal() {
                   </div>
                   <FieldHint hint={hCpw} />
                 </div>
-              </form>
+              </motion.form>
             )}
+            </AnimatePresence>
           </div>
 
           <div className="border-t border-slate-200 px-6 py-4 flex justify-end gap-3 shrink-0 bg-slate-50">
             <Dialog.Close asChild>
-              <Button variant="secondary" className="h-10 px-5" disabled={loading || verifyingOtp}>
+              <button className="h-10 px-5 rounded-lg text-sm font-medium border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled={loading || verifyingOtp}>
                 Cancelar
-              </Button>
+              </button>
             </Dialog.Close>
             {step === 1 ? (
-              <Button
-                type="submit"
-                form="recover-step-1"
-                disabled={loading || hCedula.status === "error" || hRuc.status === "error"}
-                className="h-10 px-5 bg-[#0EA5E9] hover:bg-[#0284c7] text-white disabled:bg-slate-300 disabled:text-slate-500"
+              <button
+                type="button"
+                onClick={handleRequestCode}
+                disabled={loading || hCedula.status === "error" || hRuc.status === "warn" || hRuc.status === "error"}
+                className="h-10 px-5 rounded-lg text-sm font-bold bg-[#00517C] hover:bg-[#003959] text-white shadow-sm transition-colors disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
               >
                 {loading ? "Solicitando..." : "Solicitar código"}
-              </Button>
+              </button>
             ) : step === 2 ? (
-              <Button
-                type="submit"
-                form="recover-step-2"
+              <button
+                type="button"
+                onClick={handleVerifyOtp}
                 disabled={timeLeft <= 0 || verifyingOtp}
-                className="h-10 px-5 bg-[#0EA5E9] hover:bg-[#0284c7] text-white disabled:bg-slate-300 disabled:text-slate-500"
+                className="h-10 px-5 rounded-lg text-sm font-bold bg-[#00517C] hover:bg-[#003959] text-white shadow-sm transition-colors disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
               >
                 {verifyingOtp ? "Verificando..." : "Ingresar código"}
-              </Button>
+              </button>
             ) : (
-              <Button
-                type="submit"
-                form="recover-step-3"
+              <button
+                type="button"
+                onClick={handleResetPassword}
                 disabled={loading || hPw.status === "error" || hCpw.status === "error"}
-                className="h-10 px-5 bg-[#0EA5E9] hover:bg-[#0284c7] text-white disabled:bg-slate-300 disabled:text-slate-500"
+                className="h-10 px-5 rounded-lg text-sm font-bold bg-[#00517C] hover:bg-[#003959] text-white shadow-sm transition-colors disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
               >
                 {loading ? "Restableciendo..." : "Restablecer contraseña"}
-              </Button>
+              </button>
             )}
           </div>
+          </motion.div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

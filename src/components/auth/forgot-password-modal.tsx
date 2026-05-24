@@ -97,7 +97,7 @@ export function ForgotPasswordModal() {
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Trigger asChild>
-        <span className="cursor-pointer font-bold text-[#006591] transition-colors hover:underline">
+        <span className="cursor-pointer font-bold text-[#00517C] transition-colors hover:underline">
           Recupérala
         </span>
       </Dialog.Trigger>
@@ -110,7 +110,7 @@ export function ForgotPasswordModal() {
           <div className="bg-slate-100 border-b border-slate-200 px-6 py-5 shrink-0">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                <KeyRound className="h-6 w-6 text-app-primary" />
+                <KeyRound className="h-6 w-6 text-[#00517C]" />
               </div>
               <div className="flex-1 min-w-0">
                 <Dialog.Title className="text-xl font-semibold text-slate-900">
@@ -135,10 +135,10 @@ export function ForgotPasswordModal() {
             {step === 1 ? (
               <>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="rec-ruc" className="text-xs font-semibold tracking-wide text-[#003959]">RUC</label>
+                  <label htmlFor="rec-ruc" className="text-xs font-semibold tracking-wide text-[#00517C]">RUC</label>
                   <input
                     id="rec-ruc"
-                    className="w-full rounded-lg border border-slate-400 p-3 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10"
+                    className="w-full rounded-lg border border-slate-400 p-3 text-sm outline-none transition-all duration-200 focus:border-[#00517C] focus:ring-4 focus:ring-[#00517C]/10"
                     placeholder="1790000000001"
                     inputMode="numeric" pattern="[0-9]*" maxLength={13}
                     onInput={numOnly}
@@ -147,10 +147,10 @@ export function ForgotPasswordModal() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="rec-id" className="text-xs font-semibold tracking-wide text-[#003959]">Cédula</label>
+                  <label htmlFor="rec-id" className="text-xs font-semibold tracking-wide text-[#00517C]">Cédula</label>
                   <input
                     id="rec-id"
-                    className="w-full rounded-lg border border-slate-400 p-3 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10"
+                    className="w-full rounded-lg border border-slate-400 p-3 text-sm outline-none transition-all duration-200 focus:border-[#00517C] focus:ring-4 focus:ring-[#00517C]/10"
                     placeholder="1710204155"
                     inputMode="numeric" pattern="[0-9]*" maxLength={10}
                     onInput={numOnly}
@@ -168,10 +168,10 @@ export function ForgotPasswordModal() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-1 mt-4">
-                  <label htmlFor="rec-cod" className="text-xs font-semibold tracking-wide text-[#003959]">Código de recuperación</label>
+                  <label htmlFor="rec-cod" className="text-xs font-semibold tracking-wide text-[#00517C]">Código de recuperación</label>
                   <input
                     id="rec-cod"
-                    className="w-full rounded-lg border border-slate-400 p-3 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10"
+                    className="w-full rounded-lg border border-slate-400 p-3 text-sm outline-none transition-all duration-200 focus:border-[#00517C] focus:ring-4 focus:ring-[#00517C]/10"
                     placeholder="123456"
                     inputMode="numeric" pattern="[0-9]*" maxLength={6}
                     onInput={numOnly}
@@ -180,22 +180,22 @@ export function ForgotPasswordModal() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="rec-npw" className="text-xs font-semibold tracking-wide text-[#003959]">Nueva contraseña</label>
+                  <label htmlFor="rec-npw" className="text-xs font-semibold tracking-wide text-[#00517C]">Nueva contraseña</label>
                   <input
                     id="rec-npw"
                     type="password"
-                    className="w-full rounded-lg border border-slate-400 p-3 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10"
+                    className="w-full rounded-lg border border-slate-400 p-3 text-sm outline-none transition-all duration-200 focus:border-[#00517C] focus:ring-4 focus:ring-[#00517C]/10"
                     placeholder="••••••••"
                     value={nuevaContrasena}
                     onChange={(e) => setNuevaContrasena(e.target.value)}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="rec-cpw" className="text-xs font-semibold tracking-wide text-[#003959]">Confirmar contraseña</label>
+                  <label htmlFor="rec-cpw" className="text-xs font-semibold tracking-wide text-[#00517C]">Confirmar contraseña</label>
                   <input
                     id="rec-cpw"
                     type="password"
-                    className="w-full rounded-lg border border-slate-400 p-3 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10"
+                    className="w-full rounded-lg border border-slate-400 p-3 text-sm outline-none transition-all duration-200 focus:border-[#00517C] focus:ring-4 focus:ring-[#00517C]/10"
                     placeholder="••••••••"
                     value={confirmarContrasena}
                     onChange={(e) => setConfirmarContrasena(e.target.value)}
@@ -215,7 +215,7 @@ export function ForgotPasswordModal() {
               <button
                 onClick={handleRequestCode}
                 disabled={loading}
-                className="h-10 px-5 rounded-lg text-sm font-bold bg-[#0EA5E9] hover:bg-[#0284c7] text-white shadow-sm transition-colors disabled:opacity-50"
+                className="h-10 px-5 rounded-lg text-sm font-bold bg-[#00517C] hover:bg-[#003959] text-white shadow-sm transition-colors disabled:opacity-50"
               >
                 {loading ? "Enviando..." : "Solicitar código"}
               </button>

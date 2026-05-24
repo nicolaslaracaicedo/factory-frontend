@@ -1,28 +1,31 @@
-"use client";
+﻿"use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import {
-  Eye, EyeOff, ArrowLeft,
-  CheckCircle2, AlertCircle,
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  ArrowLeft, ArrowRight, Check, Building2, User, Lock, Loader2,
+  Eye, EyeOff, CheckCircle2, AlertCircle
 } from "lucide-react";
+
 import { registerSchema } from "@/src/modules/auth/schemas/auth.schemas";
 import { authService } from "@/src/modules/auth/services/auth.service";
 import type { RegisterFormValues } from "@/src/modules/auth/schemas/auth.schemas";
 import { TermsModal } from "@/src/components/auth/terms-modal";
+import { BrandPanel } from "@/src/components/auth/brand-panel";
+import { FloatingInput } from "@/src/components/auth/floating-input";
 
-// ── Validation helpers ────────────────────────────────────────────────────────
+// -- Validation helpers --------------------------------------------------------
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 type Status = "idle" | "warn" | "ok" | "error" | "orange" | "yellow";
 type Hint   = { status: Status; text: string };
 
-// Ecuador cédula algorithm
 function isValidCedula(raw: string): boolean {
   const d = raw.replace(/\D/g, "");
   if (d.length !== 10) return false;
@@ -39,7 +42,6 @@ function isValidCedula(raw: string): boolean {
   return ((10 - (sum % 10)) % 10) === Number(d[9]);
 }
 
-// RUC = cédula (10 dig) + "001" suffix, or sociedad (starts with 20/30)
 function isValidRUC(raw: string): boolean {
   const d = raw.replace(/\D/g, "");
   if (d.length !== 13) return false;
@@ -59,26 +61,26 @@ function passwordScore(v: string): number {
 }
 
 function rucHint(v: string): Hint {
-  const d = v.replace(/\D/g, "");
-  if (!v)    return { status: "idle",  text: "" };
-  if (d.length < 13) return { status: "warn",  text: `Debe tener 13 dígitos (${d.length}/13).` };
+  const d = (v || "").replace(/\D/g, "");
+  if (!v) return { status: "idle",  text: "" };
+  if (d.length < 13) return { status: "warn",  text: "Debe tener 13 dígitos (13/13)." };
   if (isValidRUC(v)) return { status: "ok",    text: "RUC válido." };
-  return              { status: "error", text: "El RUC no es válido. Verifica que termine en 001." };
+  return { status: "error", text: "El RUC no es válido o no termina en 001." };
 }
 
 function cedulaHint(v: string): Hint {
-  const d = v.replace(/\D/g, "");
-  if (!v)    return { status: "idle",  text: "" };
-  if (d.length < 10) return { status: "warn",  text: `Debe tener 10 dígitos (${d.length}/10).` };
+  const d = (v || "").replace(/\D/g, "");
+  if (!v) return { status: "idle",  text: "" };
+  if (d.length < 10) return { status: "warn",  text: "Debe tener 10 dígitos (10/10)." };
   if (isValidCedula(v)) return { status: "ok", text: "Cédula válida." };
-  return                 { status: "error", text: "No coincide con el dígito verificador." };
+  return { status: "error", text: "No coincide con el dígito verificador." };
 }
 
 function telefonoHint(v: string): Hint {
-  const d = v.replace(/\D/g, "");
-  if (!v)    return { status: "idle",  text: "" };
+  const d = (v || "").replace(/\D/g, "");
+  if (!v) return { status: "idle",  text: "" };
   if (d.length === 0) return { status: "warn",  text: "Debe tener 10 dígitos." };
-  if (d.length < 10)  return { status: "warn",  text: `Debe tener 10 dígitos (${d.length}/10).` };
+  if (d.length < 10)  return { status: "warn",  text: "Debe tener 10 dígitos (10/10)." };
   if (d.length > 10)  return { status: "error", text: "Máximo 10 dígitos." };
   if (!d.startsWith("0")) return { status: "error", text: "Debe comenzar con 0." };
   return { status: "ok", text: "Número ecuatoriano válido." };
@@ -86,7 +88,7 @@ function telefonoHint(v: string): Hint {
 
 function nombreHint(v: string): Hint {
   if (!v) return { status: "idle", text: "" };
-  if (v.length > 60) return { status: "error", text: `Máximo 60 caracteres (${v.length}/60).` };
+  if (v.length > 60) return { status: "error", text: "Máximo 60 caracteres (60/60)." };
   if (v.trim().length < 2) return { status: "warn", text: "Mínimo 2 caracteres." };
   if (/[0-9]/.test(v)) return { status: "error", text: "No se permiten números." };
   if (/[^a-zA-ZáéíóúüñÑ\s-]/.test(v)) return { status: "error", text: "Solo letras y espacios." };
@@ -100,28 +102,36 @@ function apellidoHint(v: string): Hint {
 function emailHint(v: string): Hint {
   if (!v) return { status: "idle",  text: "" };
   if (EMAIL_RE.test(v)) return { status: "ok",    text: "Formato de correo válido." };
-  return                        { status: "error", text: "El formato del correo no es válido." };
+  return { status: "error", text: "El formato del correo no es válido." };
 }
 
 function passwordHint(v: string): Hint {
   if (!v) return { status: "idle", text: "" };
   const s = passwordScore(v);
   if (s === 5) return { status: "ok",     text: "Contraseña fuerte." };
-  if (s === 4) return { status: "yellow", text: "Contraseña media alta: falta un carácter." };
-  if (s === 3) return { status: "orange", text: "Contraseña media: añade mayúsculas o números." };
-  return              { status: "error",  text: "Contraseña débil: requiere más variedad." };
+  if (s === 4) return { status: "yellow", text: "Casi fuerte: agrega 1 carácter." };
+  if (s === 3) return { status: "orange", text: "Media: añade mayúsculas o números." };
+  return { status: "error",  text: "Débil: usa más variedad." };
 }
 
 function confirmHint(pw: string, conf: string): Hint {
   if (!conf) return { status: "idle",  text: "" };
   if (pw === conf) return { status: "ok",    text: "Las contraseñas coinciden." };
-  return                   { status: "error", text: "Las contraseñas no coinciden." };
+  return { status: "error", text: "Las contraseñas no coinciden." };
 }
 
-// ── Hint display ──────────────────────────────────────────────────────────────
+// -- Hint display --------------------------------------------------------------
 
-function FieldHint({ hint }: { hint: Hint }) {
-  if (hint.status === "idle" || !hint.text) return null;
+function FieldHint({ hint, errorMsg }: { hint?: Hint, errorMsg?: string }) {
+  if (errorMsg) {
+    return (
+      <span className="flex items-center gap-1 text-xs font-medium text-red-500 mt-1">
+        <AlertCircle className="h-3 w-3 shrink-0" />
+        {errorMsg}
+      </span>
+    );
+  }
+  if (!hint || hint.status === "idle" || !hint.text) return null;
   const map = {
     ok:     { cls: "text-emerald-700", Icon: CheckCircle2 },
     warn:   { cls: "text-amber-500",   Icon: AlertCircle },
@@ -130,20 +140,38 @@ function FieldHint({ hint }: { hint: Hint }) {
     yellow: { cls: "text-yellow-500",  Icon: AlertCircle },
   }[hint.status as "ok" | "warn" | "error" | "orange" | "yellow"];
   return (
-    <span className={`flex items-center gap-1 text-xs font-medium ${map.cls}`}>
-      <map.Icon className="h-3 w-3 shrink-0" />
-      {hint.text}
-    </span>
+      <span className={`flex items-center gap-1 text-xs font-medium mt-1 min-w-0 break-words ${(map && map.cls) || ""}`}>
+        <map.Icon className="h-3 w-3 shrink-0" />
+        <span>{hint.text}</span>
+      </span>
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// -- Helper functions for style ------------------------------------------------
+function borderCls(status: Status, error: boolean) {
+  if (error) return "border-red-400 bg-red-50/30";
+  return {
+    idle:   "border-[#c1c7d0]",
+    warn:   "border-amber-400",
+    ok:     "border-emerald-400",
+    error:  "border-red-400 bg-red-50/30",
+    orange: "border-orange-400",
+    yellow: "border-yellow-400",
+  }[status];
+}
+
+const steps = [
+  { id: 1, title: "Información fiscal", icon: Building2, fields: ["ruc", "identificacion"] },
+  { id: 2, title: "Información personal", icon: User, fields: ["nombre", "apellido", "telefono", "direccion"] },
+  { id: 3, title: "Seguridad", icon: Lock, fields: ["email", "password", "confirmPassword"] },
+];
 
 export function RegisterForm() {
   const router = useRouter();
-  const [showPw,  setShowPw]  = useState(false);
-  const [showCpw, setShowCpw] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [currentStep, setCurrentStep] = React.useState(1);
+  const [showPw,  setShowPw]  = React.useState(false);
+  const [showCpw, setShowCpw] = React.useState(false);
+  const [acceptedTerms, setAcceptedTerms] = React.useState(false);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -151,15 +179,16 @@ export function RegisterForm() {
     mode: "onChange",
   });
 
-  const ruc   = form.watch("ruc");
-  const id    = form.watch("identificacion");
-  const nombre = form.watch("nombre");
-  const apellido = form.watch("apellido");
-  const tel   = form.watch("telefono");
-  const mail  = form.watch("email");
-  const pw    = form.watch("password");
-  const cpw   = form.watch("confirmPassword");
-  const E     = form.formState.errors;
+  const { watch, register, trigger, setValue, getValues, formState: { errors, isValid, isSubmitting } } = form;
+  
+  const ruc   = watch("ruc");
+  const id    = watch("identificacion");
+  const nombre = watch("nombre");
+  const apellido = watch("apellido");
+  const tel   = watch("telefono");
+  const mail  = watch("email");
+  const pw    = watch("password");
+  const cpw   = watch("confirmPassword");
 
   // Compute live hints
   const hRuc   = rucHint(ruc);
@@ -173,17 +202,44 @@ export function RegisterForm() {
   const hPwScore = passwordScore(pw);
 
   // Auto-completar RUC basado en la cédula
-  useEffect(() => {
+  React.useEffect(() => {
     if (id && id.length === 10) {
-      const currentRuc = form.getValues("ruc");
+      const currentRuc = getValues("ruc");
       if (!currentRuc || currentRuc.length < 13) {
-        form.setValue("ruc", `${id}001`, { shouldValidate: true });
+        setValue("ruc", id + "001", { shouldValidate: true });
       }
     }
-  }, [id, form]);
+  }, [id, getValues, setValue]);
+
+  const numOnly = (e: React.FormEvent<HTMLInputElement>) => {
+    e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
+  };
+
+  const nextStep = async () => {
+    const fieldsToValidate = steps[currentStep - 1].fields as any[];
+    const isStepValid = await trigger(fieldsToValidate);
+    if (isStepValid && currentStep < 3) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(prev => prev - 1);
+    }
+  };
 
   const onSubmit = form.handleSubmit(async (values) => {
-    if (!acceptedTerms) { toast.error("Debes aceptar los Términos y Condiciones."); return; }
+    if (currentStep < 3) {
+      nextStep();
+      return;
+    }
+    
+    if (!acceptedTerms) { 
+      toast.error("Debes aceptar los Términos y Condiciones."); 
+      return; 
+    }
+    
     try {
       const res = await authService.register(values);
       toast.success(res.message);
@@ -195,11 +251,6 @@ export function RegisterForm() {
     }
   });
 
-  const numOnly = (e: React.FormEvent<HTMLInputElement>) => {
-    e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
-  };
-
-  // Password strength color
   const pwColor =
     hPwScore === 0 ? "bg-slate-200"
     : hPwScore <= 2 ? "bg-red-500"
@@ -207,310 +258,360 @@ export function RegisterForm() {
     : hPwScore === 4 ? "bg-yellow-500"
     : "bg-emerald-500";
 
-  function borderCls(status: Status, error: boolean) {
-    if (error) return "border-red-400 bg-red-50/30";
-    return {
-      idle:   "border-[#c1c7d0]",
-      warn:   "border-amber-400",
-      ok:     "border-emerald-400",
-      error:  "border-red-400 bg-red-50/30",
-      orange: "border-orange-400",
-      yellow: "border-yellow-400",
-    }[status];
-  }
-
   return (
-    <>
-      {form.formState.isSubmitting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/60 bg-white/90 px-6 py-5">
-            <div className="typewriter typewriter-login" aria-hidden="true">
-              <div className="slide"><i /></div>
-              <div className="paper" />
-              <div className="keyboard" />
+    <div className="min-h-screen flex bg-white font-sans text-slate-800">
+      {/* Form Panel */}
+      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-20 overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full max-w-lg mx-auto"
+        >
+          {/* Back link */}
+          <Link
+            href="/auth/login"
+            className="inline-flex items-center gap-2 text-[#0967A4] font-medium hover:text-[#00517C] transition-colors mb-6 group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Volver al inicio de sesión
+          </Link>
+
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
+            <h1 className="text-3xl sm:text-4xl font-bold text-[#00517C] mb-2">
+              Crear cuenta empresarial
+            </h1>
+            <p className="text-gray-500 text-sm">
+              Registra tu empresa para emitir comprobantes electrónicos autorizados por el SRI.
+            </p>
+          </motion.div>
+
+          {/* Step indicator */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
+              {steps.map((step, index) => (
+                <React.Fragment key={step.id}>
+                  <motion.div
+                    className="flex flex-col items-center z-10"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 + index * 0.1 }}
+                  >
+                    <motion.div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-semibold transition-all duration-300 ${
+                        currentStep > step.id
+                          ? "bg-[#248C95] text-white shadow-sm shadow-[#248C95]/30"
+                          : currentStep === step.id
+                          ? "bg-[#00517C] text-white shadow-sm shadow-[#00517C]/20"
+                          : "bg-slate-100 text-slate-400"
+                      }`}
+                      whileHover={{ scale: 1.05 }}
+                    >
+                      {currentStep > step.id ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <step.icon className="w-4 h-4" />
+                      )}
+                    </motion.div>
+                    <span className={`mt-1.5 text-[11px] font-medium hidden sm:block ${
+                      currentStep >= step.id ? "text-[#00517C]" : "text-slate-400"
+                    }`}>
+                      {step.title}
+                    </span>
+                  </motion.div>
+                  
+                  {index < steps.length - 1 && (
+                    <div className="flex-1 h-1 mx-2 rounded-full overflow-hidden bg-gray-100 relative">
+                      <motion.div
+                        className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#0967A4] to-[#248C95]"
+                        initial={{ width: "0%" }}
+                        animate={{ 
+                          width: currentStep > step.id ? "100%" : "0%" 
+                        }}
+                        transition={{ duration: 0.5 }}
+                      />
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
             </div>
-            <span className="text-xs font-semibold text-slate-600">Registrando...</span>
           </div>
-        </div>
-      )}
 
-      <main className="flex h-screen w-full overflow-hidden bg-[#f8f9fd]">
-        {/* ── Left: Registration Form ── */}
-        <section className="w-full overflow-y-auto bg-white lg:w-1/2">
-          <div className="mx-auto flex max-w-xl flex-col gap-8 px-6 py-8">
-            {/* Back link */}
-            <div>
-              <Link
-                href="/auth/login"
-                className="inline-flex items-center gap-2 text-sm font-bold text-[#006591] transition-colors hover:text-[#003959] hover:underline"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Volver al inicio de sesión
-              </Link>
-            </div>
-
-            {/* Header */}
-            <header className="flex flex-col gap-1">
-              <h1 className="text-[32px] font-semibold tracking-tight text-[#003959]">Crear cuenta empresarial</h1>
-              <p className="text-base text-[#41474e]">Registra tu empresa para emitir comprobantes electrónicos autorizados por el SRI.</p>
-            </header>
-
-            <form className="flex flex-col gap-8" onSubmit={onSubmit} noValidate>
-              {/* ── Información fiscal ── */}
-              <fieldset className="flex flex-col gap-4">
-                <div className="border-l-4 border-[#39b8fd] pl-4">
-                  <legend className="text-[20px] font-semibold text-[#191c1f]">Información fiscal</legend>
-                  <p className="text-xs font-medium tracking-wide text-[#41474e]">Datos registrados en el SRI para la emisión de comprobantes electrónicos.</p>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="reg-ruc" className="text-xs font-semibold tracking-wide text-[#003959]">RUC</label>
-                    <input
-                      id="reg-ruc"
-                      className={`w-full rounded-lg border p-4 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10 ${borderCls(hRuc.status, !!E.ruc)}`}
+          {/* Form */}
+          <form onSubmit={onSubmit} noValidate>
+            <AnimatePresence mode="wait">
+              {currentStep === 1 && (
+                <motion.div
+                  key="step1"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-1 h-6 bg-gradient-to-b from-[#0967A4] to-[#248C95] rounded-full" />
+                    <div>
+                      <h3 className="text-base font-semibold text-[#0967A4]">Información fiscal</h3>
+                      <p className="text-[11px] text-gray-500">Datos del SRI para comprobantes electrónicos.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FloatingInput
+                      label="RUC"
                       placeholder="1790000000001"
                       inputMode="numeric" pattern="[0-9]*" maxLength={13}
                       onInput={numOnly}
-                      {...form.register("ruc")}
+                      error={!!errors.ruc}
+                      hint={<FieldHint hint={hRuc} errorMsg={errors.ruc?.message} />}
+                      className={borderCls(hRuc.status, !!errors.ruc)}
+                      {...register("ruc")}
                     />
-                    {E.ruc?.message
-                      ? <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.ruc.message}</span>
-                      : <FieldHint hint={hRuc} />}
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="reg-id" className="text-xs font-semibold tracking-wide text-[#003959]">Número de identificación</label>
-                    <input
-                      id="reg-id"
-                      className={`w-full rounded-lg border p-4 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10 ${borderCls(hId.status, !!E.identificacion)}`}
+                    <FloatingInput
+                      label="Número de identificación"
                       placeholder="1710204155"
                       inputMode="numeric" pattern="[0-9]*" maxLength={10}
                       onInput={numOnly}
-                      {...form.register("identificacion")}
+                      error={!!errors.identificacion}
+                      hint={<FieldHint hint={hId} errorMsg={errors.identificacion?.message} />}
+                      className={borderCls(hId.status, !!errors.identificacion)}
+                      {...register("identificacion")}
                     />
-                    {E.identificacion?.message
-                      ? <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.identificacion.message}</span>
-                      : <FieldHint hint={hId} />}
                   </div>
-                </div>
-              </fieldset>
+                </motion.div>
+              )}
 
-              {/* ── Información personal ── */}
-              <fieldset className="flex flex-col gap-4">
-                <div className="border-l-4 border-[#39b8fd] pl-4">
-                  <legend className="text-[20px] font-semibold text-[#191c1f]">Información personal</legend>
-                  <p className="text-xs font-medium tracking-wide text-[#41474e]">Datos del representante legal o responsable de la empresa.</p>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="reg-nombre" className="text-xs font-semibold tracking-wide text-[#003959]">Nombre</label>
-                    <input
-                      id="reg-nombre"
-                      className={`w-full rounded-lg border p-4 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10 ${borderCls(hNombre.status, !!E.nombre)}`}
+              {currentStep === 2 && (
+                <motion.div
+                  key="step2"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-1 h-6 bg-gradient-to-b from-[#0967A4] to-[#248C95] rounded-full" />
+                    <div>
+                      <h3 className="text-base font-semibold text-[#0967A4]">Información personal</h3>
+                      <p className="text-[11px] text-gray-500">Datos del representante legal.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FloatingInput
+                      label="Nombre"
                       placeholder="Ej. Juan"
                       maxLength={60}
-                      {...form.register("nombre")}
+                      error={!!errors.nombre}
+                      hint={<FieldHint hint={hNombre} errorMsg={errors.nombre?.message} />}
+                      className={borderCls(hNombre.status, !!errors.nombre)}
+                      {...register("nombre")}
                     />
-                    {E.nombre?.message
-                      ? <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.nombre.message}</span>
-                      : <FieldHint hint={hNombre} />}
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="reg-apellido" className="text-xs font-semibold tracking-wide text-[#003959]">Apellido</label>
-                    <input
-                      id="reg-apellido"
-                      className={`w-full rounded-lg border p-4 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10 ${borderCls(hApellido.status, !!E.apellido)}`}
+                    <FloatingInput
+                      label="Apellido"
                       placeholder="Ej. Pérez"
                       maxLength={60}
-                      {...form.register("apellido")}
+                      error={!!errors.apellido}
+                      hint={<FieldHint hint={hApellido} errorMsg={errors.apellido?.message} />}
+                      className={borderCls(hApellido.status, !!errors.apellido)}
+                      {...register("apellido")}
                     />
-                    {E.apellido?.message
-                      ? <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.apellido.message}</span>
-                      : <FieldHint hint={hApellido} />}
                   </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="reg-tel" className="text-xs font-semibold tracking-wide text-[#003959]">Teléfono</label>
-                  <input
-                    id="reg-tel"
-                    className={`w-full rounded-lg border p-4 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10 ${borderCls(hTel.status, !!E.telefono)}`}
+                  
+                  <FloatingInput
+                    label="Teléfono"
+                    type="tel"
                     placeholder="+593 99 999 9999"
                     inputMode="numeric" pattern="[0-9]*" maxLength={10}
                     onInput={numOnly}
-                    {...form.register("telefono")}
+                    error={!!errors.telefono}
+                    hint={<FieldHint hint={hTel} errorMsg={errors.telefono?.message} />}
+                    className={borderCls(hTel.status, !!errors.telefono)}
+                    {...register("telefono")}
                   />
-                  {E.telefono?.message
-                    ? <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.telefono.message}</span>
-                    : <FieldHint hint={hTel} />}
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="reg-dir" className="text-xs font-semibold tracking-wide text-[#003959]">Dirección fiscal</label>
-                  <input
-                    id="reg-dir"
-                    className={`w-full rounded-lg border p-4 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10 ${borderCls("idle", !!E.direccion)}`}
+                  
+                  <FloatingInput
+                    label="Dirección fiscal"
+                    type="text"
                     placeholder="Ej. Av. Amazonas y Villalengua"
-                    maxLength={200}
-                    {...form.register("direccion")}
+                    error={!!errors.direccion}
+                    hint={<FieldHint hint={{ status: "idle", text: "" }} errorMsg={errors.direccion?.message} />}
+                    className={borderCls("idle", !!errors.direccion)}
+                    {...register("direccion")}
                   />
-                  {E.direccion?.message && (
-                    <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.direccion.message}</span>
-                  )}
-                </div>
-              </fieldset>
+                </motion.div>
+              )}
 
-              {/* ── Seguridad ── */}
-              <fieldset className="flex flex-col gap-4">
-                <div className="border-l-4 border-[#39b8fd] pl-4">
-                  <legend className="text-[20px] font-semibold text-[#191c1f]">Seguridad</legend>
-                  <p className="text-xs font-medium tracking-wide text-[#41474e]">Credenciales de acceso al sistema de facturación electrónica.</p>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="reg-email" className="text-xs font-semibold tracking-wide text-[#003959]">Correo electrónico</label>
-                  <input
-                    id="reg-email" type="email"
-                    className={`w-full rounded-lg border p-4 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10 ${borderCls(hMail.status, !!E.email)}`}
+              {currentStep === 3 && (
+                <motion.div
+                  key="step3"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-1 h-6 bg-gradient-to-b from-[#0967A4] to-[#248C95] rounded-full" />
+                    <div>
+                      <h3 className="text-base font-semibold text-[#0967A4]">Seguridad</h3>
+                      <p className="text-[11px] text-gray-500">Credenciales de acceso.</p>
+                    </div>
+                  </div>
+                  
+                  <FloatingInput
+                    label="Correo electrónico"
+                    type="email"
                     placeholder="admin@empresa.com"
                     autoComplete="email"
-                    {...form.register("email")}
+                    error={!!errors.email}
+                    hint={<FieldHint hint={hMail} errorMsg={errors.email?.message} />}
+                    className={borderCls(hMail.status, !!errors.email)}
+                    {...register("email")}
                   />
-                  {E.email?.message
-                    ? <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.email.message}</span>
-                    : <FieldHint hint={hMail} />}
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="reg-pw" className="text-xs font-semibold tracking-wide text-[#003959]">Contraseña</label>
-                    <div className="relative">
-                      <input
-                        id="reg-pw"
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <FloatingInput
+                        label="Contraseña"
                         type={showPw ? "text" : "password"}
-                        className={`w-full rounded-lg border p-4 pr-10 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10 ${borderCls(hPw.status, !!E.password)}`}
                         placeholder="••••••••"
                         autoComplete="new-password"
-                        {...form.register("password")}
+                        error={!!errors.password}
+                        className={borderCls(hPw.status, !!errors.password)}
+                        {...register("password")}
+                        endAdornment={
+                          <button type="button" onClick={() => setShowPw(p => !p)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-[#71787f] transition-colors hover:bg-slate-100"
+                            aria-label={showPw ? "Ocultar" : "Mostrar"}>
+                            {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        }
                       />
-                      <button type="button" onClick={() => setShowPw(p => !p)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-[#71787f] transition-colors hover:bg-slate-100"
-                        aria-label={showPw ? "Ocultar" : "Mostrar"}>
-                        {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
+                      <FieldHint hint={hPw} errorMsg={errors.password?.message} />
                     </div>
-                    {pw && (
-                      <div className="mt-1 flex items-center gap-2">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${pwColor}`}
-                            style={{ width: `${(hPwScore / 5) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    <div className="mt-1">
-                      {pw
-                        ? <FieldHint hint={hPw} />
-                        : (E.password?.message ? <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.password.message}</span> : null)
-                      }
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="reg-cpw" className="text-xs font-semibold tracking-wide text-[#003959]">Confirmar contraseña</label>
-                    <div className="relative">
-                      <input
-                        id="reg-cpw"
+                    
+                    <div>
+                      <FloatingInput
+                        label="Confirmar contraseña"
                         type={showCpw ? "text" : "password"}
-                        className={`w-full rounded-lg border p-4 pr-10 text-sm outline-none transition-all duration-200 focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E9]/10 ${borderCls(hCpw.status, !!E.confirmPassword)}`}
                         placeholder="••••••••"
                         autoComplete="new-password"
-                        {...form.register("confirmPassword")}
+                        error={!!errors.confirmPassword}
+                        className={borderCls(hCpw.status, !!errors.confirmPassword)}
+                        {...register("confirmPassword")}
+                        endAdornment={
+                          <button type="button" onClick={() => setShowCpw(p => !p)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-[#71787f] transition-colors hover:bg-slate-100"
+                            aria-label={showCpw ? "Ocultar" : "Mostrar"}>
+                            {showCpw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        }
                       />
-                      <button type="button" onClick={() => setShowCpw(p => !p)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-[#71787f] transition-colors hover:bg-slate-100"
-                        aria-label={showCpw ? "Ocultar" : "Mostrar"}>
-                        {showCpw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
+                      <FieldHint hint={hCpw} errorMsg={errors.confirmPassword?.message} />
                     </div>
-                    {E.confirmPassword?.message
-                      ? <span className="flex items-center gap-1 text-xs font-medium text-red-500"><AlertCircle className="h-3 w-3 shrink-0" />{E.confirmPassword.message}</span>
-                      : <FieldHint hint={hCpw} />}
                   </div>
-                </div>
-              </fieldset>
 
-              {/* ── Footer & CTA ── */}
-              <div className="flex flex-col gap-6">
-                <div className="cntr flex select-none items-start gap-2 text-sm text-[#41474e]">
-                  <input type="checkbox" id="cbx" className="hidden-xs-up" checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} />
-                  <label htmlFor="cbx" className="cbx mt-0.5 cursor-pointer" />
-                  <span className="lbl text-[#41474e] transition-colors group-hover:text-[#191c1f]">
-                    <label htmlFor="cbx" className="cursor-pointer">Acepto los </label>
-                    <TermsModal onAccept={() => setAcceptedTerms(true)} />
-                  </span>
-                </div>
-                <button
-                  type="submit"
-                  disabled={form.formState.isSubmitting}
-                  className="w-full rounded-lg bg-[#00517c] py-4 text-base font-bold text-white shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98] disabled:opacity-60"
+                  {/* Terms checkbox */}
+                  <div className="cntr flex items-start mt-4">
+                    <input
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="hidden-xs-up"
+                      id="cbx"
+                    />
+                    <label htmlFor="cbx" className="cbx" />
+                    <label htmlFor="cbx" className="lbl text-sm text-gray-600 select-none">
+                      Acepto los{" "}
+                      <TermsModal onAccept={() => setAcceptedTerms(true)} />
+                    </label>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Navigation buttons */}
+            <div className="flex gap-4 mt-8">
+              {currentStep > 1 && (
+                <motion.button
+                  type="button"
+                  onClick={prevStep}
+                  className="flex-1 py-3 px-6 border-2 border-gray-200 text-[#00517C] font-semibold rounded-xl hover:border-[#0967A4] hover:bg-gray-50 transition-all duration-300 flex items-center justify-center gap-2"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                 >
-                  {form.formState.isSubmitting ? "Registrando..." : "Crear cuenta"}
-                </button>
-                <div className="pt-4 text-center">
-                  <Link href="/auth/login" className="text-sm text-[#41474e] transition-colors hover:text-[#003959]">
-                    ¿Ya tienes cuenta?{" "}
-                    <span className="font-bold text-[#006591]">Inicia sesión</span>
-                  </Link>
-                </div>
-              </div>
-            </form>
-
-            {/* Bottom legal */}
-            <footer className="border-t border-[#c1c7d0] pt-8 text-center">
-              <p className="text-xs font-medium text-[#71787f]">© {new Date().getFullYear()} Factory. Todos los derechos reservados.</p>
-            </footer>
-          </div>
-        </section>
-
-        {/* ── Right: Branding Panel ── */}
-        <section className="relative hidden flex-col overflow-hidden bg-[#003959] px-8 lg:flex lg:w-1/2">
-          {/* Background decorations */}
-          <div className="pointer-events-none absolute inset-0 opacity-10">
-            <div className="absolute -right-[10%] -top-[10%] h-[600px] w-[600px] rounded-full bg-[#39b8fd] blur-3xl" />
-            <div className="absolute -bottom-[20%] -left-[10%] h-[800px] w-[800px] rounded-full bg-[#00517c] blur-3xl" />
-          </div>
-
-          {/* Center content (including logo) */}
-          <div className="relative z-10 flex h-full flex-col items-center justify-center py-12">
-            <div className="flex w-full max-w-lg flex-col gap-8 xl:gap-12">
-              {/* Branding header */}
-              <div className="flex items-center gap-3">
-                <img src="/Factory.png" alt="Factory" className="h-20 w-auto object-contain brightness-0 invert lg:h-24" />
-              </div>
-
-              <div>
-                <h2 className="mb-6 xl:mb-8 text-[32px] xl:text-[48px] font-bold leading-tight tracking-tight text-white">
-                  Sistema de facturación electrónica profesional.
-                </h2>
-                <div className="flex flex-col gap-4 xl:gap-6">
-                  {[
-                    { icon: "verified", title: "Autorizado por el SRI", text: "Cumplimiento total con la normativa vigente ecuatoriana para comprobantes electrónicos." },
-                    { icon: "trending_up", title: "Gestión lista para escalar", text: "Infraestructura robusta diseñada para manejar miles de transacciones mensuales sin fricción." },
-                    { icon: "description", title: "Cumplimiento tributario total", text: "Facturación electrónica 100% apegada a la normativa del SRI con actualizaciones automáticas." },
-                    { icon: "account_balance", title: "Módulos contables completos", text: "Gestión integral de retenciones, liquidaciones de compra y guías de remisión en un solo entorno." },
-                  ].map((item, i) => (
-                    <div key={i} className="flex gap-4">
-                      <div className="flex h-10 w-10 xl:h-12 xl:w-12 shrink-0 items-center justify-center rounded-xl bg-[#00517c]">
-                        <span className="material-symbols-outlined fill-icon text-white text-[20px] xl:text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>
-                      </div>
-                      <div>
-                        <h3 className="mb-1 text-[16px] xl:text-[20px] font-semibold text-white">{item.title}</h3>
-                        <p className="text-xs xl:text-sm text-[#c9e6ff] opacity-90">{item.text}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                  <ArrowLeft className="w-5 h-5" />
+                  Anterior
+                </motion.button>
+              )}
+              
+              {currentStep < 3 ? (
+                <motion.button
+                  type="button"
+                  onClick={nextStep}
+                  className="flex-1 py-3 px-6 bg-gradient-to-r from-[#00517C] to-[#0967A4] text-white font-semibold rounded-xl shadow-md shadow-[#0967A4]/20 hover:shadow-lg hover:shadow-[#0967A4]/30 transition-all duration-300 flex items-center justify-center gap-2 group w-full"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Continuar
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </motion.button>
+              ) : (
+                <motion.button
+                  type="submit"
+                  disabled={isSubmitting || !acceptedTerms}
+                  className="flex-1 py-3 px-6 bg-gradient-to-r from-[#00517C] to-[#0967A4] text-white font-semibold rounded-xl shadow-md shadow-[#0967A4]/20 hover:shadow-lg hover:shadow-[#0967A4]/30 transition-all duration-300 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
+                  whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                  whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    "Crear cuenta"
+                  )}
+                </motion.button>
+              )}
             </div>
-          </div>
-        </section>
-      </main>
-    </>
+          </form>
+
+          {/* Login link */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-8 text-center text-gray-500 text-sm"
+          >
+            ¿Ya tienes cuenta?{" "}
+            <Link href="/auth/login" className="text-[#0967A4] font-semibold hover:text-[#00517C] transition-colors">
+              Inicia sesión
+            </Link>
+          </motion.p>
+
+          {/* Footer */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="mt-6 text-center text-xs text-gray-400"
+          >
+            © 2026 Factory. Todos los derechos reservados.
+          </motion.p>
+        </motion.div>
+      </div>
+
+      {/* Brand Panel */}
+      <BrandPanel variant="register" />
+    </div>
   );
 }

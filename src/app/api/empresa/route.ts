@@ -31,8 +31,16 @@ const toMessage = (payload: unknown, fallback: string): string => {
   return fallback;
 };
 
+function extractToken(request: NextRequest): string | undefined {
+  const authHeader = request.headers.get("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.slice(7);
+  }
+  return request.cookies.get("factory_token")?.value;
+}
+
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get("factory_token")?.value;
+  const token = extractToken(request);
 
   const backendResponse = await fetch(`${API_URL}/api/empresa`, {
     method: "GET",
@@ -52,7 +60,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const token = request.cookies.get("factory_token")?.value;
+  const token = extractToken(request);
 
   let formData: FormData;
   try {

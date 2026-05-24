@@ -36,7 +36,7 @@ export const registerSchema = z
     email: z.email("Correo invalido."),
     password: z
       .string()
-      .min(8, "La clave debe tener al menos 8 caracteres.")
+      .min(8, "Debe tener al menos 8 caracteres.")
       .regex(/[A-Z]/, "Debe contener una mayuscula.")
       .regex(/[a-z]/, "Debe contener una minuscula.")
       .regex(/[0-9]/, "Debe contener un numero."),
