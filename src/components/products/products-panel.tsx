@@ -41,6 +41,7 @@ import type { GrupoProducto } from "@/src/modules/product-groups/types/product-g
 import { ivaService } from "@/src/modules/iva/services/iva.service";
 import type { CodigoIva } from "@/src/modules/iva/types/iva.types";
 import { Loader } from "@/src/components/ui/loader";
+import { motion, AnimatePresence } from "framer-motion";
 
 const initialForm: ProductoFormInput = {
   codigo: "",
@@ -510,6 +511,11 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
   if (!showPanel) return null;
 
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
     <div className="space-y-4">
       {/* Toolbar Principal */}
       <div className="flex flex-wrap items-center gap-2">
@@ -556,9 +562,16 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
       </div>
 
       {/* Panel de Filtros Expandible */}
-      {showFilters && (
-        <div className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg animate-in slide-in-from-top-2 fade-in duration-200">
-          <div className="text-xs font-medium text-slate-500 mr-1">Filtrar por:</div>
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg"
+          >
+            <div className="text-xs font-medium text-slate-500 mr-1">Filtrar por:</div>
 
           {/* Filtro estado */}
           <SelectPrimitive.Root value={filter} onValueChange={(val) => setFilter(val as EstadoFiltro)}>
@@ -633,14 +646,20 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
               </SelectPrimitive.Content>
             </SelectPrimitive.Portal>
           </SelectPrimitive.Root>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Estado vacío o Tabla */}
       {loading || loadingGrupos || loadingIva ? (
         <Loader label="Cargando productos" className="mt-8" />
       ) : table.getFilteredRowModel().rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center"
+        >
           <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
             <Package size={24} className="text-slate-400" />
           </div>
@@ -651,9 +670,14 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
               Registrar producto
             </Button>
           )}
-        </div>
+        </motion.div>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden"
+        >
           {/* Tabla con react-table */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -737,38 +761,50 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
           <Dialog.Content
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
             onPointerDownOutside={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
           >
-            {/* Header con icono y título */}
-            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Package className="h-6 w-6 text-app-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Dialog.Title className="text-xl font-semibold text-slate-900">
-                    {editing ? "Editar producto" : "Crear nuevo producto"}
-                  </Dialog.Title>
-                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
-                    {editing
-                      ? "Actualiza los datos del producto existente en tu catálogo."
-                      : "Registra un nuevo producto o servicio con sus datos de clasificación y precios."}
-                  </Dialog.Description>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              {/* Header con icono y titulo */}
+              <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                    <Package className="h-6 w-6 text-app-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Dialog.Title className="text-xl font-semibold text-slate-900">
+                      {editing ? "Editar producto" : "Crear nuevo producto"}
+                    </Dialog.Title>
+                    <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                      {editing
+                        ? "Actualiza los datos del producto existente en tu catálogo."
+                        : "Registra un nuevo producto o servicio con sus datos de clasificación y precios."}
+                    </Dialog.Description>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Formulario */}
-            <form className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]" onSubmit={submitForm}>
+              {/* Formulario */}
+              <form className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]" onSubmit={submitForm}>
               {/* SECCIÓN: Identificación */}
               <div className="bg-slate-100 rounded-xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
@@ -1149,37 +1185,50 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
                   {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear producto"}
                 </Button>
               </div>
-            </form>
+              </form>
+            </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
           <Dialog.Content
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
             onPointerDownOutside={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
             onEscapeKeyDown={(event) => event.preventDefault()}
           >
-            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Package className="h-6 w-6 text-app-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Dialog.Title className="text-xl font-semibold text-slate-900">
-                    Detalle del producto
-                  </Dialog.Title>
-                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
-                    Información registrada del producto.
-                  </Dialog.Description>
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                    <Package className="h-6 w-6 text-app-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Dialog.Title className="text-xl font-semibold text-slate-900">
+                      Detalle del producto
+                    </Dialog.Title>
+                    <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                      Información registrada del producto.
+                    </Dialog.Description>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
               <div className="space-y-4">
                 <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                   <div className="flex items-center gap-2">
@@ -1323,9 +1372,11 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
                 </Button>
               </div>
             </div>
+            </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
     </div>
+    </motion.div>
   );
 }

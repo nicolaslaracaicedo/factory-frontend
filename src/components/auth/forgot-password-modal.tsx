@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, KeyRound, AlertCircle, CheckCircle2 } from "lucide-react";
+import { X, KeyRound, CheckCircle2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { authService } from "@/src/modules/auth/services/auth.service";
 
@@ -102,12 +103,28 @@ export function ForgotPasswordModal() {
         </span>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
-        <Dialog.Content 
-          onPointerDownOutside={(e) => e.preventDefault()}
-          className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl flex flex-col overflow-hidden"
-        >
-          <div className="bg-slate-100 border-b border-slate-200 px-6 py-5 shrink-0">
+        <AnimatePresence>
+          {open ? (
+            <Dialog.Overlay asChild forceMount>
+              <motion.div
+                className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+              />
+            </Dialog.Overlay>
+          ) : null}
+        </AnimatePresence>
+        <Dialog.Content asChild forceMount onPointerDownOutside={(e) => e.preventDefault()}>
+          <motion.div
+            className="fixed left-1/2 top-1/2 z-50 flex w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl"
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ duration: 0.24, ease: "easeOut" }}
+          >
+          <div className="shrink-0 border-b border-slate-200 bg-slate-100 px-6 py-5">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
                 <KeyRound className="h-6 w-6 text-[#00517C]" />
@@ -131,8 +148,16 @@ export function ForgotPasswordModal() {
             </div>
           </div>
 
-          <div className="px-6 py-6 space-y-4">
-            {step === 1 ? (
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`step-${step}`}
+              className="space-y-4 px-6 py-6"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              {step === 1 ? (
               <>
                 <div className="flex flex-col gap-1">
                   <label htmlFor="rec-ruc" className="text-xs font-semibold tracking-wide text-[#00517C]">RUC</label>
@@ -159,7 +184,7 @@ export function ForgotPasswordModal() {
                   />
                 </div>
               </>
-            ) : (
+              ) : (
               <>
                 <div className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
@@ -202,8 +227,9 @@ export function ForgotPasswordModal() {
                   />
                 </div>
               </>
-            )}
-          </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
 
           <div className="border-t border-slate-200 px-6 py-4 flex justify-end gap-3 shrink-0">
             <Dialog.Close asChild>
@@ -229,6 +255,7 @@ export function ForgotPasswordModal() {
               </button>
             )}
           </div>
+          </motion.div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

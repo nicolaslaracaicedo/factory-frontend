@@ -5,6 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { toast } from "sonner";
 import { Users, ChevronDown, Phone, Shield } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/src/components/ui/button";
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
@@ -117,31 +118,43 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
       onOpenChange(val);
     }}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+        <Dialog.Overlay asChild>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+          />
+        </Dialog.Overlay>
         <Dialog.Content 
           className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
-          <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                <Users className="h-6 w-6 text-app-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <Dialog.Title className="text-xl font-semibold text-slate-900">
-                  {editing ? "Editar cliente" : "Crear nuevo cliente"}
-                </Dialog.Title>
-                <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
-                  {editing
-                    ? "Actualiza los datos comerciales del cliente registrado."
-                    : "Registra un nuevo cliente para emitir comprobantes y gestionar sus datos de contacto."}
-                </Dialog.Description>
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                  <Users className="h-6 w-6 text-app-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Dialog.Title className="text-xl font-semibold text-slate-900">
+                    {editing ? "Editar cliente" : "Crear nuevo cliente"}
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    {editing
+                      ? "Actualiza los datos comerciales del cliente registrado."
+                      : "Registra un nuevo cliente para emitir comprobantes y gestionar sus datos de contacto."}
+                  </Dialog.Description>
+                </div>
               </div>
             </div>
-          </div>
 
-          <form className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]" onSubmit={submitForm}>
+            <form className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]" onSubmit={submitForm}>
             <div className="bg-slate-100 rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Shield className="h-3.5 w-3.5 text-slate-500" />
@@ -297,7 +310,8 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
                 {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear cliente"}
               </Button>
             </div>
-          </form>
+            </form>
+          </motion.div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

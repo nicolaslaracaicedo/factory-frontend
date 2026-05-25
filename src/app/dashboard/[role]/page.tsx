@@ -36,29 +36,18 @@ export default function RoleDashboardPage() {
     }
   }, [currentRole, hydrated, router]);
 
-  if (!hydrated || !currentRole) {
+  if (!hydrated || !currentRole || !user) {
     return (
       <section className="m-4 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm sm:m-6">
-        <p className="text-sm text-slate-500">Validando sesion...</p>
+        <div className="h-5 w-40 animate-pulse rounded-md bg-slate-100" />
       </section>
     );
   }
 
-  const effectiveUser =
-    user ??
-    ({
-      ruc: "",
-      identificacion: "",
-      nombre: "Usuario",
-      apellido: "",
-      email: "",
-      role: currentRole,
-    } as const);
-
   return (
     <RoleDashboardTemplate
       role={currentRole}
-      user={effectiveUser}
+      user={user}
       onLogout={async () => {
         try {
           await authService.logout();

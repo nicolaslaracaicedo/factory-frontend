@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, AnimatePresence } from "framer-motion";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -367,6 +368,11 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
   if (!showPanel) return null;
 
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
     <section className="space-y-4">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
@@ -387,8 +393,15 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
         </div>
       </div>
 
-      {showFilters && (
-        <div className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg">
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg"
+          >
           <div className="text-xs font-medium text-slate-500">Filtrar por:</div>
           <SelectPrimitive.Root value={filter || "TODOS"} onValueChange={(val) => setFilter(val as EstadoFiltro)}>
             <SelectPrimitive.Trigger className="inline-flex h-8 min-w-[160px] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-200">
@@ -407,19 +420,30 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
               </SelectPrimitive.Content>
             </SelectPrimitive.Portal>
           </SelectPrimitive.Root>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {loading ? (
         <div className="py-12"><Loader label="Cargando usuarios..." /></div>
       ) : table.getFilteredRowModel().rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center"
+        >
           <Users size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm text-slate-600">No hay usuarios para este filtro.</p>
           <Button className="mt-3 h-9 shadow-none" onClick={openCreate}><Plus size={15} className="mr-1.5" /> Nuevo Usuario</Button>
-        </div>
+        </motion.div>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="rounded-xl border border-slate-200 bg-white overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -460,17 +484,29 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
               <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ChevronRight size={14} /></button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
           <Dialog.Content 
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
             onPointerDownOutside={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
           >
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
             {/* Header con icono y título */}
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
@@ -703,9 +739,11 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
                 </Button>
               </div>
             </form>
+            </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
     </section>
+    </motion.div>
   );
 }

@@ -137,6 +137,8 @@ table thead th:first-letter {
 
 .typewriter-login {
   transform: scale(0.9);
+  --blue: #00517c;
+  --blue-dark: #003959;
 }
 
 .typewriter .slide {

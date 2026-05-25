@@ -4,6 +4,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight, Save, Sparkles, X, Building2, Settings, Palette, FileCheck, ChevronDown, CheckCircle2, FlaskConical, Mail, Send, ShieldCheck, KeyRound, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { Field } from "@/src/components/ui/field";
@@ -326,12 +328,27 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
   return (
     <>
       {showPanel ? (
-        <div className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
+          className="space-y-4"
+        >
           {loading ? (
             <Loader label="Cargando datos de empresa" className="min-h-[200px]" />
           ) : company ? (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
+            <motion.section
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+              className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-sm"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.28, delay: 0.04, ease: [0.25, 0.1, 0.25, 1] }}
+                className="flex flex-wrap items-start justify-between gap-3 mb-8"
+              >
                 <div>
                   <h4 className="text-xl font-bold text-slate-900">Datos de la Empresa</h4>
                   <p className="text-sm text-slate-500 mt-1">Configuración actual, identidad y detalles fiscales.</p>
@@ -342,7 +359,13 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                     Editar datos
                   </Button>
                 )}
-              </div>              <div className="space-y-6">
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+                className="space-y-6"
+              >
                 {/* Fila 1: Logo + Información General */}
                 <div className="grid gap-6 md:grid-cols-[300px_1fr] items-stretch">
                   {/* Tarjeta Logo */}
@@ -478,8 +501,8 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                     </div>
                   </div>
                 </div>
-              </div>
-            </section>
+              </motion.div>
+            </motion.section>
           ) : (
             <section className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center">
               <p className="text-sm text-slate-600">
@@ -492,17 +515,30 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
               )}
             </section>
           )}
-        </div>
+        </motion.div>
       ) : null}
 
       <Dialog.Root open={editOpen} onOpenChange={setEditOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
           <Dialog.Content
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,860px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
             onPointerDownOutside={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
           >
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="flex flex-col max-h-[90vh]"
+            >
             {/* Header con icono y título */}
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
@@ -551,9 +587,16 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
             {/* Formulario */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
               <form className="space-y-5" onSubmit={onSubmit}>
-                {/* TAB: Datos Fiscales */}
-                {activeTab === "fiscal" && (
-                  <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <AnimatePresence mode="wait">
+                  {activeTab === "fiscal" && (
+                    <motion.div
+                      key="fiscal"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-5"
+                    >
                     {/* Información general e identidad */}
                     <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                       <div className="flex items-center gap-2">
@@ -696,19 +739,24 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
 
                       <div className="grid gap-4">
                         <Field label="Régimen" htmlFor="">
-                          <div className="flex flex-nowrap whitespace-nowrap rounded-lg bg-white p-1 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] w-full text-sm">
+                          <div className="relative flex flex-nowrap whitespace-nowrap rounded-lg bg-white p-1 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] w-full text-sm">
                             {regimenOptions.map((option) => (
                               <button
                                 key={option.value}
                                 type="button"
                                 onClick={() => updateField("regimen", option.value)}
-                                className={`flex-1 text-center cursor-pointer rounded-lg border-none py-2 transition-all duration-150 ease-in-out ${
-                                  form.regimen === option.value
-                                    ? "bg-app-primary text-white font-semibold"
-                                    : "bg-transparent text-slate-700"
-                                }`}
+                                className="relative flex-1 text-center rounded-lg border-none py-2"
                               >
-                                {option.label}
+                                {form.regimen === option.value && (
+                                  <motion.div
+                                    layoutId="regimen-bg"
+                                    className="absolute inset-0 rounded-lg bg-app-primary"
+                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                  />
+                                )}
+                                <span className={`relative z-10 cursor-pointer ${form.regimen === option.value ? "text-white font-semibold" : "text-slate-700"}`}>
+                                  {option.label}
+                                </span>
                               </button>
                             ))}
                           </div>
@@ -767,12 +815,19 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
 
                 {/* TAB: Branding / Estilo */}
                 {activeTab === "branding" && (
-                  <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <motion.div
+                    key="branding"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-5"
+                  >
                     <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                       <div className="flex items-center gap-2">
                         <Palette className="h-3.5 w-3.5 text-slate-500" />
@@ -849,12 +904,19 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                         </Field>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
 
                 {/* TAB: Conexión */}
                 {activeTab === "conexion" && (
-                  <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <motion.div
+                    key="conexion"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-5"
+                  >
                     {/* Alerta de producción */}
                     <div
                       className={`rounded-xl border border-transparent p-4 transition-all duration-300 ${form.ambiente === 2
@@ -932,39 +994,58 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                             </p>
                           </div>
 
-                          <div className="flex items-center rounded-md border border-slate-200 bg-slate-50 p-1">
+                          <div className="relative flex items-center rounded-md border border-slate-200 bg-slate-50 p-1">
                             <button
                               type="button"
                               onClick={() => updateField("ambiente", 1)}
-                              className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold transition-colors ${form.ambiente === 1
-                                ? "bg-sky-600 text-white"
-                                : "text-slate-600 hover:text-slate-800"
-                                }`}
+                              className="relative inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold"
                             >
-                              <FlaskConical className="h-3 w-3" />
-                              Pruebas
+                              {form.ambiente === 1 && (
+                                <motion.div
+                                  layoutId="ambiente-bg"
+                                  className="absolute inset-0 rounded-md bg-sky-600"
+                                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                />
+                              )}
+                              <span className={`relative z-10 inline-flex items-center gap-1 ${form.ambiente === 1 ? "text-white" : "text-slate-600"}`}>
+                                <FlaskConical className="h-3 w-3" />
+                                Pruebas
+                              </span>
                             </button>
                             <button
                               type="button"
                               onClick={() => updateField("ambiente", 2)}
-                              className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold transition-colors ${form.ambiente === 2
-                                ? "bg-orange-600 text-white"
-                                : "text-slate-600 hover:text-slate-800"
-                                }`}
+                              className="relative inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold"
                             >
-                              <CheckCircle2 className="h-3 w-3" />
-                              Produccion
+                              {form.ambiente === 2 && (
+                                <motion.div
+                                  layoutId="ambiente-bg"
+                                  className="absolute inset-0 rounded-md bg-orange-600"
+                                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                />
+                              )}
+                              <span className={`relative z-10 inline-flex items-center gap-1 ${form.ambiente === 2 ? "text-white" : "text-slate-600"}`}>
+                                <CheckCircle2 className="h-3 w-3" />
+                                Produccion
+                              </span>
                             </button>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
 
                 {/* TAB: Correo / SMTP */}
                 {activeTab === "correo" && (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <motion.div
+                    key="correo"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-4"
+                  >
                     {/* Bloque 1: Servidor (Datos técnicos) */}
                     <div className="bg-[#F1F5F9] rounded-xl p-5 space-y-4">
                       <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
@@ -1060,8 +1141,10 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                       checked={form.smtp_secure}
                       onChange={updateToggle}
                     />
-                  </div>
+                  </motion.div>
                 )}
+
+                </AnimatePresence>
 
                 {/* Botones de acción */}
                 <div className="flex justify-end gap-3 pt-2">
@@ -1075,14 +1158,27 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                 </div>
               </form>
             </div>
+            </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
 
       <Dialog.Root open={wizardOpen} onOpenChange={setWizardOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[2px]" />
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[2px]"
+            />
+          </Dialog.Overlay>
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,760px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
             <Dialog.Title className="sr-only">Configuración inicial de empresa</Dialog.Title>
             <header className="mb-5 flex items-start justify-between gap-4">
               <div>
@@ -1115,8 +1211,16 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
             </div>
 
             <div className="space-y-4">
-              {wizardStep === 1 ? (
-                <div className="grid gap-4 sm:grid-cols-2">
+              <AnimatePresence mode="wait">
+                {wizardStep === 1 && (
+                  <motion.div
+                    key="step1"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="grid gap-4 sm:grid-cols-2"
+                  >
                   <Field label="Razón social" htmlFor="wizard-razon-social">
                     <Input
                       id="wizard-razon-social"
@@ -1164,11 +1268,18 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                       }
                     />
                   </Field>
-                </div>
-              ) : null}
+                </motion.div>
+              )}
 
-              {wizardStep === 2 ? (
-                <div className="grid gap-4 sm:grid-cols-2">
+              {wizardStep === 2 && (
+                  <motion.div
+                    key="step2"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="grid gap-4 sm:grid-cols-2"
+                  >
                   <Field label="Teléfono" htmlFor="wizard-telefono">
                     <Input
                       id="wizard-telefono"
@@ -1205,11 +1316,18 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                       ))}
                     </div>
                   </Field>
-                </div>
-              ) : null}
+                </motion.div>
+              )}
 
-              {wizardStep === 3 ? (
-                <div className="grid gap-4 sm:grid-cols-2">
+              {wizardStep === 3 && (
+                  <motion.div
+                    key="step3"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="grid gap-4 sm:grid-cols-2"
+                  >
                   <Field label="Régimen" htmlFor="">
                     <div className="flex flex-nowrap whitespace-nowrap rounded-lg bg-white p-1 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] w-full text-sm">
                       {regimenOptions.map((option) => (
@@ -1282,11 +1400,18 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                       />
                     </Field>
                   )}
-                </div>
-              ) : null}
+                </motion.div>
+              )}
 
-              {wizardStep === 4 ? (
-                <div className="space-y-4">
+              {wizardStep === 4 && (
+                  <motion.div
+                    key="step4"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-4"
+                  >
                   <div className="grid gap-4 sm:grid-cols-3">
                     <Field label="Color primario" htmlFor="wizard-color-primario">
                       <Input
@@ -1340,8 +1465,9 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                       onChange={updateToggle}
                     />
                   </div>
-                </div>
-              ) : null}
+                </motion.div>
+              )}
+              </AnimatePresence>
             </div>
 
             <footer className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-4">
@@ -1371,6 +1497,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                 </Button>
               </div>
             </footer>
+            </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>

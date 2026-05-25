@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, addHours } from "date-fns";
 import { es } from "date-fns/locale";
+import { motion, type Variants } from "framer-motion";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -303,6 +304,15 @@ function DonutCenterLabel({ total }: { total: number }) {
 
 const DONUT_COLORS = ["#10b981", "#6366f1", "#f59e0b", "#ef4444", "#3b82f6"];
 
+const sectionVariants: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (index: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, delay: index * 0.07, ease: [0.25, 0.1, 0.25, 1] },
+  }),
+};
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -425,31 +435,40 @@ export function ResumenDashboard({ staticData }: ResumenDashboardProps) {
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-5">
+    <motion.div initial="hidden" animate="visible">
+      <div className="space-y-5">
 
       {/* ── Ambiente alert ──────────────────────────────────────────────── */}
-      {data.sistema.alertas.map((a, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-        >
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
-          <span>{a.mensaje}</span>
-          <button
-            onClick={() => fetchData(true)}
-            className={`ml-auto flex items-center gap-1.5 text-xs font-medium text-amber-700 hover:text-amber-900 transition-colors ${refreshing ? "animate-spin" : ""}`}
-            title="Refrescar"
-            disabled={refreshing}
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      ))}
+      {data.sistema.alertas.length > 0 && (
+        <motion.div variants={sectionVariants} custom={0} className="space-y-2">
+          {data.sistema.alertas.map((a, i) => (
+            <div
+              key={i}
+              className="rounded-lg border border-amber-200 bg-amber-50 p-3"
+            >
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">
+                  !
+                </span>
+                <div className="flex-1 text-xs leading-relaxed text-amber-800">{a.mensaje}</div>
+                <button
+                  onClick={() => fetchData(true)}
+                  className={`ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 transition-colors hover:bg-amber-200 hover:text-amber-900 ${refreshing ? "animate-spin" : ""}`}
+                  title="Refrescar"
+                  disabled={refreshing}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </motion.div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════
           ROW 1 — KPI Cards
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <motion.div variants={sectionVariants} custom={1} className="grid grid-cols-2 gap-4 lg:grid-cols-4">
 
         <KpiCard
           label="Venta del Día"
@@ -489,12 +508,12 @@ export function ResumenDashboard({ staticData }: ResumenDashboardProps) {
             <StatusBadge status={firma.estado} />
           }
         />
-      </div>
+      </motion.div>
 
       {/* ══════════════════════════════════════════════════════════════════
           ROW 2 — Charts
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <motion.div variants={sectionVariants} custom={2} className="grid gap-4 lg:grid-cols-2">
 
         {/* ── Area Chart: Historial de ventas diarias ───────────────────── */}
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
@@ -599,12 +618,12 @@ export function ResumenDashboard({ staticData }: ResumenDashboardProps) {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* ══════════════════════════════════════════════════════════════════
           ROW 3 — Control de Comprobantes
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+      <motion.div variants={sectionVariants} custom={3} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <SectionHeader
             icon={<FileText className="h-4 w-4" />}
@@ -669,12 +688,12 @@ export function ResumenDashboard({ staticData }: ResumenDashboardProps) {
             rechazados={data.documentos.liquidaciones_compra.rechazados}
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* ══════════════════════════════════════════════════════════════════
           ROW 4 — Analytics & Recent Activity
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <motion.div variants={sectionVariants} custom={4} className="grid gap-4 lg:grid-cols-3">
 
         {/* ── Col 1: Top Clientes ──────────────────────────────────────── */}
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
@@ -790,8 +809,9 @@ export function ResumenDashboard({ staticData }: ResumenDashboardProps) {
             ))}
           </ul>
         </div>
-      </div>
+      </motion.div>
 
-    </div>
+      </div>
+    </motion.div>
   );
 }

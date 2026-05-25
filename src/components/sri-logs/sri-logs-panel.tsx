@@ -27,6 +27,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
+import { motion, AnimatePresence } from "framer-motion";
 
 const PAGE_SIZE = 20;
 
@@ -286,6 +287,11 @@ export function SriLogsPanel({ showPanel }: SriLogsPanelProps) {
   if (!showPanel) return null;
 
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
     <section className="space-y-4">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
@@ -302,9 +308,16 @@ export function SriLogsPanel({ showPanel }: SriLogsPanelProps) {
         </div>
       </div>
 
-      {showFilters && (
-        <div className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg">
-          <div className="text-xs font-medium text-slate-500">Filtrar por:</div>
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg"
+          >
+            <div className="text-xs font-medium text-slate-500">Filtrar por:</div>
           
           <SelectPrimitive.Root value={filters.tipo_documento || "TODOS"} onValueChange={(val) => handleFilterChange("tipo_documento", val === "TODOS" ? undefined : val)}>
             <SelectPrimitive.Trigger className="inline-flex h-8 min-w-[160px] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-200">
@@ -376,24 +389,35 @@ export function SriLogsPanel({ showPanel }: SriLogsPanelProps) {
             </SelectPrimitive.Portal>
           </SelectPrimitive.Root>
 
-          {(filters.tipo_documento || filters.accion || filters.fecha_desde || filters.fecha_hasta) && (
-            <Button variant="ghost" onClick={clearFilters} className="h-8 px-2 text-xs text-slate-500 hover:text-slate-800">
-              <X size={14} className="mr-1" />
-              Limpiar
-            </Button>
-          )}
-        </div>
-      )}
+            {(filters.tipo_documento || filters.accion || filters.fecha_desde || filters.fecha_hasta) && (
+              <Button variant="ghost" onClick={clearFilters} className="h-8 px-2 text-xs text-slate-500 hover:text-slate-800">
+                <X size={14} className="mr-1" />
+                Limpiar
+              </Button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {loading ? (
         <div className="py-12"><Loader label="Cargando logs..." /></div>
       ) : table.getRowModel().rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center"
+        >
           <FileText size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm text-slate-600">No hay logs para este filtro.</p>
-        </div>
+        </motion.div>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="rounded-xl border border-slate-200 bg-white overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -434,13 +458,25 @@ export function SriLogsPanel({ showPanel }: SriLogsPanelProps) {
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ChevronRight size={14} /></button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[2px]" />
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[2px]"
+            />
+          </Dialog.Overlay>
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,900px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
             <div className="mb-4 flex items-center justify-between">
               <Dialog.Title className="text-lg font-semibold text-slate-900">
                 Detalle del Log #{detailLog?.id}
@@ -562,9 +598,11 @@ export function SriLogsPanel({ showPanel }: SriLogsPanelProps) {
                 </div>
               </div>
             ) : null}
+            </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
     </section>
+    </motion.div>
   );
 }

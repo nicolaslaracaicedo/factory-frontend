@@ -72,6 +72,7 @@ import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 import { confirmAction } from "@/src/lib/confirm";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface GuiasRemisionPanelProps {
   showPanel?: boolean;
@@ -610,8 +611,18 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
 
   if (editorOpen) {
     return (
-      <section className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+        className="space-y-6"
+      >
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3"
+          >
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -634,9 +645,15 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
             Limpiar
           </Button>
-        </div>
+          </motion.div>
 
-        <form className="space-y-6" onSubmit={submitForm}>
+        <motion.form
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.04, ease: [0.25, 0.1, 0.25, 1] }}
+              className="space-y-6"
+              onSubmit={submitForm}
+            >
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
@@ -1062,13 +1079,18 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
               </div>
             </aside>
           </div>
-        </form>
-      </section>
+        </motion.form>
+      </motion.section>
     );
   }
 
   return (
-    <section className="space-y-4">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <section className="space-y-4">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-1 items-center gap-2 min-w-[280px] max-w-md">
@@ -1090,10 +1112,17 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
         )}
       </div>
 
-      {showFilters && (
-        <div className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg">
-          <div className="text-xs font-medium text-slate-500">Filtrar por:</div>
-          <SelectPrimitive.Root value={filterEstado} onValueChange={(val) => setFilterEstado(val)}>
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg"
+          >
+            <div className="text-xs font-medium text-slate-500">Filtrar por:</div>
+            <SelectPrimitive.Root value={filterEstado} onValueChange={(val) => setFilterEstado(val)}>
             <SelectPrimitive.Trigger className="inline-flex h-8 min-w-[160px] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-200">
               <SelectPrimitive.Value placeholder="Todos los estados" />
               <SelectPrimitive.Icon><ChevronDown size={14} className="text-slate-400" /></SelectPrimitive.Icon>
@@ -1122,20 +1151,31 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                 </SelectPrimitive.Viewport>
               </SelectPrimitive.Content>
             </SelectPrimitive.Portal>
-          </SelectPrimitive.Root>
-        </div>
+            </SelectPrimitive.Root>
+          </motion.div>
       )}
+      </AnimatePresence>
 
       {loading ? (
         <div className="py-12"><Loader label="Cargando guías..." /></div>
       ) : table.getFilteredRowModel().rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center"
+        >
           <Truck size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm text-slate-600">No hay guías para este filtro.</p>
           {!readOnly && <Button className="mt-3 h-9 shadow-none" onClick={openCreate} disabled={loadingCatalogs}><Plus size={15} className="mr-1.5" /> Nueva Guía</Button>}
-        </div>
+        </motion.div>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="rounded-xl border border-slate-200 bg-white overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -1176,37 +1216,49 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
               <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ChevronRight size={14} /></button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
           <Dialog.Content 
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
             onPointerDownOutside={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
           >
-            {/* Header con icono y título */}
-            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                  <Eye className="h-6 w-6 text-app-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Dialog.Title className="text-xl font-semibold text-slate-900">
-                    Guía de Remisión {viewing?.numero_comprobante || viewing?.numero}
-                  </Dialog.Title>
-                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
-                    Información completa de la guía de remisión registrada.
-                  </Dialog.Description>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              {/* Header con icono y título */}
+              <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                    <Eye className="h-6 w-6 text-app-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Dialog.Title className="text-xl font-semibold text-slate-900">
+                      Guía de Remisión {viewing?.numero_comprobante || viewing?.numero}
+                    </Dialog.Title>
+                    <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                      Información completa de la guía de remisión registrada.
+                    </Dialog.Description>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {viewing && (
-                <>
+              <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
+                {viewing && (
+                  <>
                   {viewing.estado?.toUpperCase() === "ANULADA" && (
                     <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
                       <X className="h-4 w-4 text-amber-600 shrink-0" />
@@ -1358,12 +1410,14 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                       Cerrar
                     </Button>
                   </div>
-                </>
-              )}
-            </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-    </section>
+      </section>
+    </motion.div>
   );
 }

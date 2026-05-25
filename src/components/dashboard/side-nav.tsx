@@ -29,6 +29,8 @@ import {
 import type { SidebarGroup } from "@/src/modules/dashboard/config/role-dashboard.config";
 import { companyService } from "@/src/modules/company/services/company.service";
 import type { Company } from "@/src/modules/company/types/company.types";
+import { readCompanyCache, writeCompanyCache, writeCompanyThemeCache } from "@/src/modules/company/utils/company-cache.utils";
+import { motion } from "framer-motion";
 
 interface SideNavProps {
   groups: SidebarGroup[];
@@ -65,22 +67,20 @@ export const iconByKey: Record<string, ComponentType<{ className?: string }>> = 
 };
 
 export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {
-  const [company, setCompany] = useState<Company | null>(null);
+  const [company, setCompany] = useState<Company | null>(() => readCompanyCache());
+  const [runIntro, setRunIntro] = useState(false);
 
   useEffect(() => {
     // Cargar caché inmediatamente para mostrar el logo sin esperar a la API
-    const cached = localStorage.getItem("factory_company_cache");
-    if (cached) {
-      try {
-        setCompany(JSON.parse(cached));
-      } catch {}
-    }
+    const cached = readCompanyCache();
+    if (cached) setCompany(cached);
 
     const loadCompany = async () => {
       try {
         const response = await companyService.getCompany();
         setCompany(response);
-        localStorage.setItem("factory_company_cache", JSON.stringify(response));
+        writeCompanyCache(response);
+        writeCompanyThemeCache(response);
       } catch {
         if (!cached) setCompany(null);
       }
@@ -89,14 +89,31 @@ export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {
     void loadCompany();
   }, []);
 
+  useEffect(() => {
+    const key = "factory_first_login_sidebar_intro_done";
+    const alreadyAnimated = sessionStorage.getItem(key);
+    if (!alreadyAnimated) {
+      setRunIntro(true);
+      sessionStorage.setItem(key, "1");
+    }
+  }, []);
+
   return (
-    <aside className="sticky top-0 h-screen overflow-y-auto border-r border-slate-200 bg-white/90 backdrop-blur">
+    <motion.aside
+      initial={runIntro ? { opacity: 0, x: -12 } : false}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="sticky top-0 h-screen overflow-y-auto border-r border-slate-200 bg-white/90 backdrop-blur"
+    >
       <div className="flex h-18 items-center justify-center px-4">
         <div className="w-full flex justify-center">
           {company?.logo ? (
             <img
               src={company.logo}
               alt="Logo de empresa"
+              loading="eager"
+              fetchPriority="high"
+              decoding="sync"
               className="max-h-13 w-full object-contain"
             />
           ) : (
@@ -122,7 +139,7 @@ export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {
                   key={item.key}
                   type="button"
                   onClick={() => onSelect(item.key)}
-                  className={`group flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-left text-[13px] font-semibold transition-colors hover:bg-slate-100 ${
+                  className={`group flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-left text-[13px] font-semibold transition-all duration-200 ease-out hover:bg-slate-100 hover:translate-x-0.5 ${
                     activeKey === item.key ? "bg-app-primary/10 text-app-primary" : "text-slate-700"
                   }`}
                 >
@@ -142,6 +159,6 @@ export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {
           </section>
         ))}
       </nav>
-    </aside>
+    </motion.aside>
   );
 }

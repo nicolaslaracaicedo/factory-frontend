@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { ChevronDown, LayoutGrid, LogOut, PanelRightOpen, UserCircle2 } from "lucide-react";
+import { ChevronDown, LayoutGrid, LogOut, UserCircle2 } from "lucide-react";
+import { motion } from "framer-motion";
 import type { AuthUser, UserRole } from "@/src/modules/auth/types/auth.types";
 import type { SidebarGroup } from "@/src/modules/dashboard/config/role-dashboard.config";
 import { iconByKey } from "@/src/components/dashboard/side-nav";
+import { readCompanyCache, writeCompanyCache, writeCompanyThemeCache } from "@/src/modules/company/utils/company-cache.utils";
 import type { BreadcrumbItem } from "@/src/components/ui/breadcrumbs";
 import { Breadcrumbs } from "@/src/components/ui/breadcrumbs";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
@@ -33,22 +35,45 @@ export function TopNavbar({
     user.nombre || user.apellido
       ? `${user.nombre ?? ""} ${user.apellido ?? ""}`.trim()
       : "Usuario";
-  const hasMenu = Boolean(menuGroups?.some((group) => group.items.length));
   const { breadcrumbs: overrideBreadcrumbs } = useBreadcrumbs();
   const breadcrumbItems = overrideBreadcrumbs ?? defaultBreadcrumbs ?? [{ label: "Inicio" }];
-  const [ambiente, setAmbiente] = useState(1);
+  const [ambiente, setAmbiente] = useState(() => readCompanyCache()?.ambiente ?? 1);
+  const [runIntro, setRunIntro] = useState(false);
 
   useEffect(() => {
+    const cached = readCompanyCache();
+    if (cached?.ambiente) {
+      setAmbiente(cached.ambiente);
+    }
+
     fetch("/api/empresa")
       .then((res) => res.json())
       .then((data) => {
-        if (data?.data?.ambiente) setAmbiente(data.data.ambiente);
+        if (data?.data) {
+          if (data.data.ambiente) setAmbiente(data.data.ambiente);
+          writeCompanyCache(data.data);
+          writeCompanyThemeCache(data.data);
+        }
       })
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const key = "factory_first_login_nav_intro_done";
+    const alreadyAnimated = sessionStorage.getItem(key);
+    if (!alreadyAnimated) {
+      setRunIntro(true);
+      sessionStorage.setItem(key, "1");
+    }
+  }, []);
+
   return (
-    <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white/85 px-5 backdrop-blur sm:px-6">
+    <motion.header
+      initial={runIntro ? { opacity: 0, y: -10 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white/85 px-5 backdrop-blur sm:px-6"
+    >
       <div>
         <Breadcrumbs items={breadcrumbItems} className="text-[11px]" />
       </div>
@@ -65,7 +90,7 @@ export function TopNavbar({
           <DropdownMenu.Trigger asChild>
             <button
               type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 transition-colors hover:bg-slate-50"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 transition-all duration-200 ease-out hover:bg-slate-50 hover:shadow-sm"
             >
               <UserCircle2 className="h-6 w-6 text-app-primary" />
               <div className="flex flex-col items-start gap-0">
@@ -119,7 +144,7 @@ export function TopNavbar({
                               event.preventDefault();
                               onSelect?.(item.key);
                             }}
-                            className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] font-semibold outline-none transition-colors hover:bg-slate-100 ${
+                            className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] font-semibold outline-none transition-all duration-200 ease-out hover:bg-slate-100 hover:translate-x-0.5 ${
                               activeKey === item.key
                                 ? "bg-app-primary/10 text-app-primary"
                                 : "text-slate-700"
@@ -146,7 +171,7 @@ export function TopNavbar({
               <DropdownMenu.Separator className="my-1 h-px bg-slate-200" />
 
               <DropdownMenu.Item
-                className="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] font-semibold text-rose-600 outline-none transition-colors hover:bg-rose-50"
+                className="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] font-semibold text-rose-600 outline-none transition-all duration-200 ease-out hover:bg-rose-50 hover:translate-x-0.5"
                 onSelect={async (event) => {
                   event.preventDefault();
                   await onLogout();
@@ -161,6 +186,6 @@ export function TopNavbar({
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
       </div>
-    </header>
+    </motion.header>
   );
 }

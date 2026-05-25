@@ -32,6 +32,7 @@ import type {
 } from "@/src/modules/signature/types/signature.types";
 import { signatureService } from "@/src/modules/signature/services/signature.service";
 import { Loader } from "@/src/components/ui/loader";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface SignaturePanelProps {
   showPanel?: boolean;
@@ -312,6 +313,11 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
   const certificado = detail?.certificado;
 
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
     <div className="space-y-4">
       {/* Toolbar Principal */}
       <div className="flex flex-wrap items-center gap-2">
@@ -351,7 +357,12 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
       {loading ? (
         <Loader label="Cargando firmas" className="mt-8" />
       ) : table.getFilteredRowModel().rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center"
+        >
           <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
             <FileText size={24} className="text-slate-400" />
           </div>
@@ -361,9 +372,14 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
               <Plus size={15} className="mr-1.5" /> Subir firma
             </Button>
           )}
-        </div>
+        </motion.div>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -445,17 +461,29 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
           <Dialog.Content 
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
             onPointerDownOutside={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
           >
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
             {/* Header con icono y título */}
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
@@ -575,19 +603,32 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
                 </Button>
               </div>
             </form>
+            </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
           <Dialog.Content
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
             onPointerDownOutside={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
             onEscapeKeyDown={(event) => event.preventDefault()}
           >
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
@@ -745,9 +786,11 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
                 </Button>
               </div>
             </div>
+            </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
     </div>
+    </motion.div>
   );
 }

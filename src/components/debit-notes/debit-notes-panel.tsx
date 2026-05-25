@@ -16,6 +16,7 @@ import {
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Edit, Eye, PlusCircle, Power, Send, Trash2, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Printer, Trash, Package, User, Calendar, FileCheck, Tag, Receipt, FileX, RefreshCw, DollarSign, Mail } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -475,7 +476,7 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
       return;
     }
     if (facturaEsConsumidorFinal) {
-      toast.warning("No se puede crear nota de débito para facturas de Consumidor Final. Use otro documento.");
+      toast.warning("Restricción SRI 2025-2026: No se pueden emitir notas de débito para facturas de Consumidor Final. Use otro documento.");
       return;
     }
 
@@ -681,8 +682,18 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
 
   if (editorOpen) {
     return (
-      <section className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+        className="space-y-6"
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3"
+        >
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={closeEditor} className="h-10 w-10 p-0 text-slate-600 bg-slate-100 hover:bg-slate-200">
               <ChevronLeft className="h-5 w-5" />
@@ -695,9 +706,15 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
           <Button variant="secondary" onClick={resetForm} className="h-9 px-3 text-xs">
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Limpiar
           </Button>
-        </div>
+        </motion.div>
 
-        <form className="space-y-6" onSubmit={submitForm}>
+        <motion.form
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.04, ease: [0.25, 0.1, 0.25, 1] }}
+          className="space-y-6"
+          onSubmit={submitForm}
+        >
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
               {/* Información general */}
@@ -754,10 +771,12 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
                         </button>
                       </div>
                     </div>
-                  <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
-                    <div className="text-xs text-amber-800">
-                      <span className="font-semibold">Factura de Consumidor Final:</span> según normativas del SRI 2025-2026, no se pueden emitir notas de débito para modificar estas facturas. Debe usar otro documento.
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">!</span>
+                      <div className="text-xs text-amber-800">
+                        <span className="font-semibold">Restricción SRI 2025-2026:</span> No se pueden emitir notas de débito para facturas de Consumidor Final. Use otro documento.
+                      </div>
                     </div>
                   </div>
                   </div>
@@ -932,10 +951,12 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
                   <span className="text-lg font-extrabold text-indigo-700">{formatMoney((parseFloat(montoStr || "0") || 0) + totales.total)}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
-                <div className="text-xs text-amber-800">
-                  <span className="font-semibold">Factura de Consumidor Final:</span> según normativas del SRI 2025-2026, no se pueden emitir notas de débito para modificar estas facturas. Debe usar otro documento.
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">!</span>
+                  <div className="text-xs text-amber-800">
+                    <span className="font-semibold">Restricción SRI 2025-2026:</span> No se pueden emitir notas de débito para facturas de Consumidor Final. Use otro documento.
+                  </div>
                 </div>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -945,7 +966,7 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
               </div>
             </aside>
           </div>
-        </form>
+        </motion.form>
 
         <ClientFormModal open={clientModalOpen} onOpenChange={setClientModalOpen} onSuccess={(newClient) => {
           setClientes((prev) => [...prev, newClient]);
@@ -953,12 +974,17 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
           setClienteQuery("");
           setClienteSearchResults([]);
         }} />
-      </section>
+      </motion.section>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+      className="space-y-4"
+    >
       {/* Toolbar Principal */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Búsqueda global y Filtros */}
@@ -1004,8 +1030,15 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
       </div>
 
       {/* Panel de Filtros Expandible */}
-      {showFilters && (
-        <div className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg animate-in slide-in-from-top-2 fade-in duration-200">
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg"
+          >
           <div className="text-xs font-medium text-slate-500 mr-1">Filtrar por:</div>
           
           {/* Filtro estado */}
@@ -1057,14 +1090,20 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
               </SelectPrimitive.Content>
             </SelectPrimitive.Portal>
           </SelectPrimitive.Root>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Tabla */}
       {loading ? (
         <Loader label="Cargando notas de débito" className="mt-8" />
       ) : table.getFilteredRowModel().rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
+          className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center"
+        >
           <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
             <FileText size={24} className="text-slate-400" />
           </div>
@@ -1074,9 +1113,14 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
               <Plus size={15} className="mr-1.5" /> Crear nota
             </Button>
           )}
-        </div>
+        </motion.div>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
+          className="rounded-xl border border-slate-200 bg-white shadow-none overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -1158,17 +1202,29 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
           <Dialog.Content 
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,760px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
             onPointerDownOutside={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
           >
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.24, ease: [0.25, 0.1, 0.25, 1] }}
+            >
             {/* Header con icono y título */}
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
@@ -1292,18 +1348,31 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
                 <Loader label="Cargando detalle" className="mt-4 min-h-[100px]" />
               )}
             </div>
+            </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
 
       <Dialog.Root open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
           <Dialog.Content
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden"
             onPointerDownOutside={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
           >
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.24, ease: [0.25, 0.1, 0.25, 1] }}
+            >
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
@@ -1363,9 +1432,10 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
                 {emailSending ? "Enviando…" : "Enviar"}
               </Button>
             </div>
+            </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-    </div>
+    </motion.div>
   );
 }
