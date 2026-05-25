@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { toast } from "sonner";
-import { Users, ChevronDown, Phone, Shield } from "lucide-react";
+import { Users, ChevronDown, Phone, Shield, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/src/components/ui/button";
 import { Field } from "@/src/components/ui/field";
@@ -151,6 +151,14 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
                       : "Registra un nuevo cliente para emitir comprobantes y gestionar sus datos de contacto."}
                   </Dialog.Description>
                 </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
               </div>
             </div>
 

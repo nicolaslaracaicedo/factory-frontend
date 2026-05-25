@@ -551,6 +551,14 @@ export function EstablishmentsPanel({ showPanel = true, readOnly = false }: Esta
                       : "Registra un nuevo establecimiento para tu empresa con su código, nombre y dirección."}
                   </Dialog.Description>
                 </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
               </div>
             </div>
 
@@ -669,6 +677,14 @@ export function EstablishmentsPanel({ showPanel = true, readOnly = false }: Esta
                     Información registrada del establecimiento.
                   </Dialog.Description>
                 </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
               </div>
             </div>
 

@@ -471,133 +471,149 @@ export function SriLogsPanel({ showPanel }: SriLogsPanelProps) {
               className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[2px]"
             />
           </Dialog.Overlay>
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,900px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,900px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden">
             <motion.div
               initial={{ opacity: 0, y: 12, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
-            <div className="mb-4 flex items-center justify-between">
-              <Dialog.Title className="text-lg font-semibold text-slate-900">
-                Detalle del Log #{detailLog?.id}
-              </Dialog.Title>
-              <Dialog.Close asChild>
-                <Button variant="ghost" className="px-2 py-1">
-                  <X className="h-4 w-4" />
-                </Button>
-              </Dialog.Close>
+            {/* Header con icono y título */}
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                  <FileText className="h-6 w-6 text-app-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Dialog.Title className="text-xl font-semibold text-slate-900">
+                    Detalle del Log #{detailLog?.id || ""}
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    Estructura técnica e historial de eventos del comprobante electrónico en el SRI.
+                  </Dialog.Description>
+                </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
+              </div>
             </div>
 
-            {detailLoading ? (
-              <div className="flex h-64 items-center justify-center">
-                <Loader />
-              </div>
-            ) : detailLog ? (
-              <div className="space-y-4">
-                {/* Error/Mensaje Prioritario */}
-                {detailLog.mensaje && (
-                  <div className={`flex items-start gap-3 rounded-lg p-3 ${
-                    detailLog.estado === 'RECHAZADO' || detailLog.estado === 'NO AUTORIZADO' || detailLog.estado === 'DEVUELTA'
-                      ? 'bg-rose-50 border border-rose-200 text-rose-800'
-                      : 'bg-amber-50 border border-amber-200 text-amber-800'
-                  }`}>
-                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-                    <div>
-                      <h4 className="text-sm font-semibold">Mensaje del SRI</h4>
-                      <p className="mt-1 text-xs">{detailLog.mensaje}</p>
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+              {detailLoading ? (
+                <div className="flex h-64 items-center justify-center">
+                  <Loader />
+                </div>
+              ) : detailLog ? (
+                <div className="space-y-4">
+                  {/* Error/Mensaje Prioritario */}
+                  {detailLog.mensaje && (
+                    <div className={`flex items-start gap-3 rounded-lg p-3 ${
+                      detailLog.estado === 'RECHAZADO' || detailLog.estado === 'NO AUTORIZADO' || detailLog.estado === 'DEVUELTA'
+                        ? 'bg-rose-50 border border-rose-200 text-rose-800'
+                        : 'bg-amber-50 border border-amber-200 text-amber-800'
+                    }`}>
+                      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                      <div>
+                        <h4 className="text-sm font-semibold">Mensaje del SRI</h4>
+                        <p className="mt-1 text-xs">{detailLog.mensaje}</p>
+                      </div>
                     </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                    <Card className="p-3">
+                      <div className="text-xs text-slate-500">Tipo Documento</div>
+                      <div className="font-medium">
+                        {tipoDocumentoLabels[detailLog.tipo_documento] || detailLog.tipo_documento}
+                      </div>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="text-xs text-slate-500">Documento / Clave</div>
+                      <div className="font-medium break-all text-[11px] sm:text-sm">
+                        {formatSecuencial(detailLog.clave_acceso) ? (
+                          <>
+                            <div className="font-semibold text-slate-900 text-sm">{formatSecuencial(detailLog.clave_acceso)}</div>
+                            <div className="text-[10px] text-slate-500 mt-0.5 leading-tight">{detailLog.clave_acceso}</div>
+                          </>
+                        ) : (
+                          detailLog.clave_acceso || `#${detailLog.id_documento}`
+                        )}
+                      </div>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="text-xs text-slate-500">Acción</div>
+                      <div className="font-medium">{detailLog.accion}</div>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="text-xs text-slate-500">Estado SRI</div>
+                      <div className="font-medium">{detailLog.estado || "-"}</div>
+                    </Card>
                   </div>
-                )}
 
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                  <Card className="p-3">
-                    <div className="text-xs text-slate-500">Tipo Documento</div>
-                    <div className="font-medium">
-                      {tipoDocumentoLabels[detailLog.tipo_documento] || detailLog.tipo_documento}
-                    </div>
-                  </Card>
-                  <Card className="p-3">
-                    <div className="text-xs text-slate-500">Documento / Clave</div>
-                    <div className="font-medium break-all text-[11px] sm:text-sm">
-                      {formatSecuencial(detailLog.clave_acceso) ? (
-                        <>
-                          <div className="font-semibold text-slate-900 text-sm">{formatSecuencial(detailLog.clave_acceso)}</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5 leading-tight">{detailLog.clave_acceso}</div>
-                        </>
-                      ) : (
-                        detailLog.clave_acceso || `#${detailLog.id_documento}`
-                      )}
-                    </div>
-                  </Card>
-                  <Card className="p-3">
-                    <div className="text-xs text-slate-500">Acción</div>
-                    <div className="font-medium">{detailLog.accion}</div>
-                  </Card>
-                  <Card className="p-3">
-                    <div className="text-xs text-slate-500">Estado SRI</div>
-                    <div className="font-medium">{detailLog.estado || "-"}</div>
-                  </Card>
+                  {/* XML Accordions */}
+                  <div className="space-y-3 pt-2">
+                    {detailLog.request_xml && (
+                      <details className="group rounded-lg border border-slate-200 bg-white [&_summary::-webkit-details-marker]:hidden">
+                        <summary className="flex cursor-pointer items-center justify-between p-3 font-medium text-slate-700 hover:bg-slate-50">
+                          <div className="flex items-center gap-2 text-sm">
+                            <FileText className="h-4 w-4 text-slate-400" />
+                            Estructura técnica: Request XML (Envío)
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button variant="secondary" className="h-7 px-2 text-xs shadow-none" onClick={(e) => { e.preventDefault(); handleCopyXml(detailLog.request_xml!); }}>
+                              <Copy className="mr-1.5 h-3 w-3" /> Copiar
+                            </Button>
+                            <Button variant="secondary" className="h-7 px-2 text-xs shadow-none" onClick={(e) => { e.preventDefault(); handleDownloadXml(detailLog.request_xml!, 'request', detailLog.id); }}>
+                              <Download className="mr-1.5 h-3 w-3" /> Descargar
+                            </Button>
+                            <ChevronDown className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180 ml-2" />
+                          </div>
+                        </summary>
+                        <div className="border-t border-slate-100 p-3 bg-slate-900 rounded-b-lg">
+                          <pre className="max-h-64 overflow-auto text-[11px] text-slate-300 whitespace-pre-wrap font-mono">
+                            {detailLog.request_xml}
+                          </pre>
+                        </div>
+                      </details>
+                    )}
+
+                    {detailLog.response_xml && (
+                      <details className="group rounded-lg border border-slate-200 bg-white [&_summary::-webkit-details-marker]:hidden">
+                        <summary className="flex cursor-pointer items-center justify-between p-3 font-medium text-slate-700 hover:bg-slate-50">
+                          <div className="flex items-center gap-2 text-sm">
+                            <FileText className="h-4 w-4 text-slate-400" />
+                            Estructura técnica: Response XML (Respuesta)
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button variant="secondary" className="h-7 px-2 text-xs shadow-none" onClick={(e) => { e.preventDefault(); handleCopyXml(detailLog.response_xml!); }}>
+                              <Copy className="mr-1.5 h-3 w-3" /> Copiar
+                            </Button>
+                            <Button variant="secondary" className="h-7 px-2 text-xs shadow-none" onClick={(e) => { e.preventDefault(); handleDownloadXml(detailLog.response_xml!, 'response', detailLog.id); }}>
+                              <Download className="mr-1.5 h-3 w-3" /> Descargar
+                            </Button>
+                            <ChevronDown className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180 ml-2" />
+                          </div>
+                        </summary>
+                        <div className="border-t border-slate-100 p-3 bg-slate-900 rounded-b-lg">
+                          <pre className="max-h-64 overflow-auto text-[11px] text-slate-300 whitespace-pre-wrap font-mono">
+                            {detailLog.response_xml}
+                          </pre>
+                        </div>
+                      </details>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <Calendar className="h-4 w-4" />
+                    Fecha del evento: {formatDate(detailLog.created_at || "")}
+                  </div>
                 </div>
-
-                {/* XML Accordions */}
-                <div className="space-y-3 pt-2">
-                  {detailLog.request_xml && (
-                    <details className="group rounded-lg border border-slate-200 bg-white [&_summary::-webkit-details-marker]:hidden">
-                      <summary className="flex cursor-pointer items-center justify-between p-3 font-medium text-slate-700 hover:bg-slate-50">
-                        <div className="flex items-center gap-2 text-sm">
-                          <FileText className="h-4 w-4 text-slate-400" />
-                          Estructura técnica: Request XML (Envío)
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button variant="secondary" className="h-7 px-2 text-xs shadow-none" onClick={(e) => { e.preventDefault(); handleCopyXml(detailLog.request_xml!); }}>
-                            <Copy className="mr-1.5 h-3 w-3" /> Copiar
-                          </Button>
-                          <Button variant="secondary" className="h-7 px-2 text-xs shadow-none" onClick={(e) => { e.preventDefault(); handleDownloadXml(detailLog.request_xml!, 'request', detailLog.id); }}>
-                            <Download className="mr-1.5 h-3 w-3" /> Descargar
-                          </Button>
-                          <ChevronDown className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180 ml-2" />
-                        </div>
-                      </summary>
-                      <div className="border-t border-slate-100 p-3 bg-slate-900 rounded-b-lg">
-                        <pre className="max-h-64 overflow-auto text-[11px] text-slate-300 whitespace-pre-wrap font-mono">
-                          {detailLog.request_xml}
-                        </pre>
-                      </div>
-                    </details>
-                  )}
-
-                  {detailLog.response_xml && (
-                    <details className="group rounded-lg border border-slate-200 bg-white [&_summary::-webkit-details-marker]:hidden">
-                      <summary className="flex cursor-pointer items-center justify-between p-3 font-medium text-slate-700 hover:bg-slate-50">
-                        <div className="flex items-center gap-2 text-sm">
-                          <FileText className="h-4 w-4 text-slate-400" />
-                          Estructura técnica: Response XML (Respuesta)
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button variant="secondary" className="h-7 px-2 text-xs shadow-none" onClick={(e) => { e.preventDefault(); handleCopyXml(detailLog.response_xml!); }}>
-                            <Copy className="mr-1.5 h-3 w-3" /> Copiar
-                          </Button>
-                          <Button variant="secondary" className="h-7 px-2 text-xs shadow-none" onClick={(e) => { e.preventDefault(); handleDownloadXml(detailLog.response_xml!, 'response', detailLog.id); }}>
-                            <Download className="mr-1.5 h-3 w-3" /> Descargar
-                          </Button>
-                          <ChevronDown className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180 ml-2" />
-                        </div>
-                      </summary>
-                      <div className="border-t border-slate-100 p-3 bg-slate-900 rounded-b-lg">
-                        <pre className="max-h-64 overflow-auto text-[11px] text-slate-300 whitespace-pre-wrap font-mono">
-                          {detailLog.response_xml}
-                        </pre>
-                      </div>
-                    </details>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <Calendar className="h-4 w-4" />
-                  Fecha del evento: {formatDate(detailLog.created_at || "")}
-                </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
             </motion.div>
           </Dialog.Content>
         </Dialog.Portal>

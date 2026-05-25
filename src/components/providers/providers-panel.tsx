@@ -608,6 +608,14 @@ export function ProvidersPanel({ showPanel = true, readOnly = false }: Providers
                         : "Registra un nuevo proveedor para gestionar compras, facturas y documentos de retencion."}
                     </Dialog.Description>
                   </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
                 </div>
               </div>
 
@@ -783,6 +791,14 @@ export function ProvidersPanel({ showPanel = true, readOnly = false }: Providers
                       Informacion registrada del proveedor.
                     </Dialog.Description>
                   </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
                 </div>
               </div>
 

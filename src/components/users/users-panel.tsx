@@ -523,6 +523,14 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
                       : "Completa todos los campos para registrar un nuevo usuario en el sistema y asignarle un rol de acceso."}
                   </Dialog.Description>
                 </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
               </div>
             </div>
 

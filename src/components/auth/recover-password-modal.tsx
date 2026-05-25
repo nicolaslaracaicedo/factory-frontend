@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { motion, AnimatePresence } from "framer-motion";
@@ -351,7 +351,7 @@ export function RecoverPasswordModal() {
               </div>
               <Dialog.Close asChild>
                 <button
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none focus:ring-2 focus:ring-slate-300"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
                   aria-label="Cerrar"
                 >
                   <X className="h-4 w-4" />

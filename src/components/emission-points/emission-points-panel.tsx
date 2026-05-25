@@ -603,6 +603,14 @@ export function EmissionPointsPanel({ showPanel = true, readOnly = false }: Emis
                       : "Registra un nuevo punto de emisión vinculado a un establecimiento para emitir documentos electrónicos."}
                   </Dialog.Description>
                 </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
               </div>
             </div>
 
@@ -735,6 +743,14 @@ export function EmissionPointsPanel({ showPanel = true, readOnly = false }: Emis
                     Información registrada del punto de emisión.
                   </Dialog.Description>
                 </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
               </div>
             </div>
 

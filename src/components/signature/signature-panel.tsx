@@ -500,6 +500,14 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
                       : "Carga tu certificado digital .p12 o .pfx junto con la contraseña para firmar documentos electrónicamente."}
                   </Dialog.Description>
                 </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
               </div>
             </div>
 
@@ -642,6 +650,14 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
                     Información del certificado y estado.
                   </Dialog.Description>
                 </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
               </div>
             </div>
 
