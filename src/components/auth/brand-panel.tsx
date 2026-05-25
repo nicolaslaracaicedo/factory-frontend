@@ -16,7 +16,7 @@ function BrandContent({ variant }: { variant: "register" | "login" }) {
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease: "easeOut" }}
-      className="relative z-10 max-w-xl px-10 text-white"
+      className="auth-brand-content relative z-10 max-w-xl px-10 text-white"
     >
       <motion.h2
         initial={{ opacity: 0, y: 20 }}
@@ -71,7 +71,7 @@ interface BrandPanelProps {
 
 export function BrandPanel({ variant }: BrandPanelProps) {
   return (
-    <section className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden lg:flex">
+    <section className="auth-brand relative hidden w-1/2 flex-col items-center justify-center overflow-hidden lg:flex">
       <div className="absolute inset-0 z-0">
         <img
           src="/fondo1-login.jpg"

@@ -76,7 +76,7 @@ export function LoginForm() {
   });
 
   return (
-    <div className="min-h-screen flex bg-white font-sans text-slate-800">
+    <div className="auth-page min-h-screen flex bg-white font-sans text-slate-800">
       {/* Loading overlay */}
       {form.formState.isSubmitting && (
         <div
@@ -96,21 +96,21 @@ export function LoginForm() {
       )}
 
       {/* Form Panel */}
-      <div className="flex-1 flex flex-col justify-center px-6 lg:px-12 overflow-y-auto">
+      <div className="auth-panel flex-1 flex flex-col justify-center px-6 lg:px-12 overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full max-w-sm mx-auto"
+          className="auth-card w-full max-w-sm mx-auto"
         >
           {/* Logo */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="mb-8"
+            className="auth-logo-block mb-8"
           >
-            <img src="/Factory.png" alt="Factory" className="h-16 w-auto object-contain lg:h-20" />
+            <img src="/Factory.png" alt="Factory" className="auth-logo h-16 w-auto object-contain lg:h-20" />
           </motion.div>
 
           {/* Header */}
@@ -118,7 +118,7 @@ export function LoginForm() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="mb-8"
+            className="auth-header mb-8"
           >
             <h1 className="text-3xl sm:text-4xl font-bold text-[#00517C] mb-2">
               Bienvenido de nuevo
@@ -197,7 +197,7 @@ export function LoginForm() {
               <motion.button
                 type="submit"
                 disabled={form.formState.isSubmitting}
-                className="w-full py-3 px-6 bg-gradient-to-r from-[#00517C] to-[#0967A4] text-white font-semibold rounded-xl shadow-md shadow-[#0967A4]/20 hover:shadow-lg hover:shadow-[#0967A4]/30 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="auth-btn-primary w-full py-3 px-6 bg-gradient-to-r from-[#00517C] to-[#0967A4] text-white font-semibold rounded-xl shadow-md shadow-[#0967A4]/20 hover:shadow-lg hover:shadow-[#0967A4]/30 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 whileHover={{ scale: form.formState.isSubmitting ? 1 : 1.02 }}
                 whileTap={{ scale: form.formState.isSubmitting ? 1 : 0.98 }}
               >
@@ -218,14 +218,14 @@ export function LoginForm() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
-            className="flex flex-col items-center gap-2 pt-6"
+            className="auth-links flex flex-col items-center gap-2 pt-6"
           >
             <span className="text-xs text-[#41474e] flex items-center gap-1">
-              ¿Olvidaste tu contraseña?{" "}
+              <span className="auth-recover-question">¿Olvidaste tu contraseña?</span>
               <RecoverPasswordModal />
             </span>
             <div className="flex items-center gap-1">
-              <span className="text-xs text-[#41474e]">¿No tienes cuenta?</span>
+              <span className="auth-register-question text-xs text-[#41474e]">¿No tienes cuenta?</span>
               <Link
                 href="/auth/register"
                 className="text-xs font-bold text-[#0967A4] transition-colors hover:underline"

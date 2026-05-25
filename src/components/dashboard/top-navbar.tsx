@@ -72,14 +72,14 @@ export function TopNavbar({
       initial={runIntro ? { opacity: 0, y: -10 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white/85 px-5 backdrop-blur sm:px-6"
+      className="dashboard-topbar sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white/85 px-5 backdrop-blur sm:px-6"
     >
       <div>
-        <Breadcrumbs items={breadcrumbItems} className="text-[11px]" />
+        <Breadcrumbs items={breadcrumbItems} className="dashboard-breadcrumbs text-[11px]" />
       </div>
 
       <div className="flex items-center gap-2">
-        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+        <span className={`dashboard-env-badge inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
           ambiente === 2
             ? "bg-emerald-100 text-emerald-700"
             : "bg-amber-100 text-amber-700"
@@ -90,16 +90,16 @@ export function TopNavbar({
           <DropdownMenu.Trigger asChild>
             <button
               type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 transition-all duration-200 ease-out hover:bg-slate-50 hover:shadow-sm"
+              className="dashboard-user-trigger inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 transition-all duration-200 ease-out hover:bg-slate-50 hover:shadow-sm"
             >
-              <UserCircle2 className="h-6 w-6 text-app-primary" />
+              <UserCircle2 className="dashboard-user-icon h-6 w-6 text-app-primary" />
               <div className="flex flex-col items-start gap-0">
-                <span className="text-sm font-semibold text-slate-800 leading-tight">{fullName}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 leading-tight">
+                <span className="dashboard-user-name text-sm font-semibold text-slate-800 leading-tight">{fullName}</span>
+                <span className="dashboard-user-role text-[10px] font-semibold uppercase tracking-wide text-slate-400 leading-tight">
                   {role}
                 </span>
               </div>
-              <ChevronDown className="h-4 w-4 text-slate-400" />
+              <ChevronDown className="dashboard-user-chevron h-4 w-4 text-slate-400" />
             </button>
           </DropdownMenu.Trigger>
 
@@ -107,9 +107,9 @@ export function TopNavbar({
             <DropdownMenu.Content
               sideOffset={8}
               align="end"
-              className="z-50 min-w-[280px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
+              className="dashboard-user-menu z-50 min-w-[280px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
             >
-              <div className="px-2 py-2 space-y-2">
+              <div className="dashboard-user-menu-head px-2 py-2 space-y-2">
 <div className="flex items-center gap-3">
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -119,7 +119,7 @@ export function TopNavbar({
                     Sesión activa
                   </span>
                 </div>
-                <div className="space-y-0.5">
+                <div className="dashboard-user-meta space-y-0.5">
                   <p className="text-sm font-semibold text-slate-800">{fullName}</p>
                   <p className="text-sm text-slate-500">{user.ruc}</p>
                   <p className="text-sm text-slate-400 capitalize">{role.toLowerCase()}</p>
@@ -130,10 +130,10 @@ export function TopNavbar({
                 <div key={group.title}>
                   <DropdownMenu.Separator className="my-1 h-px bg-slate-200" />
                   <div className="px-2 py-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <p className="dashboard-user-menu-title text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       {group.title}
                     </p>
-                    <div className="mt-1 space-y-1">
+                    <div className="dashboard-user-menu-items mt-1 space-y-1">
                       {group.items.map((item) => {
                         const Icon = iconByKey[item.key] ?? LayoutGrid;
 
@@ -144,14 +144,14 @@ export function TopNavbar({
                               event.preventDefault();
                               onSelect?.(item.key);
                             }}
-                            className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] font-semibold outline-none transition-all duration-200 ease-out hover:bg-slate-100 hover:translate-x-0.5 ${
+                            className={`dashboard-user-menu-item flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] font-semibold outline-none transition-all duration-200 ease-out hover:bg-slate-100 hover:translate-x-0.5 ${
                               activeKey === item.key
                                 ? "bg-app-primary/10 text-app-primary"
                                 : "text-slate-700"
                             }`}
                           >
                             <span
-                              className={`rounded-md p-[3px] ${
+                              className={`dashboard-user-menu-icon rounded-md p-[3px] ${
                                 activeKey === item.key
                                   ? "bg-app-primary/20 text-app-primary"
                                   : "bg-slate-100 text-slate-500"
@@ -171,13 +171,13 @@ export function TopNavbar({
               <DropdownMenu.Separator className="my-1 h-px bg-slate-200" />
 
               <DropdownMenu.Item
-                className="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] font-semibold text-rose-600 outline-none transition-all duration-200 ease-out hover:bg-rose-50 hover:translate-x-0.5"
+                className="dashboard-user-menu-item flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] font-semibold text-rose-600 outline-none transition-all duration-200 ease-out hover:bg-rose-50 hover:translate-x-0.5"
                 onSelect={async (event) => {
                   event.preventDefault();
                   await onLogout();
                 }}
               >
-                <span className="rounded-md p-[3px] bg-rose-100 text-rose-600">
+                <span className="dashboard-user-menu-icon rounded-md p-[3px] bg-rose-100 text-rose-600">
                   <LogOut className="h-4 w-4" />
                 </span>
                 <span>Cerrar sesión</span>

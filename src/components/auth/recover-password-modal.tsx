@@ -295,8 +295,13 @@ export function RecoverPasswordModal() {
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Trigger asChild>
-        <span className="cursor-pointer font-bold text-[#0967A4] transition-colors hover:underline">
+        <span className="recover-trigger recover-trigger-desktop cursor-pointer font-bold text-[#0967A4] transition-colors hover:underline">
           Recupérala
+        </span>
+      </Dialog.Trigger>
+      <Dialog.Trigger asChild>
+        <span className="recover-trigger recover-trigger-laptop cursor-pointer font-bold text-[#0967A4] transition-colors hover:underline">
+          ¿Olvidaste tu contraseña?
         </span>
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -310,7 +315,7 @@ export function RecoverPasswordModal() {
         </Dialog.Overlay>
         <Dialog.Content
           onPointerDownOutside={(e) => e.preventDefault()}
-          className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,500px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden flex flex-col focus:outline-none"
+          className="auth-modal fixed left-1/2 top-1/2 z-50 w-[min(92vw,500px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden flex flex-col focus:outline-none"
         >
           <motion.div
             initial={{ opacity: 0, y: 12 }}

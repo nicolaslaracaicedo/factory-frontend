@@ -116,7 +116,7 @@ export function TermsModal({ onAccept }: TermsModalProps) {
         </Dialog.Overlay>
         <Dialog.Content 
           onPointerDownOutside={(e) => e.preventDefault()}
-          className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,800px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+          className="auth-modal fixed left-1/2 top-1/2 z-50 w-[min(92vw,800px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
         >
           <motion.div
             initial={{ opacity: 0, y: 12 }}

@@ -259,19 +259,19 @@ export function RegisterForm() {
     : "bg-emerald-500";
 
   return (
-    <div className="min-h-screen flex bg-white font-sans text-slate-800">
+    <div className="auth-page min-h-screen flex bg-white font-sans text-slate-800">
       {/* Form Panel */}
-      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-20 overflow-y-auto">
+      <div className="auth-panel flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-20 overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full max-w-lg mx-auto"
+          className="auth-card w-full max-w-lg mx-auto"
         >
           {/* Back link */}
           <Link
             href="/auth/login"
-            className="inline-flex items-center gap-2 text-[#0967A4] font-medium hover:text-[#00517C] transition-colors mb-6 group"
+            className="auth-backlink inline-flex items-center gap-2 text-[#0967A4] font-medium hover:text-[#00517C] transition-colors mb-6 group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             Volver al inicio de sesión
@@ -282,7 +282,7 @@ export function RegisterForm() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="mb-8"
+            className="auth-header mb-8"
           >
             <h1 className="text-3xl sm:text-4xl font-bold text-[#00517C] mb-2">
               Crear cuenta empresarial
@@ -521,7 +521,7 @@ export function RegisterForm() {
                   </div>
 
                   {/* Terms checkbox */}
-                  <div className="cntr flex items-start mt-4">
+                  <div className="auth-terms cntr flex items-start mt-4">
                     <input
                       type="checkbox"
                       checked={acceptedTerms}
@@ -529,8 +529,8 @@ export function RegisterForm() {
                       className="hidden-xs-up"
                       id="cbx"
                     />
-                    <label htmlFor="cbx" className="cbx" />
-                    <label htmlFor="cbx" className="lbl text-sm text-gray-600 select-none">
+                    <label htmlFor="cbx" className="auth-terms-box cbx" />
+                    <label htmlFor="cbx" className="auth-terms-label lbl text-sm text-gray-600 select-none">
                       Acepto los{" "}
                       <TermsModal onAccept={() => setAcceptedTerms(true)} />
                     </label>
@@ -545,7 +545,7 @@ export function RegisterForm() {
                 <motion.button
                   type="button"
                   onClick={prevStep}
-                  className="flex-1 py-3 px-6 border-2 border-gray-200 text-[#00517C] font-semibold rounded-xl hover:border-[#0967A4] hover:bg-gray-50 transition-all duration-300 flex items-center justify-center gap-2"
+                  className="auth-btn flex-1 py-3 px-6 border-2 border-gray-200 text-[#00517C] font-semibold rounded-xl hover:border-[#0967A4] hover:bg-gray-50 transition-all duration-300 flex items-center justify-center gap-2"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   initial={{ opacity: 0 }}
@@ -560,7 +560,7 @@ export function RegisterForm() {
                 <motion.button
                   type="button"
                   onClick={nextStep}
-                  className="flex-1 py-3 px-6 bg-gradient-to-r from-[#00517C] to-[#0967A4] text-white font-semibold rounded-xl shadow-md shadow-[#0967A4]/20 hover:shadow-lg hover:shadow-[#0967A4]/30 transition-all duration-300 flex items-center justify-center gap-2 group w-full"
+                  className="auth-btn-primary flex-1 py-3 px-6 bg-gradient-to-r from-[#00517C] to-[#0967A4] text-white font-semibold rounded-xl shadow-md shadow-[#0967A4]/20 hover:shadow-lg hover:shadow-[#0967A4]/30 transition-all duration-300 flex items-center justify-center gap-2 group w-full"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -571,7 +571,7 @@ export function RegisterForm() {
                 <motion.button
                   type="submit"
                   disabled={isSubmitting || !acceptedTerms}
-                  className="flex-1 py-3 px-6 bg-gradient-to-r from-[#00517C] to-[#0967A4] text-white font-semibold rounded-xl shadow-md shadow-[#0967A4]/20 hover:shadow-lg hover:shadow-[#0967A4]/30 transition-all duration-300 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="auth-btn-primary flex-1 py-3 px-6 bg-gradient-to-r from-[#00517C] to-[#0967A4] text-white font-semibold rounded-xl shadow-md shadow-[#0967A4]/20 hover:shadow-lg hover:shadow-[#0967A4]/30 transition-all duration-300 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
                   whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
                   whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
                 >

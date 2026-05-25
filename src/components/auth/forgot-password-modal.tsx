@@ -118,7 +118,7 @@ export function ForgotPasswordModal() {
         </AnimatePresence>
         <Dialog.Content asChild forceMount onPointerDownOutside={(e) => e.preventDefault()}>
           <motion.div
-            className="fixed left-1/2 top-1/2 z-50 flex w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl"
+            className="auth-modal fixed left-1/2 top-1/2 z-50 flex w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl"
             initial={{ opacity: 0, y: 12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
