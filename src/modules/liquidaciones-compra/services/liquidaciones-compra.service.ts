@@ -137,4 +137,18 @@ export const liquidacionesCompraService = {
 
     return normalizeLiquidacionCompraResponse(payload).data;
   },
+
+  async enviarCorreo(id: number, correo_destino: string): Promise<void> {
+    const response = await fetch(`/api/liquidaciones-compra/${id}/enviar-correo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ correo_destino }),
+      cache: "no-store",
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload));
+    }
+  },
 };

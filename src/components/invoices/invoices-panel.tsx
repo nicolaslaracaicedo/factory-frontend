@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { FileText, Eye, Edit3, Plus, PlusCircle, Send, Trash2, Search, ChevronLeft, ChevronRight, X, FileCheck, Copy, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, MoreVertical, Printer, Trash, Package, User, Calculator, Tag, Box, RefreshCw, DollarSign } from "lucide-react";
+import { FileText, Eye, Edit3, Plus, PlusCircle, Send, Trash2, Search, ChevronLeft, ChevronRight, X, FileCheck, Copy, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, MoreVertical, Printer, Trash, Package, User, Calculator, Tag, Box, RefreshCw, DollarSign, Mail } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -129,6 +129,10 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
   const [emissionData, setEmissionData] = useState<FacturaItem | null>(null);
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [productModalOpen, setProductModalOpen] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailFactura, setEmailFactura] = useState<FacturaItem | null>(null);
+  const [emailAddress, setEmailAddress] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
   const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
   const { setActiveSection } = useDashboardSection();
 
@@ -253,6 +257,10 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                   <DropdownMenuItem onClick={() => window.open(`/api/facturas/${row.original.id}/recibo`, '_blank')} className="text-teal-600 focus:bg-teal-50 focus:text-teal-700 font-medium">
                     <Printer size={14} className="mr-2" />
                     Imprimir Recibo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => openEmailDialog(row.original)} className="text-sky-600 focus:bg-sky-50 focus:text-sky-700 font-medium">
+                    <Mail size={14} className="mr-2" />
+                    Enviar por correo
                   </DropdownMenuItem>
                   {!readOnly && (
                     <DropdownMenuItem onClick={() => handleAnular(row.original)} className="text-orange-600 focus:bg-orange-50 focus:text-orange-700 font-medium">
@@ -643,6 +651,33 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
   const viewEmissionInfo = (factura: FacturaItem) => {
     setEmissionData(factura);
     setEmissionInfoOpen(true);
+  };
+
+  const openEmailDialog = (factura: FacturaItem) => {
+    setEmailFactura(factura);
+    const cliente = clientes.find((c) => c.id === factura.id_cliente);
+    setEmailAddress(cliente?.email || "");
+    setEmailDialogOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailFactura || emailSending) return;
+
+    const email = emailAddress.trim();
+    if (!email) return toast.error("Ingresa un correo de destino.");
+
+    setEmailSending(true);
+    try {
+      await invoiceService.enviarCorreo(emailFactura.id, email);
+      toast.success("Correo enviado correctamente.");
+      setEmailDialogOpen(false);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "No se pudo enviar el correo.";
+      toast.error(message);
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   const copyToClipboard = async (text: string, label: string) => {
@@ -2000,8 +2035,22 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                     </div>
                   ) : null}
 
-                  {/* Botón cerrar */}
+                  {/* Botones */}
                   <div className="flex justify-end gap-3 pt-2">
+                    {detail?.estado?.toUpperCase() === "AUTORIZADO" && (
+                      <Button
+                        variant="secondary"
+                        type="button"
+                        onClick={() => {
+                          setDetailOpen(false);
+                          openEmailDialog(detail);
+                        }}
+                        className="gap-2"
+                      >
+                        <Mail size={14} />
+                        Enviar por correo
+                      </Button>
+                    )}
                     <Button variant="secondary" type="button" onClick={() => setDetailOpen(false)}>
                       Cerrar
                     </Button>
@@ -2130,6 +2179,77 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                   Cerrar
                 </Button>
               </div>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]" />
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+          >
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                  <Mail className="h-6 w-6 text-app-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Dialog.Title className="text-xl font-semibold text-slate-900">
+                    Enviar factura por correo
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    Ingresa el correo electrónico del destinatario.
+                  </Dialog.Description>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Destinatario</h3>
+                </div>
+                <div className="rounded-lg bg-white/80 px-3 py-2">
+                  <dt className="text-xs font-semibold text-slate-500">Cliente</dt>
+                  <dd className="mt-1 text-sm font-semibold text-slate-800">
+                    {emailFactura ? getClienteLabel(emailFactura.id_cliente, emailFactura.cliente_nombre || "Cliente") : "-"}
+                  </dd>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="email-destino" className="text-xs font-semibold text-slate-500">
+                    Correo de destino
+                  </label>
+                  <input
+                    id="email-destino"
+                    type="email"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                    placeholder="correo@ejemplo.com"
+                    value={emailAddress}
+                    onChange={(e) => setEmailAddress(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSendEmail(); }}
+                    autoFocus
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+              <Button variant="ghost" type="button" onClick={() => setEmailDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="button" onClick={handleSendEmail} disabled={emailSending}>
+                {emailSending ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-1.5" />
+                ) : (
+                  <Send size={14} className="mr-1.5" />
+                )}
+                {emailSending ? "Enviando…" : "Enviar"}
+              </Button>
             </div>
           </Dialog.Content>
         </Dialog.Portal>
