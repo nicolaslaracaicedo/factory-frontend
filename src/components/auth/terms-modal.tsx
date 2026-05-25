@@ -101,7 +101,7 @@ export function TermsModal({ onAccept }: TermsModalProps) {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <span className="cursor-pointer font-semibold text-[#00517C] underline underline-offset-2 hover:text-[#00517C] transition-colors">
+        <span className="terms-trigger cursor-pointer font-semibold text-[#00517C] underline underline-offset-2 hover:text-[#00517C] transition-colors">
           Términos y Condiciones
         </span>
       </Dialog.Trigger>

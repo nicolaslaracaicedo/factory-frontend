@@ -149,16 +149,16 @@ function RoleDashboardContent({
 
         <div className="space-y-5 px-5 py-5 sm:px-6">
         {headerVisible ? (
-          <header className="mb-8">
+          <header className="dashboard-section-header mb-8">
             <div className="flex items-start gap-4">
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-app-primary/10 text-app-primary">
+              <span className="dashboard-section-icon flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-app-primary/10 text-app-primary">
                 <ActiveIcon className="h-7 w-7" />
               </span>
               <div className="flex flex-col">
-                <h2 className="text-2xl font-bold text-slate-900">
+                <h2 className="dashboard-section-title text-2xl font-bold text-slate-900">
                   {activeItem?.label ?? role}
                 </h2>
-                <p className="mt-1 max-w-3xl text-sm text-slate-600">
+                <p className="dashboard-section-subtitle mt-1 max-w-3xl text-sm text-slate-600">
                   {activeSection === "dashboard" ? config.subtitle : activeItem?.hint}
                 </p>
               </div>
