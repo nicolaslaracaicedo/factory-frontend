@@ -20,7 +20,6 @@ import { Loader } from "@/src/components/ui/loader";
 
 const initialForm: CompanyFormInput = {
   ruc: "",
-  identificacion: "",
   logo: null,
   razon_social: "",
   nombre_comercial: "",
@@ -125,6 +124,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
   const [wizardStep, setWizardStep] = useState(1);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"fiscal" | "branding" | "conexion" | "correo">("fiscal");
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
 
   const openEditModal = () => {
@@ -137,6 +137,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
       setLogoPreview(null);
     }
     setActiveTab("fiscal");
+    setErrors({});
     setEditOpen(true);
   };
 
@@ -186,6 +187,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
   }, [form.logo]);
 
   const updateField = (name: keyof CompanyFormInput, value: string | number | File | null) => {
+    setErrors((prev) => ({ ...prev, [name]: "" }));
     setForm((prev) => {
       const nextState: CompanyFormInput = {
         ...prev,
@@ -254,6 +256,69 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
   };
 
   const saveCompany = async () => {
+    setErrors({});
+    const nextErrors: Record<string, string> = {};
+    const razonSocial = form.razon_social.trim();
+    const nombreComercial = form.nombre_comercial.trim();
+    const direccion = form.direccion_matriz.trim();
+    const email = form.email.trim();
+    const telefono = form.telefono.trim();
+    const ruc = form.ruc.trim();
+    if (!razonSocial) nextErrors.razon_social = "La razón social es obligatoria.";
+    else if (razonSocial.length > 150) nextErrors.razon_social = "No debe exceder 150 caracteres.";
+
+    if (!nombreComercial) nextErrors.nombre_comercial = "El nombre comercial es obligatorio.";
+    else if (nombreComercial.length > 150) nextErrors.nombre_comercial = "No debe exceder 150 caracteres.";
+
+    if (!ruc) nextErrors.ruc = "El RUC es obligatorio.";
+    else if (!/^\d{13}$/.test(ruc)) nextErrors.ruc = "Debe tener exactamente 13 dígitos.";
+
+    if (!email) nextErrors.email = "El correo electrónico es obligatorio.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) nextErrors.email = "Ingresa un correo electrónico válido.";
+
+    if (!telefono) nextErrors.telefono = "El teléfono es obligatorio.";
+    else if (!/^\d+$/.test(telefono)) nextErrors.telefono = "Solo debe contener números.";
+    else if (!/^0/.test(telefono)) nextErrors.telefono = "Debe comenzar con 0 (ej: 0991234567).";
+    else if (telefono.length !== 9 && telefono.length !== 10) nextErrors.telefono = "Debe tener 9 dígitos (convencional) o 10 dígitos (celular).";
+
+    if (!direccion) nextErrors.direccion_matriz = "La dirección matriz es obligatoria.";
+    else if (direccion.length > 150) nextErrors.direccion_matriz = "No debe exceder 150 caracteres.";
+
+    const smtpHost = form.smtp_host.trim();
+    const smtpUser = form.smtp_user.trim();
+    const smtpFromName = form.smtp_from_name.trim();
+
+    if (!smtpHost) nextErrors.smtp_host = "El servidor SMTP es obligatorio.";
+    else if (/\s/.test(smtpHost)) nextErrors.smtp_host = "No debe contener espacios.";
+    else if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(smtpHost)) nextErrors.smtp_host = "Ingresa un dominio o IP válido (ej: smtp.gmail.com).";
+
+    if (!form.smtp_port) nextErrors.smtp_port = "El puerto es obligatorio.";
+    else if (!/^\d+$/.test(String(form.smtp_port))) nextErrors.smtp_port = "Solo números enteros.";
+    else if (form.smtp_port < 1 || form.smtp_port > 65535) nextErrors.smtp_port = "Debe estar entre 1 y 65535.";
+
+    if (!smtpUser) nextErrors.smtp_user = "El correo remitente es obligatorio.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(smtpUser)) nextErrors.smtp_user = "Ingresa un correo electrónico válido.";
+
+    if (!smtpFromName) nextErrors.smtp_from_name = "El nombre del remitente es obligatorio.";
+    else if (/^\d+$/.test(smtpFromName)) nextErrors.smtp_from_name = "No debe ser solo números.";
+    else if (/^\s+$/.test(smtpFromName)) nextErrors.smtp_from_name = "No debe ser solo espacios.";
+    else if (smtpFromName.length > 100) nextErrors.smtp_from_name = "No debe exceder 100 caracteres.";
+
+    setErrors(nextErrors);
+
+    const firstError = Object.values(nextErrors).find(Boolean);
+    if (firstError) {
+      const fiscalFields = ["razon_social", "nombre_comercial", "ruc", "email", "telefono", "direccion_matriz"];
+      const correoFields = ["smtp_host", "smtp_port", "smtp_user", "smtp_from_name"];
+      const errorKeys = Object.keys(nextErrors).filter((k) => nextErrors[k]);
+      const hasFiscalError = errorKeys.some((k) => fiscalFields.includes(k));
+      const hasCorreoError = errorKeys.some((k) => correoFields.includes(k));
+      if (hasFiscalError) setActiveTab("fiscal");
+      else if (hasCorreoError) setActiveTab("correo");
+      toast.warning(firstError);
+      return false;
+    }
+
     setSaving(true);
 
     try {
@@ -268,7 +333,6 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
         ...prev,
         ...mapped,
         ruc: mapped.ruc || prev.ruc,
-        identificacion: mapped.identificacion || prev.identificacion,
         logo: null,
       }));
       setCompany({ ...updated, logo: persistedLogo || "" });
@@ -401,10 +465,6 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                         <p className="text-xs font-medium text-slate-800 mt-1">{company.ruc || "-"}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Identificación</p>
-                        <p className="text-xs font-medium text-slate-800 mt-1">{company.identificacion || "-"}</p>
-                      </div>
-                      <div>
                         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Correo</p>
                         <p className="text-xs font-medium text-slate-800 mt-1">{company.email || "-"}</p>
                       </div>
@@ -530,8 +590,16 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
           </Dialog.Overlay>
           <Dialog.Content
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,860px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
-            onPointerDownOutside={(event) => event.preventDefault()}
-            onInteractOutside={(event) => event.preventDefault()}
+            onPointerDownOutside={(event) => {
+              const target = (event as any).detail?.originalEvent?.target ?? event.target;
+              if (target?.closest?.("[data-sonner-toast]")) return;
+              event.preventDefault();
+            }}
+            onInteractOutside={(event) => {
+              const target = (event as any).detail?.originalEvent?.target ?? event.target;
+              if (target?.closest?.("[data-sonner-toast]")) return;
+              event.preventDefault();
+            }}
           >
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -576,7 +644,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                    onClick={() => { setActiveTab(tab.id as typeof activeTab); setErrors({}); }}
                     className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id
                       ? "text-sky-600"
                       : "text-slate-500 hover:text-slate-700"
@@ -656,55 +724,54 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                         {/* Campos de identidad */}
                         <div className="grid gap-4">
                           <div className="grid gap-4 sm:grid-cols-2">
-                            <Field label="Razón social *" htmlFor="razon_social">
-                              <Input
-                                id="razon_social"
-                                value={form.razon_social}
-                                onChange={(event) =>
-                                  updateField("razon_social", event.target.value)
-                                }
-                                className="bg-white shadow-none"
-                              />
+                            <Field label="Razón social *" htmlFor="razon_social" error={errors.razon_social}>
+                              <div className="relative">
+                                <Input
+                                  id="razon_social"
+                                  maxLength={150}
+                                  value={form.razon_social}
+                                  onChange={(event) =>
+                                    updateField("razon_social", event.target.value)
+                                  }
+                                  className="bg-white shadow-none pr-10"
+                                />
+                                <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                                  {form.razon_social.length}/150
+                                </span>
+                              </div>
                             </Field>
 
-                            <Field label="Nombre comercial" htmlFor="nombre_comercial">
-                              <Input
-                                id="nombre_comercial"
-                                value={form.nombre_comercial}
-                                onChange={(event) =>
-                                  updateField("nombre_comercial", event.target.value)
-                                }
-                                className="bg-white shadow-none"
-                              />
-                            </Field>
-                          </div>
-
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <Field label="RUC *" htmlFor="ruc">
-                              <Input
-                                id="ruc"
-                                inputMode="numeric"
-                                value={form.ruc}
-                                onChange={(event) => updateField("ruc", event.target.value)}
-                                className="bg-white shadow-none"
-                              />
-                            </Field>
-
-                            <Field label="Identificación" htmlFor="identificacion">
-                              <Input
-                                id="identificacion"
-                                inputMode="numeric"
-                                value={form.identificacion}
-                                onChange={(event) =>
-                                  updateField("identificacion", event.target.value)
-                                }
-                                className="bg-white shadow-none"
-                              />
+                            <Field label="Nombre comercial *" htmlFor="nombre_comercial" error={errors.nombre_comercial}>
+                              <div className="relative">
+                                <Input
+                                  id="nombre_comercial"
+                                  maxLength={150}
+                                  value={form.nombre_comercial}
+                                  onChange={(event) =>
+                                    updateField("nombre_comercial", event.target.value)
+                                  }
+                                  className="bg-white shadow-none pr-10"
+                                />
+                                <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                                  {form.nombre_comercial.length}/150
+                                </span>
+                              </div>
                             </Field>
                           </div>
 
+                          <Field label="RUC *" htmlFor="ruc" error={errors.ruc}>
+                            <Input
+                              id="ruc"
+                              inputMode="numeric"
+                              maxLength={13}
+                              value={form.ruc}
+                              onChange={(event) => updateField("ruc", event.target.value.replace(/\D/g, ""))}
+                              className="bg-white shadow-none"
+                            />
+                          </Field>
+
                           <div className="grid gap-4 sm:grid-cols-2">
-                            <Field label="Correo electrónico" htmlFor="email">
+                            <Field label="Correo electrónico *" htmlFor="email" error={errors.email}>
                               <Input
                                 id="email"
                                 type="email"
@@ -714,11 +781,13 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                               />
                             </Field>
 
-                            <Field label="Teléfono" htmlFor="telefono">
+                            <Field label="Teléfono *" htmlFor="telefono" error={errors.telefono}>
                               <Input
                                 id="telefono"
+                                inputMode="numeric"
+                                maxLength={10}
                                 value={form.telefono}
-                                onChange={(event) => updateField("telefono", event.target.value)}
+                                onChange={(event) => updateField("telefono", event.target.value.replace(/\D/g, ""))}
                                 className="bg-white shadow-none"
                               />
                             </Field>
@@ -726,15 +795,21 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                         </div>
                       </div>
 
-                      <Field label="Dirección matriz" htmlFor="direccion_matriz">
-                        <Input
-                          id="direccion_matriz"
-                          value={form.direccion_matriz}
-                          onChange={(event) =>
-                            updateField("direccion_matriz", event.target.value)
-                          }
-                          className="bg-white shadow-none"
-                        />
+                      <Field label="Dirección matriz *" htmlFor="direccion_matriz" error={errors.direccion_matriz}>
+                        <div className="relative">
+                          <Input
+                            id="direccion_matriz"
+                            maxLength={150}
+                            value={form.direccion_matriz}
+                            onChange={(event) =>
+                              updateField("direccion_matriz", event.target.value)
+                            }
+                            className="bg-white shadow-none pr-10"
+                          />
+                          <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                            {form.direccion_matriz.length}/150
+                          </span>
+                        </div>
                       </Field>
                     </div>
 
@@ -1063,7 +1138,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
 
                       <div className="grid grid-cols-12 gap-4">
                         <div className="col-span-8">
-                          <Field label="Servidor SMTP" htmlFor="smtp_host">
+                          <Field label="Servidor SMTP *" htmlFor="smtp_host" error={errors.smtp_host}>
                             <Input
                               id="smtp_host"
                               placeholder="Ej: smtp.gmail.com"
@@ -1074,7 +1149,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                           </Field>
                         </div>
                         <div className="col-span-4">
-                          <Field label="Puerto" htmlFor="smtp_port">
+                          <Field label="Puerto *" htmlFor="smtp_port" error={errors.smtp_port}>
                             <Input
                               id="smtp_port"
                               type="number"
@@ -1096,7 +1171,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                       </div>
 
                       <div className="grid gap-4">
-                        <Field label="Correo / Usuario remitente" htmlFor="smtp_user">
+                        <Field label="Correo / Usuario remitente *" htmlFor="smtp_user" error={errors.smtp_user}>
                           <Input
                             id="smtp_user"
                             type="email"
@@ -1128,14 +1203,20 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                             </div>
                           </Field>
 
-                          <Field label="Nombre del Remitente" htmlFor="smtp_from_name">
-                            <Input
-                              id="smtp_from_name"
-                              placeholder="Ej: Facturación Pilla Pago"
-                              value={form.smtp_from_name}
-                              onChange={(event) => updateField("smtp_from_name", event.target.value)}
-                              className="bg-white shadow-none border-slate-200"
-                            />
+                          <Field label="Nombre del Remitente *" htmlFor="smtp_from_name" error={errors.smtp_from_name}>
+                            <div className="relative">
+                              <Input
+                                id="smtp_from_name"
+                                maxLength={100}
+                                placeholder="Ej: Facturación Pilla Pago"
+                                value={form.smtp_from_name}
+                                onChange={(event) => updateField("smtp_from_name", event.target.value)}
+                                className="bg-white shadow-none border-slate-200 pr-10"
+                              />
+                              <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                                {form.smtp_from_name.length}/100
+                              </span>
+                            </div>
                           </Field>
                         </div>
                       </div>
@@ -1156,7 +1237,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
 
                 {/* Botones de acción */}
                 <div className="flex justify-end gap-3 pt-2">
-                  <Button type="button" variant="secondary" onClick={() => setEditOpen(false)} className="h-10 px-4">
+                  <Button type="button" variant="secondary" onClick={() => { setEditOpen(false); setErrors({}); }} className="h-10 px-4">
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={saving} className="h-10 px-4">
@@ -1247,35 +1328,29 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                     />
                   </Field>
 
-                  <Field label="RUC" htmlFor="wizard-ruc">
-                    <Input
-                      id="wizard-ruc"
-                      inputMode="numeric"
-                      value={form.ruc}
-                      onChange={(event) => updateField("ruc", event.target.value)}
-                    />
-                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="RUC" htmlFor="wizard-ruc">
+                      <Input
+                        id="wizard-ruc"
+                        inputMode="numeric"
+                        maxLength={13}
+                        value={form.ruc}
+                        onChange={(event) => updateField("ruc", event.target.value.replace(/\D/g, ""))}
+                      />
+                    </Field>
+                  </div>
 
-                  <Field label="Identificación" htmlFor="wizard-identificacion">
-                    <Input
-                      id="wizard-identificacion"
-                      inputMode="numeric"
-                      value={form.identificacion}
-                      onChange={(event) =>
-                        updateField("identificacion", event.target.value)
-                      }
-                    />
-                  </Field>
-
-                  <Field label="Dirección matriz" htmlFor="wizard-direccion-matriz">
-                    <Textarea
-                      id="wizard-direccion-matriz"
-                      value={form.direccion_matriz}
-                      onChange={(event) =>
-                        updateField("direccion_matriz", event.target.value)
-                      }
-                    />
-                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="Dirección matriz" htmlFor="wizard-direccion-matriz">
+                      <Textarea
+                        id="wizard-direccion-matriz"
+                        value={form.direccion_matriz}
+                        onChange={(event) =>
+                          updateField("direccion_matriz", event.target.value)
+                        }
+                      />
+                    </Field>
+                  </div>
                 </motion.div>
               )}
 

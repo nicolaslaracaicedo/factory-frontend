@@ -1127,14 +1127,14 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                       <span className="text-right">ICE</span>
                       <span className="text-right">IRBPNR</span>
                       <span className="text-right">Desc.</span>
-                      <span className="text-right">Total</span>
+                      <span className="text-right">Subtotal</span>
                       <span />
                     </div>
                     <div className="divide-y divide-slate-200">
                       {form.detalles.map((detalle, index) => {
                         const descuentoValor = getDescuentoValor(detalle);
                         const base = detalle.cantidad * detalle.precio_unitario - descuentoValor;
-                        const totalLinea = base + base * (detalle.porcentaje_iva / 100) + base * (detalle.porcentaje_ice / 100) + detalle.cantidad * detalle.valor_unitario_irbpnr;
+                        const subtotalLinea = base;
                         return (
                         <div key={`detalle-${index}`} className="grid items-center gap-4 bg-white px-3 py-2 lg:grid-cols-[80px_1fr_50px_80px_56px_56px_60px_56px_80px_36px]">
                           {form.id_factura_ref > 0 ? (
@@ -1195,7 +1195,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                                     }}
                                     className="bg-white shadow-none h-8 text-xs text-right"
                                   />
-                          <span className="text-right text-xs font-semibold text-slate-800">${totalLinea.toFixed(2)}</span>
+                          <span className="text-right text-xs font-semibold text-slate-800">${subtotalLinea.toFixed(2)}</span>
                           <button type="button" onClick={() => removeDetail(index)} disabled={form.detalles.length === 1} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" title="Eliminar">
                             <Trash className="h-3.5 w-3.5" />
                           </button>

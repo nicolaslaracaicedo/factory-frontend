@@ -950,7 +950,7 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                       <span>IVA</span>
                       <span>ICE</span>
                       <span>IRBPNR</span>
-                      <span>Total</span>
+                      <span>Subtotal</span>
                       <span />
                     </div>
                     <div className="divide-y divide-slate-200">
@@ -962,7 +962,7 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                         const ivaTotal = (base * detalle.porcentaje_iva) / 100;
                         const iceTotal = producto?.tiene_ice ? (base * (producto.porcentaje_ice ?? 0)) / 100 : 0;
                         const irbpnrTotal = producto?.tiene_irbpnr ? detalle.cantidad * (producto.valor_unitario_irbpnr ?? 0) : 0;
-                        const detalleTotal = base + ivaTotal + iceTotal + irbpnrTotal;
+                        const subtotalLinea = base;
                         return (
                           <div key={`det-${idx}`} className="grid items-center gap-2 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(140px,1fr)_60px_90px_80px_70px_70px_70px_70px_44px]">
                             <span className="text-xs text-slate-500 truncate">{detalle.codigo || "-"}</span>
@@ -1004,7 +1004,7 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
 
                             <span className="text-xs text-purple-600 font-medium">{producto?.tiene_irbpnr ? formatCurrency(irbpnrTotal) : "-"}</span>
 
-                            <span className="text-sm font-extrabold text-slate-900 tabular-nums">{formatCurrency(detalleTotal)}</span>
+                            <span className="text-sm font-extrabold text-slate-900 tabular-nums">{formatCurrency(subtotalLinea)}</span>
 
                             <button type="button" onClick={() => removeDetalle(idx)} disabled={form.detalles.length === 1} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" title="Eliminar"><Trash className="h-4 w-4" /></button>
                           </div>

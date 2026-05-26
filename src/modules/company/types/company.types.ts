@@ -37,7 +37,7 @@ export interface CompanyResponse {
 
 export type CompanyFormInput = {
   ruc: string;
-  identificacion: string;
+  identificacion?: string;
   logo?: File | null;
   razon_social: string;
   nombre_comercial: string;

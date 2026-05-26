@@ -747,7 +747,7 @@ export function ResumenDashboard({ staticData }: ResumenDashboardProps) {
             icon={<Package className="h-4 w-4" />}
             title="Productos Más Vendidos"
           />
-          <ul className="space-y-3">
+          <ul className="space-y-4">
             {data.clientes_productos.productos_mas_vendidos.map((p, i) => {
               const qty = parseFloat(p.cantidad_vendida);
               const pct = topProductMax > 0 ? (qty / topProductMax) * 100 : 0;

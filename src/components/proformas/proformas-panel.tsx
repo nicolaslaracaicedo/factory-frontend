@@ -969,7 +969,7 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
                       <span>IVA</span>
                       <span>ICE</span>
                       <span>IRBPNR</span>
-                      <span>Total</span>
+                      <span>Subtotal</span>
                       <span />
                     </div>
                     <div className="divide-y divide-slate-200">
@@ -981,7 +981,7 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
                         const ivaTotal = (base * detalle.porcentaje_iva) / 100;
                         const iceTotal = producto?.tiene_ice ? (base * (producto.porcentaje_ice ?? 0)) / 100 : 0;
                         const irbpnrTotal = producto?.tiene_irbpnr ? detalle.cantidad * (producto.valor_unitario_irbpnr ?? 0) : 0;
-                        const detalleTotal = base + ivaTotal + iceTotal + irbpnrTotal;
+                        const subtotalLinea = base;
                         return (
                         <div
                           key={`det-${idx}`}
@@ -1082,7 +1082,7 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
                           </span>
 
                           <span className="text-sm font-extrabold text-slate-900 tabular-nums">
-                            {formatCurrency(detalleTotal)}
+                            {formatCurrency(subtotalLinea)}
                           </span>
 
                           <button

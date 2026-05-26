@@ -69,7 +69,7 @@ export const normalizeCompanyResponse = (payload: unknown): CompanyResponse => {
   const company: Company = {
     id: toNumber(source.id, 0) || undefined,
     ruc: toText(source.ruc, ""),
-    identificacion: toText(source.identificacion ?? source.cedula ?? source.ruc, ""),
+    identificacion: toText(source.identificacion ?? source.cedula, ""),
     logo: toProxyLogoUrl(
       toText(
         source.logo ??
@@ -151,7 +151,9 @@ export const buildCompanyFormData = (input: CompanyFormInput): FormData => {
   }
 
   formData.append("ruc", input.ruc);
-  formData.append("identificacion", input.identificacion);
+  if (input.identificacion) {
+    formData.append("identificacion", input.identificacion);
+  }
   formData.append("razon_social", input.razon_social);
   formData.append("nombre_comercial", input.nombre_comercial);
   formData.append("direccion_matriz", input.direccion_matriz);

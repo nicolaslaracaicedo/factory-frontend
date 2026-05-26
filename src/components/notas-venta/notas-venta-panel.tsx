@@ -1128,12 +1128,13 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                       <span>Cant.</span>
                       <span>P. Unitario</span>
                       <span>Dto.</span>
-                      <span>Total</span>
+                      <span>Subtotal</span>
                       <span />
                     </div>
                     <div className="divide-y divide-slate-200">
                       {form.detalles.map((detalle, index) => {
                         const producto = getProductoById(detalle.id_producto);
+                        const subtotalLinea = detalle.cantidad * detalle.precio_unitario - getDescuentoValor(detalle);
                         return (
                           <div
                             key={`detalle-${index}`}
@@ -1225,7 +1226,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                             />
 
                             <span className="text-sm font-extrabold text-slate-900 tabular-nums">
-                              ${formatMoney(detalle.total)}
+                              ${formatMoney(subtotalLinea)}
                             </span>
 
                             <button
@@ -1319,6 +1320,15 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                   </div>
                 </div>
               )}
+
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">!</span>
+                  <div className="text-xs text-amber-800">
+                    <span className="font-semibold">Normativa SRI (Régimen RIMPE):</span> En las Notas de Venta no se desglosan impuestos. El precio unitario y los subtotales ya incluyen IVA/ICE de forma unificada según la ley vigente.
+                  </div>
+                </div>
+              </div>
 
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <Button type="submit" disabled={saving} className="h-10 w-full">

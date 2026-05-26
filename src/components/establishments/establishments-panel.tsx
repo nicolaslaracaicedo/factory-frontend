@@ -58,12 +58,14 @@ export function EstablishmentsPanel({ showPanel = true, readOnly = false }: Esta
   const [establecimientos, setEstablecimientos] = useState<Establecimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState<EstadoFiltro>("ACTIVO");
+  const [filter, setFilter] = useState<EstadoFiltro>("TODOS");
   const [modalOpen, setModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailData, setDetailData] = useState<Establecimiento | null>(null);
   const [editing, setEditing] = useState<Establecimiento | null>(null);
   const [form, setForm] = useState<EstablecimientoFormInput>(initialForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [matrizConfirm, setMatrizConfirm] = useState<{ nombre: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -236,15 +238,25 @@ export function EstablishmentsPanel({ showPanel = true, readOnly = false }: Esta
     initialState: { pagination: { pageSize: 10 } },
   });
 
+  const handleCodigoBlur = () => {
+    const raw = form.codigo.replace(/\D/g, "").slice(0, 3);
+    const padded = raw.padStart(3, "0");
+    if (padded !== form.codigo) {
+      updateField("codigo", padded);
+    }
+  };
+
   const openCreate = () => {
     setEditing(null);
     setForm(initialForm);
+    setErrors({});
     setModalOpen(true);
   };
 
   const openEdit = (establecimiento: Establecimiento) => {
     setEditing(establecimiento);
     setForm(toEstablecimientoFormInput(establecimiento));
+    setErrors({});
     setModalOpen(true);
   };
 
@@ -261,6 +273,7 @@ export function EstablishmentsPanel({ showPanel = true, readOnly = false }: Esta
   };
 
   const updateField = (name: keyof EstablecimientoFormInput, value: string | boolean) => {
+    setErrors((prev) => ({ ...prev, [name]: "" }));
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -269,7 +282,47 @@ export function EstablishmentsPanel({ showPanel = true, readOnly = false }: Esta
 
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSaving(true);
+    setErrors({});
+
+    const nextErrors: Record<string, string> = {};
+    const codigo = form.codigo.replace(/\D/g, "").slice(0, 3);
+    const nombre = form.nombre.trim();
+    const direccion = form.direccion.trim();
+
+    if (!editing) {
+      if (!codigo) nextErrors.codigo = "El código es obligatorio.";
+      else if (codigo.length !== 3) nextErrors.codigo = "Debe tener exactamente 3 dígitos.";
+
+      if (codigo && codigo.length === 3 && codigo !== form.codigo) {
+        form.codigo = codigo.padStart(3, "0");
+      }
+    }
+
+    if (!nombre) nextErrors.nombre = "El nombre es obligatorio.";
+    else if (nombre.length > 150) nextErrors.nombre = "No debe exceder 150 caracteres.";
+    else if (/^\d+$/.test(nombre)) nextErrors.nombre = "Debe contener al menos una letra.";
+
+    if (!direccion) nextErrors.direccion = "La dirección es obligatoria.";
+    else if (direccion.length > 300) nextErrors.direccion = "No debe exceder 300 caracteres.";
+
+    setErrors(nextErrors);
+
+    const firstError = Object.values(nextErrors).find(Boolean);
+    if (firstError) {
+      toast.warning(firstError);
+      return;
+    }
+
+    if (form.es_matriz) {
+      const otraMatriz = establecimientos.find(
+        (e) => e.es_matriz && e.id !== editing?.id
+      );
+      if (otraMatriz) {
+        setMatrizConfirm({ nombre: otraMatriz.nombre });
+        setSaving(false);
+        return;
+      }
+    }
 
     try {
       if (editing) {
@@ -527,8 +580,6 @@ export function EstablishmentsPanel({ showPanel = true, readOnly = false }: Esta
           </Dialog.Overlay>
           <Dialog.Content 
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
-            onPointerDownOutside={(event) => event.preventDefault()}
-            onInteractOutside={(event) => event.preventDefault()}
           >
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -572,36 +623,53 @@ export function EstablishmentsPanel({ showPanel = true, readOnly = false }: Esta
                 </div>
                 <div className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Código" htmlFor="codigo">
-                      <Input
-                        id="codigo"
-                        value={form.codigo}
-                        onChange={(event) => updateField("codigo", event.target.value)}
-                        disabled={Boolean(editing)}
-                        className="bg-white shadow-none placeholder:text-slate-300"
-                        placeholder="Ej: 001, 002"
-                      />
+                    <Field label="Código *" htmlFor="codigo" error={!editing ? errors.codigo : undefined}>
+                      <div className="relative">
+                        <Input
+                          id="codigo"
+                          inputMode="numeric"
+                          maxLength={3}
+                          value={form.codigo}
+                          onChange={(event) => updateField("codigo", event.target.value.replace(/\D/g, ""))}
+                          onBlur={handleCodigoBlur}
+                          disabled={Boolean(editing)}
+                          className="bg-white shadow-none placeholder:text-slate-300"
+                          placeholder="Ej: 001"
+                        />
+                      </div>
                     </Field>
 
-                    <Field label="Nombre" htmlFor="nombre">
-                      <Input
-                        id="nombre"
-                        value={form.nombre}
-                        onChange={(event) => updateField("nombre", event.target.value)}
-                        className="bg-white shadow-none placeholder:text-slate-300"
-                        placeholder="Ej: Matriz, Sucursal Norte"
-                      />
+                    <Field label="Nombre *" htmlFor="nombre" error={errors.nombre}>
+                      <div className="relative">
+                        <Input
+                          id="nombre"
+                          maxLength={150}
+                          value={form.nombre}
+                          onChange={(event) => updateField("nombre", event.target.value)}
+                          className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                          placeholder="Ej: Matriz, Sucursal Norte"
+                        />
+                        <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                          {form.nombre.length}/150
+                        </span>
+                      </div>
                     </Field>
                   </div>
 
-                  <Field label="Dirección" htmlFor="direccion">
-                    <Input
-                      id="direccion"
-                      value={form.direccion}
-                      onChange={(event) => updateField("direccion", event.target.value)}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Dirección completa del establecimiento"
-                    />
+                  <Field label="Dirección *" htmlFor="direccion" error={errors.direccion}>
+                    <div className="relative">
+                      <Input
+                        id="direccion"
+                        maxLength={300}
+                        value={form.direccion}
+                        onChange={(event) => updateField("direccion", event.target.value)}
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                        placeholder="Dirección completa del establecimiento"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.direccion.length}/300
+                      </span>
+                    </div>
                   </Field>
                 </div>
               </div>
@@ -618,7 +686,68 @@ export function EstablishmentsPanel({ showPanel = true, readOnly = false }: Esta
                     onCheckedChange={(checked) => updateField("es_matriz", checked)}
                   />
                 </div>
+                {!form.es_matriz && establecimientos.some((e) => e.es_matriz && e.id !== editing?.id) && (
+                  <p className="text-xs text-amber-700">
+                    <span className="font-semibold">Nota:</span> Ya cuentas con un establecimiento Matriz registrado.
+                  </p>
+                )}
               </div>
+
+              {/* Confirmación inline para cambiar matriz */}
+              {matrizConfirm && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">!</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-amber-800">
+                        <span className="font-semibold">Cambiar establecimiento matriz:</span> Ya existe <strong>"{matrizConfirm.nombre}"</strong> registrado como Matriz. Al marcar este, el anterior dejará de serlo. ¿Deseas continuar?
+                      </p>
+                      <div className="flex justify-end gap-2 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => { setMatrizConfirm(null); updateField("es_matriz", false); }}
+                          className="h-7 rounded-md border border-amber-300 px-3 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setMatrizConfirm(null);
+                            setSaving(true);
+                            try {
+                              if (editing) {
+                                const payload: EstablecimientoUpdateInput = {
+                                  nombre: form.nombre,
+                                  direccion: form.direccion,
+                                  es_matriz: form.es_matriz,
+                                };
+                                await establishmentService.updateEstablecimiento(editing.id, payload);
+                                toast.success("Establecimiento actualizado.");
+                              } else {
+                                await establishmentService.createEstablecimiento(form);
+                                toast.success("Establecimiento creado.");
+                              }
+                              const estado = filter === "TODOS" ? undefined : filter;
+                              const data = await establishmentService.listEstablecimientos(estado);
+                              setEstablecimientos(data);
+                              setModalOpen(false);
+                            } catch (error) {
+                              const message = error instanceof Error ? error.message : "No se pudo guardar el establecimiento.";
+                              toast.error(message);
+                            } finally {
+                              setSaving(false);
+                            }
+                          }}
+                          className="h-7 rounded-md bg-amber-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
+                        >
+                          Cambiar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Botones de acción */}
               <div className="flex justify-end gap-3 pt-2">
@@ -632,7 +761,7 @@ export function EstablishmentsPanel({ showPanel = true, readOnly = false }: Esta
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={saving}
+                  disabled={saving || !!matrizConfirm}
                   className="h-10 px-4"
                 >
                   {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear establecimiento"}
@@ -656,8 +785,6 @@ export function EstablishmentsPanel({ showPanel = true, readOnly = false }: Esta
           </Dialog.Overlay>
           <Dialog.Content 
             className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
-            onPointerDownOutside={(event) => event.preventDefault()}
-            onInteractOutside={(event) => event.preventDefault()}
           >
             <motion.div
               initial={{ opacity: 0, y: 12 }}

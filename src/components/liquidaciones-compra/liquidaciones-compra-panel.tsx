@@ -986,15 +986,15 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
                       <span>ICE</span>
                       <span>IRBPNR</span>
                       <span>Desc.</span>
-                      <span>Total</span>
+                      <span>Subtotal</span>
                       <span />
                     </div>
                     <div className="divide-y divide-slate-200">
                       {form.detalles.map((detalle, idx) => {
                         const producto = getProductoById(detalle.id_producto);
-                        const detalleTotal = getDetalleTotal(detalle);
-                        const cantidad = Number(detalle.cantidad) || 0;
                         const base = getDetalleSubtotal(detalle);
+                        const subtotalLinea = base;
+                        const cantidad = Number(detalle.cantidad) || 0;
                         return (
                           <div
                             key={idx}
@@ -1122,7 +1122,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
 
                             {/* Total (calculated) */}
                             <span className="text-sm font-extrabold text-slate-900 tabular-nums">
-                              {formatCurrency(detalleTotal)}
+                              {formatCurrency(subtotalLinea)}
                             </span>
 
                             {/* Delete */}
