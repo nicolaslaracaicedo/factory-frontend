@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Edit, Edit3, Eye, PlusCircle, Power, RefreshCw, Search, Send, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Printer, Trash, Package, User, Calendar, FileCheck, Tag, Receipt, FileX, Calculator, DollarSign, Mail } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Edit, Edit3, Eye, PlusCircle, Power, RefreshCw, Search, Send, Trash2, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Printer, Trash, Package, User, Calendar, FileCheck, Tag, Receipt, FileX, Calculator, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/src/components/ui/button";
 import {
@@ -42,6 +42,8 @@ import { emissionPointService } from "@/src/modules/emission-points/services/emi
 import type { PuntoEmision } from "@/src/modules/emission-points/types/emission-point.types";
 import { invoiceService } from "@/src/modules/invoices/services/invoice.service";
 import type { FacturaItem } from "@/src/modules/invoices/types/invoice.types";
+import { productService } from "@/src/modules/products/services/product.service";
+import type { Producto } from "@/src/modules/products/types/product.types";
 import { Loader } from "@/src/components/ui/loader";
 import { ClientFormModal } from "@/src/components/clients/client-form-modal";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
@@ -54,7 +56,7 @@ const initialDetail = (): NotaCreditoDetalleDraft => ({
   descripcion: "",
   cantidad: 1,
   precio_unitario: 0,
-  descuento: 0,
+  descuento: "",
   tipo_descuento: "PORCENTAJE",
   codigo_iva: "",
   porcentaje_iva: 0,
@@ -106,6 +108,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
   const [facturas, setFacturas] = useState<FacturaItem[]>([]);
+  const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -117,7 +120,6 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
   const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
   const { setActiveSection } = useDashboardSection();
   const [form, setForm] = useState<NotaCreditoFormState>(initialForm);
-  const [montoStr, setMontoStr] = useState("");
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -303,14 +305,16 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
     const loadCatalogs = async () => {
       setLoadingCatalogs(true);
       try {
-        const [clientesData, puntosData, facturasData] = await Promise.all([
+        const [clientesData, puntosData, facturasData, productosData] = await Promise.all([
           clientService.listClientes("ACTIVO"),
           emissionPointService.listPuntos("ACTIVO"),
           invoiceService.listFacturas(),
+          productService.listProductos("ACTIVO"),
         ]);
         setClientes(clientesData);
         setPuntos(puntosData);
         setFacturas(facturasData);
+        setProductos(productosData);
       } catch (error) {
         const message =
           error instanceof Error
@@ -391,7 +395,6 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
     setFacturaSearchResults([]);
     setClienteQuery("");
     setClienteSearchResults([]);
-    setMontoStr("");
     setFacturaEsConsumidorFinal(false);
     setForm({
       ...initialForm,
@@ -406,13 +409,11 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
   const closeEditor = () => {
     setEditorOpen(false);
     setEditing(null);
-    setMontoStr("");
     setFacturaEsConsumidorFinal(false);
     setForm(initialForm);
   };
 
   const resetForm = () => {
-    setMontoStr("");
     setForm({
       ...initialForm,
       id_punto_emision: (() => { const d = useAuthStore.getState().user?.puntoEmisionDefault; const n = Number(d); return (n > 0 && puntos.some(p => p.id === n)) ? n : (puntos[0]?.id ?? 0); })(),
@@ -492,24 +493,25 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
         setForm((prev) => ({ ...prev, cliente_mode: "REGISTRADO", id_cliente: fullFactura.id_cliente! }));
       }
       if (fullFactura.detalles?.length) {
-        const detalles: NotaCreditoDetalleDraft[] = fullFactura.detalles.map((d) => ({
-          codigo: d.codigo ?? "",
-          descripcion: d.descripcion ?? "",
-          cantidad: d.cantidad,
-          precio_unitario: d.precio_unitario ?? 0,
-          descuento: d.descuento ?? 0,
-          tipo_descuento: "PORCENTAJE" as const,
-          codigo_iva: d.codigo_iva ?? "",
-          porcentaje_iva: d.porcentaje_iva ?? 0,
-          codigo_ice: d.codigo_ice ?? "",
-          porcentaje_ice: d.porcentaje_ice ?? 0,
-          valor_unitario_irbpnr: d.valor_unitario_irbpnr ?? 0,
-        }));
+        const detalles: NotaCreditoDetalleDraft[] = fullFactura.detalles.map((d) => {
+          const match = productos.find((p) => p.codigo === d.codigo || p.id === d.id_producto);
+          const irbpnrVal = match?.tiene_irbpnr ? (match.valor_unitario_irbpnr ?? 0) : (d.valor_unitario_irbpnr ?? 0);
+          return {
+            codigo: d.codigo ?? "",
+            descripcion: d.descripcion ?? "",
+            cantidad: d.cantidad,
+            precio_unitario: d.precio_unitario ?? 0,
+            descuento: String(d.descuento ?? ""),
+            tipo_descuento: "PORCENTAJE" as const,
+            codigo_iva: d.codigo_iva ?? "",
+            porcentaje_iva: d.porcentaje_iva ?? 0,
+            codigo_ice: d.codigo_ice ?? "",
+            porcentaje_ice: d.porcentaje_ice ?? 0,
+            valor_unitario_irbpnr: irbpnrVal,
+          };
+        });
         setForm((prev) => ({ ...prev, detalles }));
       }
-      const totalFactura = fullFactura.total ?? 0;
-      setMontoStr(totalFactura > 0 ? totalFactura.toFixed(2) : "");
-      updateField("monto_recibido", totalFactura);
       setFacturaQuery("");
       setFacturaSearchResults([]);
       setClienteQuery("");
@@ -628,11 +630,6 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
       toast.warning("Agrega al menos un detalle.");
       return;
     }
-    if (form.ref_mode === "INTERNA" && form.monto_recibido > 0 && totales.total > form.monto_recibido) {
-      toast.warning(`El total de la nota (${formatMoney(totales.total)}) no puede superar el total de la factura original (${formatMoney(form.monto_recibido)}). Reduce cantidades o elimina productos.`);
-      return;
-    }
-
     setSaving(true);
     try {
       const payload = buildPayload();
@@ -751,7 +748,10 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
   };
 
   const formatMoney = (value: number) => {
-    return `$${value.toFixed(2)}`;
+    return value.toLocaleString("es-EC", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
   const getDescuentoValor = (detalle: NotaCreditoDetalleDraft) => {
@@ -769,13 +769,17 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
     const descuentoTotal = form.detalles.reduce((sum, d) => sum + getDescuentoValor(d), 0);
     const iva = form.detalles.reduce((sum, d) => {
       const base = d.cantidad * d.precio_unitario - getDescuentoValor(d);
-      const ice = d.porcentaje_ice ? base * (d.porcentaje_ice / 100) : 0;
-      const baseImponible = base + ice;
-      return sum + baseImponible * (d.porcentaje_iva / 100);
+      const baseCents = Math.round(base * 100);
+      const iceCents = d.porcentaje_ice ? Math.round(baseCents * d.porcentaje_ice / 100) : 0;
+      const baseImpCents = baseCents + iceCents;
+      const ivaCents = Math.round(baseImpCents * d.porcentaje_iva / 100);
+      return sum + ivaCents / 100;
     }, 0);
     const ice = form.detalles.reduce((sum, d) => {
       const base = d.cantidad * d.precio_unitario - getDescuentoValor(d);
-      return sum + base * (d.porcentaje_ice / 100);
+      const baseCents = Math.round(base * 100);
+      const iceCents = Math.round(baseCents * d.porcentaje_ice / 100);
+      return sum + iceCents / 100;
     }, 0);
     const irbpnr = form.detalles.reduce((sum, d) => sum + d.cantidad * d.valor_unitario_irbpnr, 0);
     const ivaPcts = [...new Set(form.detalles.filter(d => d.porcentaje_iva > 0).map(d => d.porcentaje_iva))];
@@ -1023,17 +1027,17 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                 </div>
                 {form.id_factura_ref > 0 ? (
                   <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                    <div className="min-w-[800px]">
-                      <div className="hidden lg:grid lg:grid-cols-[80px_1fr_50px_80px_56px_56px_60px_56px_80px_36px] lg:gap-4 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                    <div className="min-w-[960px]">
+                      <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                         <span>Código</span>
                         <span>Descripción</span>
-                        <span className="text-right">Cant.</span>
-                        <span className="text-right">Precio</span>
-                        <span className="text-right">IVA</span>
-                        <span className="text-right">ICE</span>
-                        <span className="text-right">IRBPNR</span>
-                        <span className="text-right">Desc.</span>
-                        <span className="text-right">Subtotal</span>
+                        <span>Cant.</span>
+                        <span>Precio</span>
+                        <span>DESC.</span>
+                        <span>IVA</span>
+                        <span>ICE</span>
+                        <span>IRBPNR</span>
+                        <span>Subtotal</span>
                         <span />
                       </div>
                       <div className="divide-y divide-slate-200">
@@ -1042,7 +1046,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                           const base = detalle.cantidad * detalle.precio_unitario - descuentoValor;
                           const subtotalLinea = base;
                           return (
-                          <div key={`detalle-${index}`} className="grid items-center gap-4 bg-white px-3 py-2 lg:grid-cols-[80px_1fr_50px_80px_56px_56px_60px_56px_80px_36px]">
+                          <div key={`detalle-${index}`} className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px]">
                             {form.id_factura_ref > 0 ? (
                               <span className="text-xs text-slate-800 truncate">{detalle.codigo || "-"}</span>
                             ) : (
@@ -1054,56 +1058,56 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                               <Input value={detalle.descripcion} onChange={(event) => updateDetail(index, "descripcion", event.target.value)} className="bg-white shadow-none h-8 text-xs" placeholder="*" />
                             )}
                             <Input
-                                      type="text"
-                                      inputMode="decimal"
-                                      value={detalle.cantidad}
-                                      onChange={(event) => {
-                                        let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
-                                        if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
-                                        updateDetail(index, "cantidad", cleaned === "" ? 0 : Number(cleaned));
-                                      }}
-                                      className="bg-white shadow-none h-8 text-xs text-right"
-                                    />
+                              type="text"
+                              inputMode="decimal"
+                              value={detalle.cantidad}
+                              onChange={(event) => {
+                                let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                                if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
+                                updateDetail(index, "cantidad", cleaned === "" ? 0 : Number(cleaned));
+                              }}
+                              className="h-9 bg-white shadow-none text-xs"
+                            />
                             {form.id_factura_ref > 0 ? (
-                              <span className="text-right text-xs text-slate-800">${detalle.precio_unitario.toFixed(2)}</span>
+                              <span className="text-xs text-slate-700">{(detalle.precio_unitario ?? 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             ) : (
-                              <Input type="number" min={0} step="0.01" value={detalle.precio_unitario} onChange={(event) => updateDetail(index, "precio_unitario", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
-                            )}
-                            {form.id_factura_ref > 0 && detalle.porcentaje_iva === 0 ? (
-                              <span className="text-right text-xs text-slate-400">-</span>
-                            ) : form.id_factura_ref > 0 ? (
-                              <span className="text-right text-xs text-slate-800">{detalle.porcentaje_iva}%</span>
-                            ) : (
-                              <Input type="number" min={0} step="0.01" value={detalle.porcentaje_iva} onChange={(event) => updateDetail(index, "porcentaje_iva", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
-                            )}
-                            {form.id_factura_ref > 0 && detalle.porcentaje_ice === 0 ? (
-                              <span className="text-right text-xs text-slate-400">-</span>
-                            ) : form.id_factura_ref > 0 ? (
-                              <span className="text-right text-xs text-slate-800">{detalle.porcentaje_ice}%</span>
-                            ) : (
-                              <Input type="number" min={0} step="0.01" value={detalle.porcentaje_ice} onChange={(event) => updateDetail(index, "porcentaje_ice", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
-                            )}
-                            {form.id_factura_ref > 0 && detalle.valor_unitario_irbpnr === 0 ? (
-                              <span className="text-right text-xs text-slate-400">-</span>
-                            ) : form.id_factura_ref > 0 ? (
-                              <span className="text-right text-xs text-slate-800">${detalle.valor_unitario_irbpnr.toFixed(4)}</span>
-                            ) : (
-                              <Input type="number" min={0} step="0.0001" value={detalle.valor_unitario_irbpnr} onChange={(event) => updateDetail(index, "valor_unitario_irbpnr", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                              <Input type="number" min={0} step="0.01" value={detalle.precio_unitario} onChange={(event) => updateDetail(index, "precio_unitario", Number(event.target.value))} className="bg-white shadow-none h-9 text-xs" />
                             )}
                             <Input
-                                      type="text"
-                                      inputMode="decimal"
-                                      value={detalle.descuento}
-                                      onChange={(event) => {
-                                        let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
-                                        if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
-                                        updateDetail(index, "descuento", cleaned === "" ? 0 : Number(cleaned));
-                                      }}
-                                      className="bg-white shadow-none h-8 text-xs text-right"
-                                    />
-                            <span className="text-right text-xs font-semibold text-slate-800">${subtotalLinea.toFixed(2)}</span>
-                            <button type="button" onClick={() => removeDetail(index)} disabled={form.detalles.length === 1} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" title="Eliminar">
-                              <Trash className="h-3.5 w-3.5" />
+                              type="text"
+                              inputMode="decimal"
+                              value={detalle.descuento}
+                              onChange={(event) => {
+                                let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                                if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
+                                updateDetail(index, "descuento", cleaned);
+                              }}
+                              className="h-9 bg-white shadow-none text-xs"
+                            />
+                            {form.id_factura_ref > 0 && detalle.porcentaje_iva === 0 ? (
+                              <span className="text-xs text-slate-400">-</span>
+                            ) : form.id_factura_ref > 0 ? (
+                              <span className="text-xs text-slate-800">{detalle.porcentaje_iva}%</span>
+                            ) : (
+                              <Input type="number" min={0} step="0.01" value={detalle.porcentaje_iva} onChange={(event) => updateDetail(index, "porcentaje_iva", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs" />
+                            )}
+                            {form.id_factura_ref > 0 && detalle.porcentaje_ice === 0 ? (
+                              <span className="text-xs text-slate-400">-</span>
+                            ) : form.id_factura_ref > 0 ? (
+                              <span className="text-xs text-slate-800">{detalle.porcentaje_ice}%</span>
+                            ) : (
+                              <Input type="number" min={0} step="0.01" value={detalle.porcentaje_ice} onChange={(event) => updateDetail(index, "porcentaje_ice", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs" />
+                            )}
+                            {form.id_factura_ref > 0 && detalle.valor_unitario_irbpnr === 0 ? (
+                              <span className="text-xs text-slate-400">-</span>
+                            ) : form.id_factura_ref > 0 ? (
+                              <span className="text-xs text-slate-800">{(detalle.valor_unitario_irbpnr ?? 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            ) : (
+                              <Input type="number" min={0} step="0.01" value={detalle.valor_unitario_irbpnr} onChange={(event) => updateDetail(index, "valor_unitario_irbpnr", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs" />
+                            )}
+                            <span className="text-xs font-extrabold text-slate-900 tabular-nums">{(subtotalLinea ?? 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <button type="button" onClick={() => removeDetail(index)} disabled={form.detalles.length === 1} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" title="Eliminar">
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                           );
@@ -1112,7 +1116,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center py-8 text-sm text-slate-400">
+                  <div className="flex items-center justify-center py-8 rounded-xl border border-slate-200 bg-white text-sm text-slate-400">
                     Los detalles se cargarán automáticamente al seleccionar una factura referenciada.
                   </div>
                 )}
@@ -1127,85 +1131,39 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-700">Subtotal:</span>
-                  <span className="font-medium text-slate-800">{formatMoney(totales.subtotal)}</span>
+                  <span className="font-medium text-slate-800">${formatMoney(totales.subtotal)}</span>
                 </div>
                 {totales.descuentoTotal > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-700">Descuento:</span>
-                    <span className="font-medium text-rose-600">-{formatMoney(totales.descuentoTotal)}</span>
+                    <span className="font-medium text-rose-600">-${formatMoney(totales.descuentoTotal)}</span>
                   </div>
                 )}
                 {totales.iva > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-700">{totales.ivaPcts.length === 1 ? `IVA (${totales.ivaPcts[0]}%):` : "IVA:"}</span>
-                    <span className="font-medium text-slate-800">{formatMoney(totales.iva)}</span>
+                    <span className="font-medium text-slate-800">${formatMoney(totales.iva)}</span>
                   </div>
                 )}
                 {totales.ice > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-700">{totales.icePcts.length === 1 ? `ICE (${totales.icePcts[0]}%):` : "ICE:"}</span>
-                    <span className="font-medium text-amber-600">{formatMoney(totales.ice)}</span>
+                    <span className="font-medium text-amber-600">${formatMoney(totales.ice)}</span>
                   </div>
                 )}
                 {totales.irbpnr > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-700">{totales.irbpnrValues.length === 1 ? `IRBPNR ($${totales.irbpnrValues[0].toFixed(2)}):` : "IRBPNR:"}</span>
-                    <span className="font-medium text-purple-600">{formatMoney(totales.irbpnr)}</span>
+                    <span className="font-medium text-purple-600">${formatMoney(totales.irbpnr)}</span>
                   </div>
                 )}
                 <div className="border-t border-slate-200 pt-2 flex justify-between">
                   <span className="font-semibold text-slate-800">Total:</span>
-                  <span className="text-lg font-extrabold text-sky-700">{formatMoney(totales.total)}</span>
+                  <span className="text-lg font-extrabold text-sky-700">${formatMoney(totales.total)}</span>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
-                  <h4 className="text-sm font-semibold text-slate-700">Finalizar Pago</h4>
-                </div>
-                <div>
-                  <Field label="Monto recibido" htmlFor="monto_recibido">
-                    {form.id_factura_ref > 0 ? (
-                      <div className="h-9 flex items-center text-sm font-semibold text-slate-800 px-1">
-                        {montoStr ? `$${montoStr}` : "$0.00"}
-                      </div>
-                    ) : (
-                      <Input
-                        id="monto_recibido"
-                        type="text"
-                        inputMode="decimal"
-                        value={montoStr}
-                        onChange={(event) => {
-                          const raw = event.target.value.replace(/[^0-9.,]/g, "").replace(",", ".");
-                          const parts = raw.split(".");
-                          const cleaned = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : raw;
-                          const finalVal = cleaned.includes(".") ? cleaned.slice(0, cleaned.indexOf(".") + 3) : cleaned;
-                          const num = parseFloat(finalVal);
-                          setMontoStr(event.target.value);
-                          updateField("monto_recibido", !isNaN(num) && num >= 0 ? Math.round(num * 100) / 100 : 0);
-                        }}
-                        className="bg-white shadow-none h-9"
-                        placeholder="0.00"
-                      />
-                    )}
-                  </Field>
-                </div>
-                <div className="flex justify-between items-center bg-slate-50 rounded-lg px-3 py-2">
-                  <span className="text-sm font-medium text-slate-600">Cambio:</span>
-                  <span className={`text-lg font-bold ${(() => { const diff = form.monto_recibido - totales.total; return diff < 0 ? "text-rose-600" : "text-emerald-600"; })()}`}>
-                    {form.monto_recibido > 0 ? formatMoney(form.monto_recibido - totales.total) : "$0.00"}
-                  </span>
-                </div>
-              </div>
-              {form.ref_mode === "INTERNA" && form.monto_recibido > 0 && totales.total > form.monto_recibido && (
-                <div className="flex items-center gap-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2">
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-rose-600 text-xs font-bold">!</span>
-                  <div className="text-xs text-rose-800">
-                    El total de la nota supera el total de la factura original ({formatMoney(form.monto_recibido)}). Reduce cantidades o elimina productos.
-                  </div>
-                </div>
-              )}
+
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <Button type="submit" disabled={saving} className="h-10 w-full">
                   {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear nota de crédito"}

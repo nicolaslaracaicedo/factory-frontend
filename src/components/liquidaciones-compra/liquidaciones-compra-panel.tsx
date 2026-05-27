@@ -42,10 +42,13 @@ import {
   Calculator,
   Package,
   RefreshCw,
-  Mail
+  Mail,
+  Box,
+  PlusCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { ProductFormModal } from "@/src/components/products/product-form-modal";
 
 import { Button } from "@/src/components/ui/button";
 import { DiscountToggle } from "@/src/components/ui/discount-toggle";
@@ -86,7 +89,7 @@ const initialDetail = (): LiquidacionCompraFormState["detalles"][0] => ({
   descripcion: "",
   cantidad: 1,
   precio_unitario: 0,
-  descuento: "0",
+  descuento: "",
   tipo_descuento: "PORCENTAJE",
   codigo_iva: "4",
   porcentaje_iva: 15,
@@ -113,6 +116,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
   const [liquidaciones, setLiquidaciones] = useState<LiquidacionCompraItem[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [productModalOpen, setProductModalOpen] = useState(false);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
@@ -795,7 +799,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-          className="space-y-4"
+          className="space-y-6"
         >
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -929,7 +933,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Package className="h-3.5 w-3.5 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700">Servicios/Productos</h3>
+                    <h3 className="text-sm font-semibold text-slate-700">Detalles</h3>
                   </div>
                   <div className="flex items-center gap-3">
                     <DiscountToggle
@@ -941,8 +945,12 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
                         }))
                       }
                     />
+                    <Button type="button" variant="secondary" onClick={() => setProductModalOpen(true)} className="h-9 px-3">
+                      <Box className="mr-1.5 h-4 w-4" />
+                      Crear producto
+                    </Button>
                     <Button type="button" variant="secondary" className="h-9 px-3" onClick={addDetalle}>
-                      <Plus className="mr-1.5 h-4 w-4" />
+                      <PlusCircle className="mr-1.5 h-4 w-4" />
                       Agregar
                     </Button>
                   </div>
@@ -950,15 +958,15 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                   <div className="min-w-[960px]">
-                    <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_88px_72px_76px_62px_80px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                    <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                       <span>Código</span>
                       <span>Descripción</span>
                       <span>Cant.</span>
                       <span>Precio</span>
+                      <span>DESC.</span>
                       <span>IVA</span>
                       <span>ICE</span>
                       <span>IRBPNR</span>
-                      <span>Desc.</span>
                       <span>Subtotal</span>
                       <span />
                     </div>
@@ -971,7 +979,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
                         return (
                           <div
                             key={idx}
-                            className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_88px_72px_76px_62px_80px_44px]"
+                            className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px]"
                           >
                             {/* Código (read-only, from product catalog) */}
                             <span className="text-xs text-slate-500 truncate">
@@ -1057,27 +1065,12 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
                                 updateDetail(idx, "cantidad", cleaned === "" ? 0 : Number(cleaned));
                               }}
                               placeholder="Cant."
-                              className="h-9 bg-white shadow-none"
+                              className="h-9 bg-white shadow-none text-xs"
                             />
 
                             {/* Precio (read-only, from catalog) */}
-                            <span className="text-sm text-slate-700">
-                              {formatCurrency(detalle.precio_unitario)}
-                            </span>
-
-                            {/* IVA (read-only, from product) */}
-                            <span className="text-xs text-slate-500">
-                              {detalle.porcentaje_iva}%
-                            </span>
-
-                            {/* ICE (read-only, calculated from product) */}
-                            <span className="text-xs text-amber-600 font-medium">
-                              {producto?.tiene_ice ? `${producto.porcentaje_ice}% · ${formatCurrency(base * ((producto.porcentaje_ice ?? 0) / 100))}` : "-"}
-                            </span>
-
-                            {/* IRBPNR (read-only, calculated from product) */}
-                            <span className="text-xs text-purple-600 font-medium">
-                              {producto?.tiene_irbpnr ? formatCurrency(cantidad * (producto.valor_unitario_irbpnr ?? 0)) : "-"}
+                            <span className="text-xs text-slate-700">
+                              {(detalle.precio_unitario ?? 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
 
                             {/* Descuento (user-editable) */}
@@ -1090,12 +1083,27 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
                                 if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
                                 updateDetail(idx, "descuento", cleaned);
                               }}
-                              className="h-9 bg-white shadow-none"
+                              className="h-9 bg-white shadow-none text-xs"
                             />
 
+                            {/* IVA (read-only, from product) */}
+                            <span className="text-xs text-slate-500">
+                              {detalle.porcentaje_iva}%
+                            </span>
+
+                            {/* ICE (read-only, calculated from product) */}
+                            <span className="text-xs text-amber-600 font-medium">
+                              {producto?.tiene_ice ? `${producto.porcentaje_ice}% · ${(base * ((producto.porcentaje_ice ?? 0) / 100)).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
+                            </span>
+
+                            {/* IRBPNR (read-only, calculated from product) */}
+                            <span className="text-xs text-purple-600 font-medium">
+                              {producto?.tiene_irbpnr ? (cantidad * (producto.valor_unitario_irbpnr ?? 0)).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
+                            </span>
+
                             {/* Total (calculated) */}
-                            <span className="text-sm font-extrabold text-slate-900 tabular-nums">
-                              {formatCurrency(subtotalLinea)}
+                            <span className="text-xs font-extrabold text-slate-900 tabular-nums">
+                              {(subtotalLinea ?? 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
 
                             {/* Delete */}
@@ -1170,6 +1178,14 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
           </motion.div>
         </motion.div>
       )}
+
+      <ProductFormModal
+        open={productModalOpen}
+        onOpenChange={setProductModalOpen}
+        onSuccess={(newProduct) => {
+          setProductos((prev) => [...prev, newProduct]);
+        }}
+      />
 
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>

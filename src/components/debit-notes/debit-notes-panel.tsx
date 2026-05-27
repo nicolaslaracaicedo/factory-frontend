@@ -596,7 +596,7 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
     return () => { setHeaderVisible(true); setBreadcrumbs(null); };
   }, [editorOpen, editing, setBreadcrumbs, setHeaderVisible, setActiveSection]);
 
-  const formatMoney = (value: number) => `$${value.toFixed(2)}`;
+  const formatMoney = (value: number) => value.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const totales = useMemo(() => {
     const subtotal = form.motivos.reduce((s, m) => s + m.valor, 0);

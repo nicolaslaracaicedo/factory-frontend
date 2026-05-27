@@ -1225,15 +1225,15 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                   <div className="min-w-[960px]">
-                    <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_88px_72px_76px_62px_80px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                    <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                       <span>Código</span>
                       <span>Descripción</span>
                       <span>Cant.</span>
                       <span>Precio</span>
+                      <span>DESC.</span>
                       <span>IVA</span>
                       <span>ICE</span>
                       <span>IRBPNR</span>
-                      <span>Desc.</span>
                       <span>Subtotal</span>
                       <span />
                     </div>
@@ -1245,7 +1245,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                         return (
                           <div
                             key={`detalle-${index}`}
-                            className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_88px_72px_76px_62px_80px_44px]"
+                            className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px]"
                           >
                             <span className="text-xs text-slate-500 truncate">
                               {producto?.codigo || "-"}
@@ -1314,12 +1314,24 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                                 updateDetail(index, "cantidad", cleaned === "" ? 0 : Number(cleaned));
                               }}
                               placeholder="Cant."
-                              className="h-9 bg-white shadow-none"
+                              className="h-9 bg-white shadow-none text-xs"
                             />
 
-                            <span className="text-sm text-slate-700">
+                            <span className="text-xs text-slate-700">
                               {formatMoney(precioCatalogo)}
                             </span>
+
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              value={detalle.descuento}
+                              onChange={(event) => {
+                                let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                                if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
+                                updateDetail(index, "descuento", cleaned);
+                              }}
+                              className="h-9 bg-white shadow-none text-xs"
+                            />
 
                             <span className="text-xs text-slate-500">
                               {getIvaLabel(producto?.id_iva)}
@@ -1333,19 +1345,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                               {producto?.tiene_irbpnr ? formatMoney((Number(detalle.cantidad) || 0) * (producto.valor_unitario_irbpnr ?? 0)) : "-"}
                             </span>
 
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={detalle.descuento}
-                              onChange={(event) => {
-                                let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
-                                if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
-                                updateDetail(index, "descuento", cleaned);
-                              }}
-                              className="h-9 bg-white shadow-none"
-                            />
-
-                            <span className="text-sm font-extrabold text-slate-900 tabular-nums">
+                            <span className="text-xs font-extrabold text-slate-900 tabular-nums">
                               {formatMoney(detalleSubtotal)}
                             </span>
 
@@ -1356,7 +1356,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                               className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
                               title="Eliminar"
                             >
-                              <Trash className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                         );
@@ -1434,12 +1434,12 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-700">Subtotal:</span>
-                  <span className="font-medium text-slate-800">{formatMoney(totales.subtotal)}</span>
+                  <span className="font-medium text-slate-800">${formatMoney(totales.subtotal)}</span>
                 </div>
                 {totales.descuento > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-700">Descuento:</span>
-                    <span className="font-medium text-rose-600">{formatMoney(totales.descuento)}</span>
+                    <span className="font-medium text-rose-600">${formatMoney(totales.descuento)}</span>
                   </div>
                 )}
                 {totales.iva > 0 && (
@@ -1449,7 +1449,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                         ? `IVA (${Object.values(totales.ivaPorRates)[0].pct}%):`
                         : "IVA:"}
                     </span>
-                    <span className="font-medium text-slate-800">{formatMoney(totales.iva)}</span>
+                    <span className="font-medium text-slate-800">${formatMoney(totales.iva)}</span>
                   </div>
                 )}
                 {totales.ice > 0 && (
@@ -1457,7 +1457,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                     <span className="text-slate-700">
                       {totales.icePcts.length === 1 ? `ICE (${totales.icePcts[0]}%):` : "ICE:"}
                     </span>
-                    <span className="font-medium text-amber-600">{formatMoney(totales.ice)}</span>
+                    <span className="font-medium text-amber-600">${formatMoney(totales.ice)}</span>
                   </div>
                 )}
                 {totales.irbpnr > 0 && (
@@ -1465,12 +1465,12 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                     <span className="text-slate-700">
                       {totales.irbpnrValues.length === 1 ? `IRBPNR ($${totales.irbpnrValues[0].toFixed(2)}):` : "IRBPNR:"}
                     </span>
-                    <span className="font-medium text-purple-600">{formatMoney(totales.irbpnr)}</span>
+                    <span className="font-medium text-purple-600">${formatMoney(totales.irbpnr)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2">
                   <span className="text-sm font-bold text-slate-800">Total:</span>
-                  <span className="text-xl font-extrabold text-sky-700">{formatMoney(totales.total)}</span>
+                  <span className="text-xl font-extrabold text-sky-700">${formatMoney(totales.total)}</span>
                 </div>
               </div>
 

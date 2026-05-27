@@ -42,8 +42,10 @@ import {
   Calculator,
   PlusCircle,
   DollarSign,
+  Box,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ProductFormModal } from "@/src/components/products/product-form-modal";
 
 import { Button } from "@/src/components/ui/button";
 import {
@@ -150,6 +152,7 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [codigosIva, setCodigosIva] = useState<CodigoIva[]>([]);
+  const [productModalOpen, setProductModalOpen] = useState(false);
   const [clienteQuery, setClienteQuery] = useState("");
   const [clientSearchResults, setClientSearchResults] = useState<Cliente[]>([]);
   const [clientSearching, setClientSearching] = useState(false);
@@ -917,12 +920,12 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                 </div>
               </div>
 
-              {/* SECCIÓN: Productos */}
+              {/* SECCIÓN: Detalles */}
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Package className="h-3.5 w-3.5 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700">Productos</h3>
+                    <h3 className="text-sm font-semibold text-slate-700">Detalles</h3>
                   </div>
                   <div className="flex items-center gap-3">
                     <DiscountToggle
@@ -934,6 +937,10 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                         }))
                       }
                     />
+                    <Button type="button" variant="secondary" onClick={() => setProductModalOpen(true)} className="h-9 px-3">
+                      <Box className="mr-1.5 h-4 w-4" />
+                      Crear producto
+                    </Button>
                     <Button type="button" variant="secondary" onClick={addDetalle} className="h-9 px-3">
                       <PlusCircle className="mr-1.5 h-4 w-4" />
                       Agregar
@@ -942,13 +949,13 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                  <div className="min-w-[1050px]">
-                    <div className="hidden lg:grid lg:grid-cols-[60px_minmax(140px,1fr)_60px_90px_80px_70px_70px_70px_70px_44px] lg:gap-2 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                  <div className="min-w-[960px]">
+                    <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                       <span>Código</span>
                       <span>Descripción</span>
                       <span>Cant.</span>
                       <span>Precio</span>
-                      <span>Dto.</span>
+                      <span>DESC.</span>
                       <span>IVA</span>
                       <span>ICE</span>
                       <span>IRBPNR</span>
@@ -967,7 +974,7 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                         const irbpnrTotal = producto?.tiene_irbpnr ? detalle.cantidad * (producto.valor_unitario_irbpnr ?? 0) : 0;
                         const subtotalLinea = base;
                         return (
-                          <div key={`det-${idx}`} className="grid items-center gap-2 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(140px,1fr)_60px_90px_80px_70px_70px_70px_70px_44px]">
+                          <div key={`det-${idx}`} className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px]">
                             <span className="text-xs text-slate-500 truncate">{detalle.codigo || "-"}</span>
 
                             <SelectPrimitive.Root value={detalle.id_producto ? detalle.id_producto.toString() : undefined} onValueChange={(val) => handleProductoChange(idx, Number(val))}>
@@ -995,19 +1002,19 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                               </SelectPrimitive.Portal>
                             </SelectPrimitive.Root>
 
-                            <Input type="text" inputMode="decimal" value={detalle.cantidad === 0 ? "" : detalle.cantidad} onChange={(e) => { const raw = e.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"); const cleaned = raw.includes(".") ? raw.slice(0, raw.indexOf(".") + 3) : raw; updateDetalle(idx, { cantidad: cleaned === "" ? 0 : parseFloat(cleaned) }); }} className="h-9 bg-white shadow-none" />
+                            <Input type="text" inputMode="decimal" value={detalle.cantidad === 0 ? "" : detalle.cantidad} onChange={(e) => { const raw = e.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"); const cleaned = raw.includes(".") ? raw.slice(0, raw.indexOf(".") + 3) : raw; updateDetalle(idx, { cantidad: cleaned === "" ? 0 : parseFloat(cleaned) }); }} className="h-9 bg-white shadow-none text-xs" />
 
-                            <span className="text-sm text-slate-700 font-medium">{detalle.precio_unitario > 0 ? `$${detalle.precio_unitario.toFixed(2)}` : "-"}</span>
+                            <span className="text-xs text-slate-700 font-medium">{detalle.precio_unitario > 0 ? (detalle.precio_unitario).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}</span>
 
-                            <Input type="text" inputMode="decimal" value={detalle.descuento} onChange={(e) => { let cleaned = e.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"); if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); } updateDetalle(idx, { descuento: cleaned }); }} className="h-9 bg-white shadow-none" />
+                            <Input type="text" inputMode="decimal" value={detalle.descuento} onChange={(e) => { let cleaned = e.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"); if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); } updateDetalle(idx, { descuento: cleaned }); }} className="h-9 bg-white shadow-none text-xs" />
 
                             <span className="text-xs text-slate-500">{getIvaLabel(detalle.codigo_iva)}</span>
 
-                            <span className="text-xs text-amber-600 font-medium">{producto?.tiene_ice ? `${producto.porcentaje_ice}% · ${formatCurrency(iceTotal)}` : "-"}</span>
+                            <span className="text-xs text-amber-600 font-medium">{producto?.tiene_ice ? `${producto.porcentaje_ice}% · ${(iceTotal ?? 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}</span>
 
-                            <span className="text-xs text-purple-600 font-medium">{producto?.tiene_irbpnr ? formatCurrency(irbpnrTotal) : "-"}</span>
+                            <span className="text-xs text-purple-600 font-medium">{producto?.tiene_irbpnr ? (irbpnrTotal ?? 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}</span>
 
-                            <span className="text-sm font-extrabold text-slate-900 tabular-nums">{formatCurrency(subtotalLinea)}</span>
+                            <span className="text-xs font-extrabold text-slate-900 tabular-nums">{(subtotalLinea ?? 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
 
                             <button type="button" onClick={() => removeDetalle(idx)} disabled={form.detalles.length === 1} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" title="Eliminar"><Trash className="h-4 w-4" /></button>
                           </div>
@@ -1074,6 +1081,13 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
           onSuccess={(newClient) => {
             setClientes((prev) => [...prev, newClient]);
             setForm((prev) => ({ ...prev, id_cliente: newClient.id }));
+          }}
+        />
+        <ProductFormModal
+          open={productModalOpen}
+          onOpenChange={setProductModalOpen}
+          onSuccess={(newProduct) => {
+            setProductos((prev) => [...prev, newProduct]);
           }}
         />
       </motion.section>

@@ -110,7 +110,7 @@ export const toNotaCreditoFormState = (nota: NotaCreditoItem): NotaCreditoFormSt
     descripcion: detalle.descripcion ?? "",
     cantidad: detalle.cantidad ?? 0,
     precio_unitario: detalle.precio_unitario ?? 0,
-    descuento: detalle.descuento ?? 0,
+    descuento: String(detalle.descuento ?? ""),
     tipo_descuento: "PORCENTAJE" as const,
     codigo_iva: detalle.codigo_iva ?? "",
     porcentaje_iva: detalle.porcentaje_iva ?? 0,

@@ -46,8 +46,10 @@ import {
   Building2,
   RefreshCw,
   DollarSign,
+  Box,
 } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
+import { ProductFormModal } from "@/src/components/products/product-form-modal";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -157,6 +159,7 @@ interface NotasVentaPanelProps {
 export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVentaPanelProps) {
   const [notas, setNotas] = useState<NotaVentaItem[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
+  const [productModalOpen, setProductModalOpen] = useState(false);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [clienteQuery, setClienteQuery] = useState("");
@@ -806,11 +809,12 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
     const producto = getProductoById(productoId);
     if (!producto) return 0;
     const base = producto.precio ?? 0;
+    const baseCents = Math.round(base * 100);
     const ivaPct = getProductoIvaPorcentaje(productoId);
-    const iva = (base * ivaPct) / 100;
-    const ice = producto.tiene_ice ? (base * (producto.porcentaje_ice ?? 0)) / 100 : 0;
-    const irbpnr = producto.tiene_irbpnr ? (producto.valor_unitario_irbpnr ?? 0) : 0;
-    return base + iva + ice + irbpnr;
+    const iceCents = producto.tiene_ice ? Math.round(baseCents * (producto.porcentaje_ice ?? 0) / 100) : 0;
+    const baseImpCents = baseCents + iceCents;
+    const ivaCents = Math.round(baseImpCents * ivaPct / 100);
+    return (baseCents + iceCents + ivaCents) / 100;
   };
 
   const formatMoney = (value: number) => {
@@ -1099,6 +1103,10 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                         }))
                       }
                     />
+                      <Button type="button" variant="secondary" onClick={() => setProductModalOpen(true)} className="h-9 px-3">
+                        <Box className="mr-1.5 h-4 w-4" />
+                        Crear producto
+                      </Button>
                       <Button type="button" variant="secondary" onClick={addDetail} className="h-9 px-3">
                         <PlusCircle className="mr-1.5 h-4 w-4" />
                         Agregar Item
@@ -1107,13 +1115,13 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                   </div>
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                  <div className="min-w-[720px]">
-                    <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_70px_100px_80px_100px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                  <div className="min-w-[570px]">
+                    <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_60px_85px_62px_80px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                       <span>Código</span>
                       <span>Descripción</span>
                       <span>Cant.</span>
-                      <span>P. Unitario</span>
-                      <span>Dto.</span>
+                      <span>P. UNIT</span>
+                      <span>DESC.</span>
                       <span>Subtotal</span>
                       <span />
                     </div>
@@ -1124,7 +1132,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                         return (
                           <div
                             key={`detalle-${index}`}
-                            className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_70px_100px_80px_100px_44px]"
+                            className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_60px_85px_62px_80px_44px]"
                           >
                             <span className="text-xs text-slate-500 truncate">
                               {producto?.codigo || detalle.codigo || "-"}
@@ -1192,11 +1200,11 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                                 const cleaned = raw.includes(".") ? raw.slice(0, raw.indexOf(".") + 3) : raw;
                                 updateDetail(index, { cantidad: cleaned === "" ? 0 : parseFloat(cleaned) });
                               }}
-                              className="h-9 bg-white shadow-none"
+                              className="h-9 bg-white shadow-none text-xs"
                             />
 
-                            <span className="text-sm text-slate-700 font-medium">
-                              {detalle.precio_unitario > 0 ? `$${detalle.precio_unitario.toFixed(2)}` : "-"}
+                            <span className="text-xs text-slate-700 font-medium">
+                              {detalle.precio_unitario > 0 ? detalle.precio_unitario.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
                             </span>
 
                             <Input
@@ -1208,11 +1216,11 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                                 if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
                                 updateDetail(index, { descuento: cleaned });
                               }}
-                              className="h-9 bg-white shadow-none"
+                              className="h-9 bg-white shadow-none text-xs"
                             />
 
-                            <span className="text-sm font-extrabold text-slate-900 tabular-nums">
-                              ${formatMoney(subtotalLinea)}
+                            <span className="text-xs font-extrabold text-slate-900 tabular-nums">
+                              {formatMoney(subtotalLinea)}
                             </span>
 
                             <button
@@ -1259,17 +1267,17 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-700">Subtotal:</span>
-                  <span className="font-medium text-slate-800">{formatMoney(totales.subtotal)}</span>
+                  <span className="font-medium text-slate-800">${formatMoney(totales.subtotal)}</span>
                 </div>
                 {totales.descuento > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-700">Descuento:</span>
-                    <span className="font-medium text-rose-600">{formatMoney(totales.descuento)}</span>
+                    <span className="font-medium text-rose-600">${formatMoney(totales.descuento)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2">
                   <span className="text-sm font-bold text-slate-800">Total:</span>
-                  <span className="text-xl font-extrabold text-sky-700">{formatMoney(totales.total)}</span>
+                  <span className="text-xl font-extrabold text-sky-700">${formatMoney(totales.total)}</span>
                 </div>
               </div>
 
@@ -1301,7 +1309,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                   <div className="flex justify-between items-center bg-slate-50 rounded-lg px-3 py-2">
                     <span className="text-sm font-medium text-slate-600">Cambio:</span>
                     <span className={`text-lg font-bold ${montoRecibido >= totales.total ? "text-emerald-600" : "text-rose-600"}`}>
-                      {montoRecibido > 0 ? formatMoney(montoRecibido - totales.total) : "$0.00"}
+                      {montoRecibido > 0 ? formatMoney(montoRecibido - totales.total) : formatMoney(0)}
                     </span>
                   </div>
                 </div>
@@ -1333,13 +1341,18 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
             setForm((prev) => ({
               ...prev,
               id_cliente: newClient.id,
-              consumidor_final: false,
-              cli_identificacion: newClient.identificacion,
               cli_razon_social: newClient.razon_social,
               cli_direccion: newClient.direccion || "",
               cli_telefono: newClient.telefono || "",
               cli_email: newClient.email || "",
             }));
+          }}
+        />
+        <ProductFormModal
+          open={productModalOpen}
+          onOpenChange={setProductModalOpen}
+          onSuccess={(newProduct) => {
+            setProductos((prev) => [...prev, newProduct]);
           }}
         />
       </motion.section>

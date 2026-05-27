@@ -43,7 +43,7 @@ export interface NotaCreditoDetalleDraft {
   descripcion: string;
   cantidad: number;
   precio_unitario: number;
-  descuento: number;
+  descuento: string;
   tipo_descuento: "PORCENTAJE" | "VALOR";
   codigo_iva: string;
   porcentaje_iva: number;
