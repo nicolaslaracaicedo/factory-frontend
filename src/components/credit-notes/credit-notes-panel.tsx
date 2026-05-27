@@ -28,6 +28,7 @@ import {
 import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
 import { Switch } from "@/src/components/ui/switch";
+import { DiscountToggle } from "@/src/components/ui/discount-toggle";
 import type {
   NotaCreditoDetalleDraft,
   NotaCreditoFormState,
@@ -623,10 +624,6 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
       toast.warning("Ingresa el número de factura referenciada.");
       return;
     }
-    if (form.ref_mode === "INTERNA" && facturaEsConsumidorFinal) {
-      toast.warning("No se puede crear nota de crédito para facturas de Consumidor Final. Use otro documento.");
-      return;
-    }
     if (form.detalles.length === 0) {
       toast.warning("Agrega al menos un detalle.");
       return;
@@ -772,7 +769,9 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
     const descuentoTotal = form.detalles.reduce((sum, d) => sum + getDescuentoValor(d), 0);
     const iva = form.detalles.reduce((sum, d) => {
       const base = d.cantidad * d.precio_unitario - getDescuentoValor(d);
-      return sum + base * (d.porcentaje_iva / 100);
+      const ice = d.porcentaje_ice ? base * (d.porcentaje_ice / 100) : 0;
+      const baseImponible = base + ice;
+      return sum + baseImponible * (d.porcentaje_iva / 100);
     }, 0);
     const ice = form.detalles.reduce((sum, d) => {
       const base = d.cantidad * d.precio_unitario - getDescuentoValor(d);
@@ -923,14 +922,6 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                             </button>
                           </div>
                         </div>
-                        {(facturaEsConsumidorFinal || form.cliente_mode === "CONSUMIDOR_FINAL") && (
-                          <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
-                            <div className="text-xs text-amber-800">
-                              <span className="font-semibold">Factura de Consumidor Final:</span> según normativas del SRI 2025-2026, no se pueden emitir notas de crédito para modificar estas facturas. Debe usar otro documento.
-                            </div>
-                          </div>
-                        )}
                       </div>
                     ) : (
                       <div className="relative">
@@ -982,81 +973,25 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
 
               {/* SECCIÓN: Cliente */}
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <User className="h-3.5 w-3.5 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700">Cliente</h3>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-500">Consumidor final</span>
-                    <Switch checked={form.cliente_mode === "CONSUMIDOR_FINAL" || (form.id_factura_ref > 0 && form.id_cliente === 0)} disabled={form.id_factura_ref > 0} onCheckedChange={(checked) => { updateField("cliente_mode", checked ? "CONSUMIDOR_FINAL" : "REGISTRADO"); if (checked) updateField("id_cliente", 0); }} />
-                  </div>
+                <div className="flex items-center gap-2">
+                  <User className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Cliente</h3>
                 </div>
 
-                {form.id_factura_ref > 0 && (form.cliente_mode === "CONSUMIDOR_FINAL" || form.id_cliente === 0) ? (
+                {form.id_factura_ref === 0 ? (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-400">
+                    El cliente se cargará automáticamente al seleccionar una factura referenciada
+                  </div>
+                ) : form.cliente_mode === "CONSUMIDOR_FINAL" || form.id_cliente === 0 ? (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm">
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
                     <span className="font-medium text-slate-700">Consumidor final</span>
                   </div>
-                ) : form.ref_mode === "INTERNA" && form.id_factura_ref > 0 ? (
+                ) : (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm">
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
                     <span className="font-medium text-slate-700">{getClienteLabel(form.id_cliente)}</span>
                     <span className="text-xs text-slate-400">· {clientes.find((c) => c.id === form.id_cliente)?.identificacion || ""}</span>
-                  </div>
-                ) : (
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1 min-w-0">
-                      <Field label="Buscar cliente *" htmlFor="cliente_search">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                          <input
-                            id="cliente_search"
-                            type="text"
-                            value={clienteQuery}
-                            onChange={handleClienteSearchChange}
-                            placeholder="Buscar por cédula, RUC o razón social..."
-                            className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
-                          />
-                          {clienteSearching && (
-                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
-                            </div>
-                          )}
-                        </div>
-                      </Field>
-
-                      {clienteSearchResults.length > 0 && (
-                        <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
-                          {clienteSearchResults.map((cliente) => (
-                            <button
-                              key={cliente.id}
-                              type="button"
-                              onClick={() => selectCliente(cliente)}
-                              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
-                            >
-                              <div className="font-medium text-slate-800">{cliente.razon_social}</div>
-                              <div className="text-xs text-slate-500">{cliente.identificacion}</div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {form.id_cliente > 0 && clienteSearchResults.length === 0 && !clienteQuery.trim() && (
-                        <div className="mt-1 text-sm font-medium text-slate-700 flex items-center gap-2">
-                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
-                          {getClienteLabel(form.id_cliente)}
-                          <span className="text-xs text-slate-400">· {clientes.find((c) => c.id === form.id_cliente)?.identificacion || ""}</span>
-                          <button type="button" onClick={() => { updateField("id_cliente", 0); }} className="text-slate-400 hover:text-rose-500 transition-colors" title="Quitar cliente">
-                            <X size={14} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <Button type="button" variant="secondary" onClick={() => setClientModalOpen(true)} className="h-9 px-3 mb-0.5 shrink-0">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Nuevo
-                    </Button>
                   </div>
                 )}
               </div>
@@ -1068,47 +1003,17 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                     <Package className="h-3.5 w-3.5 text-slate-500" />
                     <h3 className="text-sm font-semibold text-slate-700">Detalles</h3>
                   </div>
-                  {(form.ref_mode === "INTERNA" || form.ref_mode === "MANUAL") && (
+                  {(form.ref_mode === "INTERNA" || form.ref_mode === "MANUAL") && form.id_factura_ref > 0 && (
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <span>Descuento:</span>
-                        <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setForm((prev) => ({
-                                ...prev,
-                                detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: "PORCENTAJE" as const })),
-                              }))
-                            }
-                            className={`flex h-7 w-8 items-center justify-center rounded text-xs font-bold transition-colors ${
-                              form.detalles[0]?.tipo_descuento === "PORCENTAJE"
-                                ? "bg-sky-500 text-white shadow-sm"
-                                : "text-slate-400 hover:text-slate-600"
-                            }`}
-                            title="Descuento en porcentaje"
-                          >
-                            %
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setForm((prev) => ({
-                                ...prev,
-                                detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: "VALOR" as const })),
-                              }))
-                            }
-                            className={`flex h-7 w-8 items-center justify-center rounded text-xs font-bold transition-colors ${
-                              form.detalles[0]?.tipo_descuento === "VALOR"
-                                ? "bg-emerald-500 text-white shadow-sm"
-                                : "text-slate-400 hover:text-slate-600"
-                            }`}
-                            title="Descuento en valor monetario"
-                          >
-                            $
-                          </button>
-                        </div>
-                      </div>
+                      <DiscountToggle
+                        value={form.detalles[0]?.tipo_descuento ?? "PORCENTAJE"}
+                        onChange={(value) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: value })),
+                          }))
+                        }
+                      />
                       <Button type="button" variant="secondary" onClick={addDetail} className="h-9 px-3">
                         <PlusCircle className="mr-1.5 h-4 w-4" />
                         Agregar detalle
@@ -1116,97 +1021,103 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                     </div>
                   )}
                 </div>
-                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                  <div className="min-w-[800px]">
-                    <div className="hidden lg:grid lg:grid-cols-[80px_1fr_50px_80px_56px_56px_60px_56px_80px_36px] lg:gap-4 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
-                      <span>Código</span>
-                      <span>Descripción</span>
-                      <span className="text-right">Cant.</span>
-                      <span className="text-right">Precio</span>
-                      <span className="text-right">IVA</span>
-                      <span className="text-right">ICE</span>
-                      <span className="text-right">IRBPNR</span>
-                      <span className="text-right">Desc.</span>
-                      <span className="text-right">Subtotal</span>
-                      <span />
-                    </div>
-                    <div className="divide-y divide-slate-200">
-                      {form.detalles.map((detalle, index) => {
-                        const descuentoValor = getDescuentoValor(detalle);
-                        const base = detalle.cantidad * detalle.precio_unitario - descuentoValor;
-                        const subtotalLinea = base;
-                        return (
-                        <div key={`detalle-${index}`} className="grid items-center gap-4 bg-white px-3 py-2 lg:grid-cols-[80px_1fr_50px_80px_56px_56px_60px_56px_80px_36px]">
-                          {form.id_factura_ref > 0 ? (
-                            <span className="text-xs text-slate-800 truncate">{detalle.codigo || "-"}</span>
-                          ) : (
-                            <Input value={detalle.codigo} onChange={(event) => updateDetail(index, "codigo", event.target.value)} className="bg-white shadow-none h-8 text-xs" placeholder="-" />
-                          )}
-                          {form.id_factura_ref > 0 ? (
-                            <span className="text-xs text-slate-800 truncate">{detalle.descripcion || "-"}</span>
-                          ) : (
-                            <Input value={detalle.descripcion} onChange={(event) => updateDetail(index, "descripcion", event.target.value)} className="bg-white shadow-none h-8 text-xs" placeholder="*" />
-                          )}
-                          <Input
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={detalle.cantidad}
-                                    onChange={(event) => {
-                                      let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
-                                      if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
-                                      updateDetail(index, "cantidad", cleaned === "" ? 0 : Number(cleaned));
-                                    }}
-                                    className="bg-white shadow-none h-8 text-xs text-right"
-                                  />
-                          {form.id_factura_ref > 0 ? (
-                            <span className="text-right text-xs text-slate-800">${detalle.precio_unitario.toFixed(2)}</span>
-                          ) : (
-                            <Input type="number" min={0} step="0.01" value={detalle.precio_unitario} onChange={(event) => updateDetail(index, "precio_unitario", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
-                          )}
-                          {form.id_factura_ref > 0 && detalle.porcentaje_iva === 0 ? (
-                            <span className="text-right text-xs text-slate-400">-</span>
-                          ) : form.id_factura_ref > 0 ? (
-                            <span className="text-right text-xs text-slate-800">{detalle.porcentaje_iva}%</span>
-                          ) : (
-                            <Input type="number" min={0} step="0.01" value={detalle.porcentaje_iva} onChange={(event) => updateDetail(index, "porcentaje_iva", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
-                          )}
-                          {form.id_factura_ref > 0 && detalle.porcentaje_ice === 0 ? (
-                            <span className="text-right text-xs text-slate-400">-</span>
-                          ) : form.id_factura_ref > 0 ? (
-                            <span className="text-right text-xs text-slate-800">{detalle.porcentaje_ice}%</span>
-                          ) : (
-                            <Input type="number" min={0} step="0.01" value={detalle.porcentaje_ice} onChange={(event) => updateDetail(index, "porcentaje_ice", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
-                          )}
-                          {form.id_factura_ref > 0 && detalle.valor_unitario_irbpnr === 0 ? (
-                            <span className="text-right text-xs text-slate-400">-</span>
-                          ) : form.id_factura_ref > 0 ? (
-                            <span className="text-right text-xs text-slate-800">${detalle.valor_unitario_irbpnr.toFixed(4)}</span>
-                          ) : (
-                            <Input type="number" min={0} step="0.0001" value={detalle.valor_unitario_irbpnr} onChange={(event) => updateDetail(index, "valor_unitario_irbpnr", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
-                          )}
-                          <Input
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={detalle.descuento}
-                                    onChange={(event) => {
-                                      let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
-                                      if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
-                                      updateDetail(index, "descuento", cleaned === "" ? 0 : Number(cleaned));
-                                    }}
-                                    className="bg-white shadow-none h-8 text-xs text-right"
-                                  />
-                          <span className="text-right text-xs font-semibold text-slate-800">${subtotalLinea.toFixed(2)}</span>
-                          <button type="button" onClick={() => removeDetail(index)} disabled={form.detalles.length === 1} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" title="Eliminar">
-                            <Trash className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                        );
-                      })}
+                {form.id_factura_ref > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                    <div className="min-w-[800px]">
+                      <div className="hidden lg:grid lg:grid-cols-[80px_1fr_50px_80px_56px_56px_60px_56px_80px_36px] lg:gap-4 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                        <span>Código</span>
+                        <span>Descripción</span>
+                        <span className="text-right">Cant.</span>
+                        <span className="text-right">Precio</span>
+                        <span className="text-right">IVA</span>
+                        <span className="text-right">ICE</span>
+                        <span className="text-right">IRBPNR</span>
+                        <span className="text-right">Desc.</span>
+                        <span className="text-right">Subtotal</span>
+                        <span />
+                      </div>
+                      <div className="divide-y divide-slate-200">
+                        {form.detalles.map((detalle, index) => {
+                          const descuentoValor = getDescuentoValor(detalle);
+                          const base = detalle.cantidad * detalle.precio_unitario - descuentoValor;
+                          const subtotalLinea = base;
+                          return (
+                          <div key={`detalle-${index}`} className="grid items-center gap-4 bg-white px-3 py-2 lg:grid-cols-[80px_1fr_50px_80px_56px_56px_60px_56px_80px_36px]">
+                            {form.id_factura_ref > 0 ? (
+                              <span className="text-xs text-slate-800 truncate">{detalle.codigo || "-"}</span>
+                            ) : (
+                              <Input value={detalle.codigo} onChange={(event) => updateDetail(index, "codigo", event.target.value)} className="bg-white shadow-none h-8 text-xs" placeholder="-" />
+                            )}
+                            {form.id_factura_ref > 0 ? (
+                              <span className="text-xs text-slate-800 truncate">{detalle.descripcion || "-"}</span>
+                            ) : (
+                              <Input value={detalle.descripcion} onChange={(event) => updateDetail(index, "descripcion", event.target.value)} className="bg-white shadow-none h-8 text-xs" placeholder="*" />
+                            )}
+                            <Input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={detalle.cantidad}
+                                      onChange={(event) => {
+                                        let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                                        if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
+                                        updateDetail(index, "cantidad", cleaned === "" ? 0 : Number(cleaned));
+                                      }}
+                                      className="bg-white shadow-none h-8 text-xs text-right"
+                                    />
+                            {form.id_factura_ref > 0 ? (
+                              <span className="text-right text-xs text-slate-800">${detalle.precio_unitario.toFixed(2)}</span>
+                            ) : (
+                              <Input type="number" min={0} step="0.01" value={detalle.precio_unitario} onChange={(event) => updateDetail(index, "precio_unitario", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                            )}
+                            {form.id_factura_ref > 0 && detalle.porcentaje_iva === 0 ? (
+                              <span className="text-right text-xs text-slate-400">-</span>
+                            ) : form.id_factura_ref > 0 ? (
+                              <span className="text-right text-xs text-slate-800">{detalle.porcentaje_iva}%</span>
+                            ) : (
+                              <Input type="number" min={0} step="0.01" value={detalle.porcentaje_iva} onChange={(event) => updateDetail(index, "porcentaje_iva", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                            )}
+                            {form.id_factura_ref > 0 && detalle.porcentaje_ice === 0 ? (
+                              <span className="text-right text-xs text-slate-400">-</span>
+                            ) : form.id_factura_ref > 0 ? (
+                              <span className="text-right text-xs text-slate-800">{detalle.porcentaje_ice}%</span>
+                            ) : (
+                              <Input type="number" min={0} step="0.01" value={detalle.porcentaje_ice} onChange={(event) => updateDetail(index, "porcentaje_ice", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                            )}
+                            {form.id_factura_ref > 0 && detalle.valor_unitario_irbpnr === 0 ? (
+                              <span className="text-right text-xs text-slate-400">-</span>
+                            ) : form.id_factura_ref > 0 ? (
+                              <span className="text-right text-xs text-slate-800">${detalle.valor_unitario_irbpnr.toFixed(4)}</span>
+                            ) : (
+                              <Input type="number" min={0} step="0.0001" value={detalle.valor_unitario_irbpnr} onChange={(event) => updateDetail(index, "valor_unitario_irbpnr", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs text-right" />
+                            )}
+                            <Input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={detalle.descuento}
+                                      onChange={(event) => {
+                                        let cleaned = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                                        if (cleaned.includes(".")) { const [int, dec] = cleaned.split("."); cleaned = int + "." + dec.slice(0, 2); }
+                                        updateDetail(index, "descuento", cleaned === "" ? 0 : Number(cleaned));
+                                      }}
+                                      className="bg-white shadow-none h-8 text-xs text-right"
+                                    />
+                            <span className="text-right text-xs font-semibold text-slate-800">${subtotalLinea.toFixed(2)}</span>
+                            <button type="button" onClick={() => removeDetail(index)} disabled={form.detalles.length === 1} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" title="Eliminar">
+                              <Trash className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
+                ) : (
+                  <div className="flex items-center justify-center py-8 text-sm text-slate-400">
+                    Los detalles se cargarán automáticamente al seleccionar una factura referenciada.
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
 
             <aside className="space-y-4 lg:sticky lg:top-6">
               <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
@@ -1287,16 +1198,6 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                   </span>
                 </div>
               </div>
-              {(form.ref_mode === "INTERNA" || facturaEsConsumidorFinal || form.cliente_mode === "CONSUMIDOR_FINAL") && (
-                <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-                  <div className="flex items-start gap-2">
-                    <span className="inline-flex shrink-0 mt-0.5 h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
-                    <div className="text-xs text-amber-800">
-                      <span className="font-semibold">Restricción SRI 2025-2026:</span> No se pueden emitir notas de crédito para facturas de Consumidor Final. Use otro documento.
-                    </div>
-                  </div>
-                </div>
-              )}
               {form.ref_mode === "INTERNA" && form.monto_recibido > 0 && totales.total > form.monto_recibido && (
                 <div className="flex items-center gap-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2">
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-rose-600 text-xs font-bold">!</span>

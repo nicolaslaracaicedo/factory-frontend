@@ -44,7 +44,7 @@ import type { FacturaItem } from "@/src/modules/invoices/types/invoice.types";
 import { ivaService } from "@/src/modules/iva/services/iva.service";
 import type { CodigoIva } from "@/src/modules/iva/types/iva.types";
 import { Loader } from "@/src/components/ui/loader";
-import { ClientFormModal } from "@/src/components/clients/client-form-modal";
+
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
@@ -105,11 +105,6 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
   const [form, setForm] = useState<NotaDebitoFormState>(initialForm);
   const [facturaQuery, setFacturaQuery] = useState("");
   const [facturaSearchResults, setFacturaSearchResults] = useState<FacturaItem[]>([]);
-  const [clienteQuery, setClienteQuery] = useState("");
-  const [clienteSearchResults, setClienteSearchResults] = useState<Cliente[]>([]);
-  const [clienteSearching, setClienteSearching] = useState(false);
-  const clienteSearchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const [clientModalOpen, setClientModalOpen] = useState(false);
   const [montoStr, setMontoStr] = useState("");
   const [motivoValorStrs, setMotivoValorStrs] = useState<string[]>([""]);
   const [codigosIva, setCodigosIva] = useState<CodigoIva[]>([]);
@@ -355,10 +350,6 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
     setEditing(null);
     setFacturaQuery("");
     setFacturaSearchResults([]);
-    setClienteQuery("");
-    setClienteSearchResults([]);
-    setMontoStr("");
-    setMotivoValorStrs([""]);
     setFacturaEsConsumidorFinal(false);
     setForm({
       ...initialForm,
@@ -376,16 +367,9 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
       setForm(toNotaDebitoFormState(data));
       setFacturaQuery("");
       setFacturaSearchResults([]);
-      setClienteQuery("");
-      setClienteSearchResults([]);
-      setMontoStr("");
       setFacturaEsConsumidorFinal(false);
       setEditorOpen(true);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "No se pudo cargar la nota.";
-      toast.error(message);
-    }
+    } catch { /* ignore */ }
   };
 
   const openDetail = async (nota: NotaDebitoItem) => {
@@ -475,11 +459,6 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
       toast.warning("Agrega al menos un motivo detallado.");
       return;
     }
-    if (facturaEsConsumidorFinal) {
-      toast.warning("Restricción SRI 2025-2026: No se pueden emitir notas de débito para facturas de Consumidor Final. Use otro documento.");
-      return;
-    }
-
     setSaving(true);
     try {
       const payload = buildPayload();
@@ -602,8 +581,8 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
 
   const navigateTo = (section: string) => { setActiveSection(section); };
 
-  const closeEditor = () => { setEditorOpen(false); setEditing(null); setForm(initialForm); setMontoStr(""); setMotivoValorStrs([""]); setClienteQuery(""); setClienteSearchResults([]); setFacturaEsConsumidorFinal(false); };
-  const resetForm = () => { setForm({ ...initialForm, id_punto_emision: (() => { const d = useAuthStore.getState().user?.puntoEmisionDefault; const n = Number(d); return (n > 0 && puntos.some(p => p.id === n)) ? n : (puntos[0]?.id ?? 0); })(), fecha_emision: new Date().toISOString().slice(0, 10), motivos: [initialMotivo()] }); setMontoStr(""); setMotivoValorStrs([""]); setClienteQuery(""); setClienteSearchResults([]); setFacturaEsConsumidorFinal(false); };
+  const closeEditor = () => { setEditorOpen(false); setEditing(null); setForm(initialForm); setMontoStr(""); setMotivoValorStrs([""]); setFacturaEsConsumidorFinal(false); };
+  const resetForm = () => { setForm({ ...initialForm, id_punto_emision: (() => { const d = useAuthStore.getState().user?.puntoEmisionDefault; const n = Number(d); return (n > 0 && puntos.some(p => p.id === n)) ? n : (puntos[0]?.id ?? 0); })(), fecha_emision: new Date().toISOString().slice(0, 10), motivos: [initialMotivo()] }); setMontoStr(""); setMotivoValorStrs([""]); setFacturaEsConsumidorFinal(false); };
 
   useEffect(() => {
     if (editorOpen) {
@@ -624,27 +603,6 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
     const iva = subtotal * (form.porcentaje_iva / 100);
     return { subtotal, iva, total: subtotal + iva };
   }, [form.motivos, form.porcentaje_iva]);
-
-  const handleClienteSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setClienteQuery(value);
-    if (clienteSearchTimerRef.current) clearTimeout(clienteSearchTimerRef.current);
-    if (!value.trim()) { setClienteSearchResults([]); return; }
-    clienteSearchTimerRef.current = setTimeout(async () => {
-      setClienteSearching(true);
-      try {
-        const results = await clientService.listClientes("ACTIVO", value.trim());
-        setClienteSearchResults(results);
-      } catch { /* ignore */ }
-      finally { setClienteSearching(false); }
-    }, 300);
-  };
-
-  const selectCliente = (cliente: Cliente) => {
-    updateField("id_cliente", cliente.id);
-    setClienteQuery("");
-    setClienteSearchResults([]);
-  };
 
   const handleFacturaSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
@@ -674,8 +632,6 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
     } catch { /* ignore */ }
     setFacturaQuery("");
     setFacturaSearchResults([]);
-    setClienteQuery("");
-    setClienteSearchResults([]);
   };
 
   if (!showPanel) return null;
@@ -766,19 +722,11 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
                         <span className="text-sm font-medium text-slate-800 truncate">{getFacturaLabel(form.id_factura_ref)}</span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button type="button" onClick={() => { updateField("id_factura_ref", 0); setFacturaQuery(""); setFacturaSearchResults([]); setClienteQuery(""); setClienteSearchResults([]); setFacturaEsConsumidorFinal(false); }} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Cambiar factura">
+                        <button type="button" onClick={() => { updateField("id_factura_ref", 0); setFacturaQuery(""); setFacturaSearchResults([]); setFacturaEsConsumidorFinal(false); }} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Cambiar factura">
                           <Search size={14} />
                         </button>
                       </div>
                     </div>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                    <div className="flex items-start gap-2">
-                      <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">!</span>
-                      <div className="text-xs text-amber-800">
-                        <span className="font-semibold">Restricción SRI 2025-2026:</span> No se pueden emitir notas de débito para facturas de Consumidor Final. Use otro documento.
-                      </div>
-                    </div>
-                  </div>
                   </div>
                 ) : (
                   <div className="relative">
@@ -804,52 +752,24 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
 
               {/* Cliente */}
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <User className="h-3.5 w-3.5 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700">Cliente</h3>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <User className="h-3.5 w-3.5 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">Cliente</h3>
                 </div>
-                {form.id_cliente > 0 && clienteSearchResults.length === 0 && !clienteQuery.trim() ? (
-                  <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
-                      <span className="text-sm font-medium text-slate-800 truncate">{getClienteLabel(form.id_cliente)}</span>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button type="button" onClick={() => { updateField("id_cliente", 0); setClienteQuery(""); setClienteSearchResults([]); }} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Cambiar cliente">
-                        <Search size={14} />
-                      </button>
-                    </div>
+                {form.id_factura_ref === 0 ? (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-400">
+                    El cliente se cargará automáticamente al seleccionar una factura referenciada
+                  </div>
+                ) : form.id_cliente > 0 ? (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                    <span className="font-medium text-slate-700">{getClienteLabel(form.id_cliente)}</span>
+                    <span className="text-xs text-slate-400">· {clientes.find((c) => c.id === form.id_cliente)?.identificacion || ""}</span>
                   </div>
                 ) : (
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1 min-w-0 relative">
-                      <Field label="Buscar cliente *" htmlFor="cliente_search">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                          <input id="cliente_search" type="text" value={clienteQuery} onChange={handleClienteSearchChange} placeholder="Buscar por cédula, RUC o razón social..." className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all" />
-                          {clienteSearching && (
-                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
-                            </div>
-                          )}
-                        </div>
-                      </Field>
-                      {clienteSearchResults.length > 0 && (
-                        <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
-                          {clienteSearchResults.map((cliente) => (
-                            <button key={cliente.id} type="button" onClick={() => selectCliente(cliente)} className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0">
-                              <div className="font-medium text-slate-800">{cliente.razon_social}</div>
-                              <div className="text-xs text-slate-500">{cliente.identificacion}</div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <Button type="button" variant="secondary" onClick={() => setClientModalOpen(true)} className="h-9 px-3 mb-0.5 shrink-0">
-                      <Plus className="h-4 w-4 mr-1" /> Nuevo
-                    </Button>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                    <span className="font-medium text-slate-700">Consumidor final</span>
                   </div>
                 )}
               </div>
@@ -861,103 +781,101 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
                     <FileText className="h-3.5 w-3.5 text-slate-500" />
                     <h3 className="text-sm font-semibold text-slate-700">Motivos</h3>
                   </div>
-                  <Button type="button" variant="secondary" onClick={addMotivo} className="h-8 px-2.5 text-xs">
-                    <PlusCircle className="mr-1 h-3.5 w-3.5" /> Agregar motivo
-                  </Button>
+                  {form.id_factura_ref > 0 && (
+                    <Button type="button" variant="secondary" onClick={addMotivo} className="h-8 px-2.5 text-xs">
+                      <PlusCircle className="mr-1 h-3.5 w-3.5" /> Agregar motivo
+                    </Button>
+                  )}
                 </div>
-                <div className="space-y-3">
-                  {form.motivos.map((item, index) => (
-                    <div key={`motivo-${index}`} className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3 items-start">
-                      <div className="flex-1 min-w-0">
-                        <Field label="Razón" htmlFor={`razon-${index}`}>
-                          <Input id={`razon-${index}`} value={item.razon} onChange={(event) => updateMotivo(index, "razon", event.target.value)} className="bg-white shadow-none" />
-                        </Field>
-                      </div>
-                      <div className="w-32 shrink-0">
-                        <Field label="Valor" htmlFor={`valor-${index}`}>
-                          <Input id={`valor-${index}`} type="text" inputMode="decimal" value={motivoValorStrs[index] ?? (item.valor || "")} onChange={(event) => {
-                            const raw = event.target.value.replace(/[^0-9.,]/g, "").replace(",", ".");
-                            const parts = raw.split(".");
-                            const cleaned = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : raw;
-                            const finalVal = cleaned.includes(".") ? cleaned.slice(0, cleaned.indexOf(".") + 3) : cleaned;
-                            const num = parseFloat(finalVal);
-                            setMotivoValorStrs((prev) => { const n = [...prev]; n[index] = event.target.value; return n; });
-                            updateMotivo(index, "valor", !isNaN(num) && num >= 0 ? Math.round(num * 100) / 100 : 0);
-                          }} className="bg-white shadow-none h-8 text-xs text-right" placeholder="0.00" />
-                        </Field>
-                      </div>
-                      {index === 0 && (
-                        <div className="w-28 shrink-0">
-                          <Field label="IVA" htmlFor="id_iva_debit">
-                            <SelectPrimitive.Root value={form.codigo_iva || undefined} onValueChange={(val) => {
-                              const ivaSel = codigosIva.find((i) => i.codigo === val);
-                              updateField("codigo_iva", val);
-                              updateField("porcentaje_iva", ivaSel?.porcentaje ?? 0);
-                            }}>
-                              <SelectPrimitive.Trigger className="inline-flex h-9 w-full items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none transition-all hover:bg-slate-50 focus:border-sky-400 focus:ring-2 focus:ring-sky-200">
-                                <SelectPrimitive.Value placeholder="IVA..." />
-                                <SelectPrimitive.Icon><ChevronDown size={12} className="text-slate-400" /></SelectPrimitive.Icon>
-                              </SelectPrimitive.Trigger>
-                              <SelectPrimitive.Portal>
-                                <SelectPrimitive.Content className="z-50 min-w-[140px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm" position="popper" sideOffset={4}>
-                                  <SelectPrimitive.Viewport className="p-1">
-                                    {codigosIva.map((ivaSel) => (
-                                      <SelectPrimitive.Item key={ivaSel.id} value={ivaSel.codigo} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                                        <SelectPrimitive.ItemText>{ivaSel.nombre} ({ivaSel.porcentaje}%)</SelectPrimitive.ItemText>
-                                      </SelectPrimitive.Item>
-                                    ))}
-                                  </SelectPrimitive.Viewport>
-                                </SelectPrimitive.Content>
-                              </SelectPrimitive.Portal>
-                            </SelectPrimitive.Root>
+                {form.id_factura_ref > 0 ? (
+                  <div className="space-y-3">
+                    {form.motivos.map((item, index) => (
+                      <div key={`motivo-${index}`} className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3 items-start">
+                        <div className="flex-1 min-w-0">
+                          <Field label="Razón" htmlFor={`razon-${index}`}>
+                            <Input id={`razon-${index}`} value={item.razon} onChange={(event) => updateMotivo(index, "razon", event.target.value)} className="bg-white shadow-none" />
                           </Field>
                         </div>
-                      )}
-                      <div className="pt-6">
-                          <button type="button" onClick={() => removeMotivo(index)} disabled={form.motivos.length === 1} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" title="Eliminar">
-                            <Trash className="h-4 w-4" />
-                          </button>
+                        <div className="w-32 shrink-0">
+                          <Field label="Valor" htmlFor={`valor-${index}`}>
+                            <Input id={`valor-${index}`} type="text" inputMode="decimal" value={motivoValorStrs[index] ?? (item.valor || "")} onChange={(event) => {
+                              const raw = event.target.value.replace(/[^0-9.,]/g, "").replace(",", ".");
+                              const parts = raw.split(".");
+                              const cleaned = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : raw;
+                              const finalVal = cleaned.includes(".") ? cleaned.slice(0, cleaned.indexOf(".") + 3) : cleaned;
+                              const num = parseFloat(finalVal);
+                              setMotivoValorStrs((prev) => { const n = [...prev]; n[index] = event.target.value; return n; });
+                              updateMotivo(index, "valor", !isNaN(num) && num >= 0 ? Math.round(num * 100) / 100 : 0);
+                            }} className="bg-white shadow-none h-8 text-xs text-right" placeholder="0.00" />
+                          </Field>
                         </div>
-                    </div>
-                  ))}
-                </div>
+                        {index === 0 && (
+                          <div className="w-28 shrink-0">
+                            <Field label="IVA" htmlFor="id_iva_debit">
+                              <SelectPrimitive.Root value={form.codigo_iva || undefined} onValueChange={(val) => {
+                                const ivaSel = codigosIva.find((i) => i.codigo === val);
+                                updateField("codigo_iva", val);
+                                updateField("porcentaje_iva", ivaSel?.porcentaje ?? 0);
+                              }}>
+                                <SelectPrimitive.Trigger className="inline-flex h-9 w-full items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none transition-all hover:bg-slate-50 focus:border-sky-400 focus:ring-2 focus:ring-sky-200">
+                                  <SelectPrimitive.Value placeholder="IVA..." />
+                                  <SelectPrimitive.Icon><ChevronDown size={12} className="text-slate-400" /></SelectPrimitive.Icon>
+                                </SelectPrimitive.Trigger>
+                                <SelectPrimitive.Portal>
+                                  <SelectPrimitive.Content className="z-50 min-w-[140px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm" position="popper" sideOffset={4}>
+                                    <SelectPrimitive.Viewport className="p-1">
+                                      {codigosIva.map((ivaSel) => (
+                                        <SelectPrimitive.Item key={ivaSel.id} value={ivaSel.codigo} className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                                          <SelectPrimitive.ItemText>{ivaSel.nombre} ({ivaSel.porcentaje}%)</SelectPrimitive.ItemText>
+                                        </SelectPrimitive.Item>
+                                      ))}
+                                    </SelectPrimitive.Viewport>
+                                  </SelectPrimitive.Content>
+                                </SelectPrimitive.Portal>
+                              </SelectPrimitive.Root>
+                            </Field>
+                          </div>
+                        )}
+                        <div className="pt-6">
+                            <button type="button" onClick={() => removeMotivo(index)} disabled={form.motivos.length === 1} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" title="Eliminar">
+                              <Trash className="h-4 w-4" />
+                            </button>
+                          </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-8 text-sm text-slate-400">
+                    Selecciona una factura referenciada para agregar motivos.
+                  </div>
+                )}
               </div>
             </div>
 
             <aside className="space-y-4 lg:sticky lg:top-6">
               <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="h-3.5 w-3.5 text-indigo-600" />
-                  <h4 className="text-sm font-semibold text-slate-700">Resumen</h4>
+                  <DollarSign className="h-3.5 w-3.5 text-slate-500" />
+                  <h4 className="text-sm font-semibold text-slate-700">Totales</h4>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Total factura original:</span>
-                  <span className="font-medium text-slate-800">{parseFloat(montoStr || "0") > 0 ? formatMoney(parseFloat(montoStr)) : "$0.00"}</span>
-                </div>
-                <div className="flex justify-between text-sm pt-1 border-t border-dashed border-slate-200">
-                  <span className="text-slate-600">Subtotal nota débito:</span>
+                  <span className="text-slate-600">Subtotal débito:</span>
                   <span className="font-medium text-slate-800">{formatMoney(totales.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">{form.porcentaje_iva > 0 ? `IVA (${form.porcentaje_iva}%):` : "IVA:"}</span>
                   <span className="font-medium text-slate-800">{formatMoney(totales.iva)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Total nota débito:</span>
-                  <span className="font-medium text-sky-700">{formatMoney(totales.total)}</span>
+                <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2">
+                  <span className="text-sm font-bold text-slate-800">Total débito:</span>
+                  <span className="text-lg font-extrabold text-sky-700">{formatMoney(totales.total)}</span>
                 </div>
-                <div className="border-t border-slate-200 pt-2 flex justify-between">
-                  <span className="font-semibold text-slate-800">Nuevo total a pagar:</span>
-                  <span className="text-lg font-extrabold text-indigo-700">{formatMoney((parseFloat(montoStr || "0") || 0) + totales.total)}</span>
-                </div>
-              </div>
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <div className="flex items-start gap-2">
-                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">!</span>
-                  <div className="text-xs text-amber-800">
-                    <span className="font-semibold">Restricción SRI 2025-2026:</span> No se pueden emitir notas de débito para facturas de Consumidor Final. Use otro documento.
+                {parseFloat(montoStr || "0") > 0 && (
+                  <div className="flex justify-between text-xs text-slate-500 pt-1 border-t border-dashed border-slate-200">
+                    <span>Nuevo total a pagar (factura + débito):</span>
+                    <span className="font-semibold text-slate-700">{formatMoney((parseFloat(montoStr || "0") || 0) + totales.total)}</span>
                   </div>
-                </div>
+                )}
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <Button type="submit" disabled={saving} className="h-10 w-full">
@@ -968,12 +886,6 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
           </div>
         </motion.form>
 
-        <ClientFormModal open={clientModalOpen} onOpenChange={setClientModalOpen} onSuccess={(newClient) => {
-          setClientes((prev) => [...prev, newClient]);
-          updateField("id_cliente", newClient.id);
-          setClienteQuery("");
-          setClienteSearchResults([]);
-        }} />
       </motion.section>
     );
   }

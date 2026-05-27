@@ -73,6 +73,7 @@ import type { Producto } from "@/src/modules/products/types/product.types";
 import { ivaService } from "@/src/modules/iva/services/iva.service";
 import type { CodigoIva } from "@/src/modules/iva/types/iva.types";
 import { Loader } from "@/src/components/ui/loader";
+import { DiscountToggle } from "@/src/components/ui/discount-toggle";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
@@ -535,12 +536,13 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
       const dto = getDescuentoValor(d);
       const base = sub - dto;
       const producto = getProductoById(d.id_producto);
-      const iva = (base * d.porcentaje_iva) / 100;
       const icePct = producto?.porcentaje_ice ?? 0;
-      const irbpnrVal = producto?.valor_unitario_irbpnr ?? 0;
       const ice = producto?.tiene_ice ? (base * icePct) / 100 : 0;
+      const baseImponibleIva = base + ice;
+      const iva = (baseImponibleIva * d.porcentaje_iva) / 100;
+      const irbpnrVal = producto?.valor_unitario_irbpnr ?? 0;
       const irbpnr = producto?.tiene_irbpnr ? (d.cantidad) * irbpnrVal : 0;
-      const total = base + iva + ice + irbpnr;
+      const total = base + ice + iva + irbpnr;
       return {
         subtotal: acc.subtotal + sub,
         descuento: acc.descuento + dto,
@@ -912,45 +914,15 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
                     <h3 className="text-sm font-semibold text-slate-700">Productos</h3>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <span>Descuento:</span>
-                      <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: "PORCENTAJE" as const })),
-                            }))
-                          }
-                          className={`flex h-7 w-8 items-center justify-center rounded text-xs font-bold transition-colors ${
-                            form.detalles[0]?.tipo_descuento === "PORCENTAJE"
-                              ? "bg-sky-500 text-white shadow-sm"
-                              : "text-slate-400 hover:text-slate-600"
-                          }`}
-                          title="Descuento en porcentaje"
-                        >
-                          %
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: "VALOR" as const })),
-                            }))
-                          }
-                          className={`flex h-7 w-8 items-center justify-center rounded text-xs font-bold transition-colors ${
-                            form.detalles[0]?.tipo_descuento === "VALOR"
-                              ? "bg-emerald-500 text-white shadow-sm"
-                              : "text-slate-400 hover:text-slate-600"
-                          }`}
-                          title="Descuento en valor monetario"
-                        >
-                          $
-                        </button>
-                      </div>
-                    </div>
+                    <DiscountToggle
+                      value={form.detalles[0]?.tipo_descuento ?? "PORCENTAJE"}
+                      onChange={(value) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: value })),
+                        }))
+                      }
+                    />
                     <Button type="button" variant="secondary" onClick={addDetalle} className="h-9 px-3">
                       <PlusCircle className="mr-1.5 h-4 w-4" />
                       Agregar
@@ -978,8 +950,9 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
                         const sub = detalle.cantidad * detalle.precio_unitario;
                         const dto = getDescuentoValor(detalle);
                         const base = sub - dto;
-                        const ivaTotal = (base * detalle.porcentaje_iva) / 100;
                         const iceTotal = producto?.tiene_ice ? (base * (producto.porcentaje_ice ?? 0)) / 100 : 0;
+                        const baseImponibleIva = base + iceTotal;
+                        const ivaTotal = (baseImponibleIva * detalle.porcentaje_iva) / 100;
                         const irbpnrTotal = producto?.tiene_irbpnr ? detalle.cantidad * (producto.valor_unitario_irbpnr ?? 0) : 0;
                         const subtotalLinea = base;
                         return (

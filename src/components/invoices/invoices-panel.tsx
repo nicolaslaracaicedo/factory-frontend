@@ -47,6 +47,7 @@ import { ivaService } from "@/src/modules/iva/services/iva.service";
 import type { CodigoIva } from "@/src/modules/iva/types/iva.types";
 import { Loader } from "@/src/components/ui/loader";
 import { Switch } from "@/src/components/ui/switch";
+import { DiscountToggle } from "@/src/components/ui/discount-toggle";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
@@ -610,6 +611,10 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
       toast.warning("Agrega al menos un detalle.");
       return;
     }
+    if (totalExceeds50) {
+      toast.warning("Las ventas superiores a $50.00 no pueden emitirse a Consumidor Final. Selecciona un cliente.");
+      return;
+    }
     if (form.tipo_pago === "CONTADO" && form.monto_recibido <= 0) {
       toast.warning("Ingresa el monto recibido para facturas al contado.");
       return;
@@ -788,16 +793,17 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
   const getDetalleTotal = (detalle: FacturaDetalleDraft) => {
     const base = getDetalleSubtotal(detalle);
     const ivaPct = getDetalleIvaPercent(detalle);
-    const iva = (base * ivaPct) / 100;
     const producto = getProductoById(detalle.id_producto);
     const cantidad = Number(detalle.cantidad) || 0;
     const ice = producto?.tiene_ice
       ? (base * (producto.porcentaje_ice ?? 0)) / 100
       : 0;
+    const baseImponibleIva = base + ice;
+    const iva = (baseImponibleIva * ivaPct) / 100;
     const irbpnr = producto?.tiene_irbpnr
       ? cantidad * (producto.valor_unitario_irbpnr ?? 0)
       : 0;
-    return base + iva + ice + irbpnr;
+    return base + ice + iva + irbpnr;
   };
 
   interface PorIvaRate {
@@ -819,13 +825,14 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
       const descuento = getDescuentoValor(detalle);
       const base = getDetalleSubtotal(detalle);
       const ivaPct = getDetalleIvaPercent(detalle);
-      const iva = (base * ivaPct) / 100;
       const producto = getProductoById(detalle.id_producto);
       const icePct = producto?.porcentaje_ice ?? 0;
-      const irbpnrVal = producto?.valor_unitario_irbpnr ?? 0;
       const ice = producto?.tiene_ice
         ? (base * icePct) / 100
         : 0;
+      const baseImponibleIva = base + ice;
+      const iva = (baseImponibleIva * ivaPct) / 100;
+      const irbpnrVal = producto?.valor_unitario_irbpnr ?? 0;
       const irbpnr = producto?.tiene_irbpnr
         ? (Number(detalle.cantidad) || 0) * irbpnrVal
         : 0;
@@ -843,7 +850,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
         irbpnrValues: producto?.tiene_irbpnr
           ? acc.irbpnrValues.includes(irbpnrVal) ? acc.irbpnrValues : [...acc.irbpnrValues, irbpnrVal]
           : acc.irbpnrValues,
-        total: acc.total + base + iva + ice + irbpnr,
+        total: acc.total + base + ice + iva + irbpnr,
         ivaPorRates: { ...acc.ivaPorRates, [key]: { ...prev, monto: prev.monto + iva } },
       };
     },
@@ -853,6 +860,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
   const isCredito = form.tipo_pago === "CREDITO" || form.tipo_pago === "CRÉDITO";
   const isContado = form.tipo_pago === "CONTADO";
   const totalRounded = Math.round(totales.total * 100) / 100;
+  const totalExceeds50 = form.cliente_mode === "CONSUMIDOR_FINAL" && totalRounded > 50;
   const montoRecibidoDisplay = isContado
     ? (form.monto_recibido > 0 ? form.monto_recibido : totalRounded)
     : 0;
@@ -1110,6 +1118,15 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                   </div>
                 </div>
 
+                {totalExceeds50 && (
+                  <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold shrink-0">!</span>
+                    <p className="text-xs text-amber-800">
+                      Por disposición del SRI, las ventas superiores a $50.00 no pueden emitirse a Consumidor Final. Por favor, ingrese una cédula o RUC.
+                    </p>
+                  </div>
+                )}
+
                 {form.cliente_mode !== "CONSUMIDOR_FINAL" && (
                   <div>
                     {form.id_cliente > 0 && clientSearchResults.length === 0 && !clienteQuery.trim() ? (
@@ -1186,45 +1203,15 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                     <h3 className="text-sm font-semibold text-slate-700">Detalles</h3>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <span>Descuento:</span>
-                      <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: "PORCENTAJE" as const })),
-                            }))
-                          }
-                          className={`flex h-7 w-8 items-center justify-center rounded text-xs font-bold transition-colors ${
-                            form.detalles[0]?.tipo_descuento === "PORCENTAJE"
-                              ? "bg-sky-500 text-white shadow-sm"
-                              : "text-slate-400 hover:text-slate-600"
-                          }`}
-                          title="Descuento en porcentaje"
-                        >
-                          %
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: "VALOR" as const })),
-                            }))
-                          }
-                          className={`flex h-7 w-8 items-center justify-center rounded text-xs font-bold transition-colors ${
-                            form.detalles[0]?.tipo_descuento === "VALOR"
-                              ? "bg-emerald-500 text-white shadow-sm"
-                              : "text-slate-400 hover:text-slate-600"
-                          }`}
-                          title="Descuento en valor monetario"
-                        >
-                          $
-                        </button>
-                      </div>
-                    </div>
+                    <DiscountToggle
+                      value={form.detalles[0]?.tipo_descuento ?? "PORCENTAJE"}
+                      onChange={(value) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          detalles: prev.detalles.map((d) => ({ ...d, tipo_descuento: value })),
+                        }))
+                      }
+                    />
                     <Button type="button" variant="secondary" onClick={() => setProductModalOpen(true)} className="h-9 px-3">
                       <Box className="mr-1.5 h-4 w-4" />
                       Crear producto
@@ -1530,8 +1517,8 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
               )}
 
               <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <Button type="submit" disabled={saving} className="h-10 w-full">
-                  {saving ? "Guardando..." : "Guardar factura"}
+                <Button type="submit" disabled={saving || totalExceeds50} className="h-10 w-full">
+                  {saving ? "Guardando..." : totalExceeds50 ? "Seleccione un cliente" : "Guardar factura"}
                 </Button>
               </div>
             </aside>
