@@ -278,11 +278,11 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
 
     if (!telefono) nextErrors.telefono = "El teléfono es obligatorio.";
     else if (!/^\d+$/.test(telefono)) nextErrors.telefono = "Solo debe contener números.";
-    else if (!/^0/.test(telefono)) nextErrors.telefono = "Debe comenzar con 0 (ej: 0991234567).";
-    else if (telefono.length !== 9 && telefono.length !== 10) nextErrors.telefono = "Debe tener 9 dígitos (convencional) o 10 dígitos (celular).";
+    else if (telefono.length !== 10) nextErrors.telefono = "Debe tener 10 dígitos (ej: 0991234567).";
+    else if (!telefono.startsWith("09")) nextErrors.telefono = "Debe comenzar con 09 (ej: 0991234567).";
 
     if (!direccion) nextErrors.direccion_matriz = "La dirección matriz es obligatoria.";
-    else if (direccion.length > 150) nextErrors.direccion_matriz = "No debe exceder 150 caracteres.";
+    else if (direccion.length > 300) nextErrors.direccion_matriz = "No debe exceder 300 caracteres.";
 
     const smtpHost = form.smtp_host.trim();
     const smtpUser = form.smtp_user.trim();
@@ -799,7 +799,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                         <div className="relative">
                           <Input
                             id="direccion_matriz"
-                            maxLength={150}
+                            maxLength={300}
                             value={form.direccion_matriz}
                             onChange={(event) =>
                               updateField("direccion_matriz", event.target.value)
@@ -807,7 +807,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                             className="bg-white shadow-none pr-10"
                           />
                           <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
-                            {form.direccion_matriz.length}/150
+                            {form.direccion_matriz.length}/300
                           </span>
                         </div>
                       </Field>

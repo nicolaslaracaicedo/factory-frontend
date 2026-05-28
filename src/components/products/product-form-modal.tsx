@@ -64,6 +64,7 @@ interface ProductFormModalProps {
 
 export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormModalProps) {
   const [form, setForm] = useState<ProductoFormInput>(initialForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [grupos, setGrupos] = useState<GrupoProducto[]>([]);
   const [codigosIva, setCodigosIva] = useState<CodigoIva[]>([]);
   const [saving, setSaving] = useState(false);
@@ -109,6 +110,7 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
   }, [grupoSearch, grupos]);
 
   const updateField = (name: keyof ProductoFormInput, value: string | number | boolean) => {
+    setErrors((prev) => ({ ...prev, [name]: "" }));
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -116,8 +118,47 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
     return Number.isFinite(value) ? value : fallback;
   };
 
+  const validateForm = (): boolean => {
+    const next: Record<string, string> = {};
+    const codigo = form.codigo.trim();
+    const descripcion = form.descripcion.trim();
+
+    if (!codigo) next.codigo = "El código es obligatorio.";
+    else if (codigo.length > 25) next.codigo = "No debe exceder 25 caracteres.";
+    else if (!/^[a-zA-Z0-9_-]+$/.test(codigo)) next.codigo = "Solo letras, números, guiones y guiones bajos.";
+
+    if (!form.tipo) next.tipo = "Debe seleccionar un tipo.";
+
+    if (!descripcion) next.descripcion = "La descripción es obligatoria.";
+    else if (descripcion.length < 3) next.descripcion = "Debe tener al menos 3 caracteres.";
+    else if (descripcion.length > 300) next.descripcion = "No debe exceder 300 caracteres.";
+
+    if (form.id_grupo === 0) next.id_grupo = "Debe seleccionar un grupo.";
+    if (form.id_iva === 0) next.id_iva = "Debe seleccionar un IVA.";
+    if (!form.unidad_medida) next.unidad_medida = "Debe seleccionar una unidad de medida.";
+    if (form.precio < 0) next.precio = "No puede ser negativo.";
+
+    if (form.tiene_ice) {
+      if (!form.codigo_ice) next.codigo_ice = "Debe seleccionar un código SRI ICE.";
+      if (form.porcentaje_ice <= 0) next.porcentaje_ice = "Debe ser mayor a 0.";
+    }
+
+    if (form.tiene_irbpnr && form.valor_unitario_irbpnr <= 0) {
+      next.valor_unitario_irbpnr = "Debe ser mayor a 0.";
+    }
+
+    setErrors(next);
+    const firstError = Object.values(next).find(Boolean);
+    if (firstError) {
+      toast.warning(firstError);
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validateForm()) return;
     setSaving(true);
 
     const normalizedIce = form.tiene_ice
@@ -159,6 +200,7 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
   useEffect(() => {
     if (!open) return;
     setForm(initialForm);
+    setErrors({});
 
     const load = async () => {
       setLoadingGrupos(true);
@@ -190,6 +232,7 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
     <Dialog.Root open={open} onOpenChange={(val) => {
       if (!val) {
         setForm(initialForm);
+        setErrors({});
         setGrupoSearch("");
         setUnidadSearch("");
       }
@@ -245,18 +288,21 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
                 <h3 className="text-sm font-semibold text-slate-700">Identificación</h3>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Código" htmlFor="codigo">
+                <Field label="Código" htmlFor="codigo" error={errors.codigo}>
                   <Input
                     id="codigo"
                     value={form.codigo}
-                    onChange={(event) => updateField("codigo", event.target.value)}
+                    onChange={(event) => {
+                      const val = event.target.value.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 25);
+                      updateField("codigo", val);
+                    }}
+                    maxLength={25}
                     className="bg-white shadow-none placeholder:text-slate-300"
                     placeholder="Ej: PROD-001"
-                    required
                   />
                 </Field>
 
-                <Field label="Tipo" htmlFor="tipo">
+                <Field label="Tipo" htmlFor="tipo" error={errors.tipo}>
                   <SelectPrimitive.Root
                     value={form.tipo || undefined}
                     onValueChange={(val) => updateField("tipo", val)}
@@ -296,15 +342,20 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
                 </Field>
 
                 <div className="sm:col-span-2">
-                  <Field label="Descripción" htmlFor="descripcion">
-                    <Input
-                      id="descripcion"
-                      value={form.descripcion}
-                      onChange={(event) => updateField("descripcion", event.target.value)}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Nombre o descripción del producto/servicio"
-                      required
-                    />
+                  <Field label="Descripción" htmlFor="descripcion" error={errors.descripcion}>
+                    <div className="relative">
+                      <Input
+                        id="descripcion"
+                        value={form.descripcion}
+                        onChange={(event) => updateField("descripcion", event.target.value.slice(0, 300))}
+                        maxLength={300}
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                        placeholder="Nombre o descripción del producto/servicio"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.descripcion.length}/300
+                      </span>
+                    </div>
                   </Field>
                 </div>
               </div>
@@ -316,7 +367,7 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
                 <h3 className="text-sm font-semibold text-slate-700">Clasificación</h3>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Grupo" htmlFor="id_grupo">
+                <Field label="Grupo" htmlFor="id_grupo" error={errors.id_grupo}>
                   <SelectPrimitive.Root
                     value={form.id_grupo === 0 ? undefined : form.id_grupo.toString()}
                     onValueChange={(val) => updateField("id_grupo", Number(val))}
@@ -371,7 +422,7 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
                   </SelectPrimitive.Root>
                 </Field>
 
-                <Field label="IVA" htmlFor="id_iva">
+                <Field label="IVA" htmlFor="id_iva" error={errors.id_iva}>
                   <SelectPrimitive.Root
                     value={form.id_iva === 0 ? undefined : form.id_iva.toString()}
                     onValueChange={(val) => updateField("id_iva", Number(val))}
@@ -416,7 +467,7 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
                 <h3 className="text-sm font-semibold text-slate-700">Precio y Unidad</h3>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Unidad de Medida" htmlFor="unidad_medida">
+                <Field label="Unidad de Medida" htmlFor="unidad_medida" error={errors.unidad_medida}>
                   <SelectPrimitive.Root
                     value={form.unidad_medida || undefined}
                     onValueChange={(val) => updateField("unidad_medida", val)}
@@ -469,7 +520,7 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
                   </SelectPrimitive.Root>
                 </Field>
 
-                <Field label="Precio" htmlFor="precio">
+                <Field label="Precio" htmlFor="precio" error={errors.precio}>
                   <Input
                     id="precio"
                     type="number"
@@ -479,7 +530,6 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
                     onChange={(event) => updateField("precio", Number(event.target.value))}
                     className="bg-white shadow-none placeholder:text-slate-300"
                     placeholder="0.00"
-                    required
                   />
                 </Field>
               </div>
@@ -500,7 +550,7 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
               {form.tiene_ice && (
                 <div className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Porcentaje ICE" htmlFor="porcentaje_ice">
+                    <Field label="Porcentaje ICE" htmlFor="porcentaje_ice" error={errors.porcentaje_ice}>
                       <Input
                         id="porcentaje_ice"
                         type="number"
@@ -512,7 +562,7 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
                         placeholder="Ej: 5, 10, 15"
                       />
                     </Field>
-                    <Field label="Código SRI ICE" htmlFor="codigo_ice">
+                    <Field label="Código SRI ICE" htmlFor="codigo_ice" error={errors.codigo_ice}>
                       <SelectPrimitive.Root
                         value={form.codigo_ice || undefined}
                         onValueChange={(val) => {
@@ -568,7 +618,7 @@ export function ProductFormModal({ open, onOpenChange, onSuccess }: ProductFormM
               </div>
 
               {form.tiene_irbpnr && (
-                <Field label="Valor Unitario IRBPNR" htmlFor="valor_unitario_irbpnr">
+                <Field label="Valor Unitario IRBPNR" htmlFor="valor_unitario_irbpnr" error={errors.valor_unitario_irbpnr}>
                   <Input
                     id="valor_unitario_irbpnr"
                     type="number"

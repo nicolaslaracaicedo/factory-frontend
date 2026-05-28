@@ -60,6 +60,7 @@ export function IvaPanel({ showPanel = true, readOnly = false }: IvaPanelProps) 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CodigoIva | null>(null);
   const [form, setForm] = useState<CodigoIvaFormInput>(initialForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -214,24 +215,55 @@ export function IvaPanel({ showPanel = true, readOnly = false }: IvaPanelProps) 
   const openCreate = () => {
     setEditing(null);
     setForm(initialForm);
+    setErrors({});
     setModalOpen(true);
   };
 
   const openEdit = (codigo: CodigoIva) => {
     setEditing(codigo);
     setForm(toCodigoIvaFormInput(codigo));
+    setErrors({});
     setModalOpen(true);
   };
 
   const updateField = (name: keyof CodigoIvaFormInput, value: string | number) => {
+    setErrors((prev) => ({ ...prev, [name]: "" }));
     setForm((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
+  const validateForm = (): boolean => {
+    const next: Record<string, string> = {};
+    const codigo = form.codigo.trim();
+    const nombre = form.nombre.trim();
+
+    if (!codigo) next.codigo = "El código es obligatorio.";
+    else if (!/^\d+$/.test(codigo)) next.codigo = "Solo se permiten números enteros.";
+    else if (codigo.length > 2) next.codigo = "No debe exceder 2 caracteres.";
+
+    if (!nombre) next.nombre = "El nombre es obligatorio.";
+    else if (nombre.length < 4) next.nombre = "Debe tener al menos 4 caracteres.";
+    else if (nombre.length > 100) next.nombre = "No debe exceder 100 caracteres.";
+    else if (/^\d+$/.test(nombre)) next.nombre = "Debe contener al menos una letra.";
+
+    if (form.porcentaje < 0) next.porcentaje = "No puede ser negativo.";
+    else if (form.porcentaje > 100) next.porcentaje = "No puede ser mayor a 100.";
+
+    setErrors(next);
+
+    const firstError = Object.values(next).find(Boolean);
+    if (firstError) {
+      toast.warning(firstError);
+      return false;
+    }
+    return true;
+  };
+
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validateForm()) return;
     setSaving(true);
 
     try {
@@ -535,18 +567,22 @@ export function IvaPanel({ showPanel = true, readOnly = false }: IvaPanelProps) 
                 </div>
                 <div className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Código" htmlFor="codigo">
+                    <Field label="Código" htmlFor="codigo" error={errors.codigo}>
                       <Input
                         id="codigo"
                         value={form.codigo}
-                        onChange={(event) => updateField("codigo", event.target.value)}
+                        onChange={(event) => {
+                          const val = event.target.value.replace(/\D/g, "").slice(0, 2);
+                          updateField("codigo", val);
+                        }}
                         disabled={Boolean(editing)}
+                        maxLength={2}
                         className="bg-white shadow-none placeholder:text-slate-300"
                         placeholder="Ej: 2, 3, 4"
                       />
                     </Field>
 
-                    <Field label="Porcentaje" htmlFor="porcentaje">
+                    <Field label="Porcentaje" htmlFor="porcentaje" error={errors.porcentaje}>
                       <Input
                         id="porcentaje"
                         type="number"
@@ -560,14 +596,20 @@ export function IvaPanel({ showPanel = true, readOnly = false }: IvaPanelProps) 
                     </Field>
                   </div>
 
-                  <Field label="Nombre" htmlFor="nombre">
-                    <Input
-                      id="nombre"
-                      value={form.nombre}
-                      onChange={(event) => updateField("nombre", event.target.value)}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Ej: IVA 12%, No objeto de IVA, IVA 0%"
-                    />
+                  <Field label="Nombre" htmlFor="nombre" error={errors.nombre}>
+                    <div className="relative">
+                      <Input
+                        id="nombre"
+                        value={form.nombre}
+                        onChange={(event) => updateField("nombre", event.target.value)}
+                        maxLength={100}
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                        placeholder="Ej: IVA 12%, No objeto de IVA, IVA 0%"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.nombre.length}/100
+                      </span>
+                    </div>
                   </Field>
                 </div>
               </div>

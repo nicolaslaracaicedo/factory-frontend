@@ -14,6 +14,21 @@ import type { Cliente, ClienteFormInput, ClienteUpdateInput } from "@/src/module
 import { toClienteFormInput } from "@/src/modules/clients/utils/client-payload.utils";
 import { clientService } from "@/src/modules/clients/services/client.service";
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const validaCedula = (cedula: string): boolean => {
+  if (!/^\d{10}$/.test(cedula)) return false;
+  const digitoVerificador = Number(cedula[9]);
+  const coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2];
+  let suma = 0;
+  for (let i = 0; i < 9; i++) {
+    let valor = Number(cedula[i]) * coeficientes[i];
+    if (valor >= 10) valor -= 9;
+    suma += valor;
+  }
+  return (10 - (suma % 10)) % 10 === digitoVerificador;
+};
+
 const initialForm: ClienteFormInput = {
   tipo_identificacion: "",
   identificacion: "",
@@ -41,6 +56,7 @@ interface ClientFormModalProps {
 
 export function ClientFormModal({ open, onOpenChange, onSuccess, client }: ClientFormModalProps) {
   const [form, setForm] = useState<ClienteFormInput>(client ? toClienteFormInput(client) : initialForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [searchingCi, setSearchingCi] = useState(false);
   const [foundClient, setFoundClient] = useState<Cliente | null>(null);
@@ -50,10 +66,12 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
   useEffect(() => {
     if (open) {
       setForm(client ? toClienteFormInput(client) : initialForm);
+      setErrors({});
     }
   }, [open, client]);
 
   const updateField = (name: keyof ClienteFormInput, value: string | boolean) => {
+    setErrors((prev) => ({ ...prev, [name]: "" }));
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -79,8 +97,57 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
     }, 400);
   };
 
+  const validateForm = (): boolean => {
+    const next: Record<string, string> = {};
+    const tipo = form.tipo_identificacion.trim();
+    const identificacion = form.identificacion.trim();
+    const razonSocial = form.razon_social.trim();
+    const email = form.email.trim();
+    const telefono = form.telefono.trim();
+    const direccion = form.direccion.trim();
+
+    if (!tipo) next.tipo_identificacion = "Debe seleccionar un tipo de identificación.";
+
+    if (!identificacion) next.identificacion = "La identificación es obligatoria.";
+    else if (tipo === "05") {
+      if (!/^\d{10}$/.test(identificacion)) next.identificacion = "La cédula debe tener exactamente 10 dígitos.";
+      else if (!validaCedula(identificacion)) next.identificacion = "Cédula inválida.";
+    } else if (tipo === "04") {
+      if (!/^\d{13}$/.test(identificacion)) next.identificacion = "El RUC debe tener exactamente 13 dígitos.";
+      else if (!identificacion.endsWith("001")) next.identificacion = "El RUC debe terminar en 001.";
+    } else if (tipo === "06") {
+      if (identificacion.length < 3 || identificacion.length > 20) next.identificacion = "El pasaporte debe tener entre 3 y 20 caracteres.";
+      else if (!/^[a-zA-Z0-9]+$/.test(identificacion)) next.identificacion = "El pasaporte solo permite letras y números.";
+    }
+
+    if (!razonSocial) next.razon_social = "La razón social es obligatoria.";
+    else if (razonSocial.length < 3) next.razon_social = "Debe tener al menos 3 caracteres.";
+    else if (razonSocial.length > 300) next.razon_social = "No debe exceder 300 caracteres.";
+
+    if (!email) next.email = "El correo electrónico es obligatorio.";
+    else if (!emailRegex.test(email)) next.email = "Correo electrónico inválido.";
+
+    if (telefono) {
+      if (!/^\d+$/.test(telefono)) next.telefono = "Solo se permiten dígitos.";
+      else if (!/^\d{7}$/.test(telefono) && !/^09\d{8}$/.test(telefono)) next.telefono = "Debe tener 7 dígitos (fijo) o 10 dígitos comenzando con 09 (celular).";
+    }
+
+    if (!direccion) next.direccion = "La dirección es obligatoria.";
+    else if (direccion.length < 5) next.direccion = "Debe tener al menos 5 caracteres.";
+    else if (direccion.length > 300) next.direccion = "No debe exceder 300 caracteres.";
+
+    setErrors(next);
+    const firstError = Object.values(next).find(Boolean);
+    if (firstError) {
+      toast.warning(firstError);
+      return false;
+    }
+    return true;
+  };
+
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validateForm()) return;
     setSaving(true);
 
     try {
@@ -169,7 +236,7 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
                 <h3 className="text-sm font-semibold text-slate-700">Información comercial</h3>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Tipo de identificación" htmlFor="tipo_identificacion">
+                <Field label="Tipo de identificación" htmlFor="tipo_identificacion" error={errors.tipo_identificacion}>
                   <SelectPrimitive.Root 
                     value={form.tipo_identificacion || undefined} 
                     onValueChange={(val) => updateField("tipo_identificacion", val)}
@@ -205,17 +272,26 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
                   </SelectPrimitive.Root>
                 </Field>
 
-                <Field label="Identificación" htmlFor="identificacion">
+                <Field label="Identificación" htmlFor="identificacion" error={errors.identificacion}>
                   <div className="flex gap-2 items-center">
                     <div className="flex-1 relative">
                       <Input
                         id="identificacion"
-                        inputMode="numeric"
+                        inputMode={form.tipo_identificacion === "06" ? "text" : "numeric"}
                         value={form.identificacion}
-                        onChange={handleIdentificacionChange}
+                        onChange={(event) => {
+                          const raw = event.target.value;
+                          if (form.tipo_identificacion === "06") {
+                            event.target.value = raw.replace(/[^a-zA-Z0-9]/g, "").slice(0, 20);
+                          } else {
+                            event.target.value = raw.replace(/\D/g, "").slice(0, 13);
+                          }
+                          handleIdentificacionChange(event);
+                        }}
                         disabled={editing}
+                        maxLength={form.tipo_identificacion === "06" ? 20 : 13}
                         className="w-full bg-white shadow-none placeholder:text-slate-300"
-                        placeholder="Ej: 1712345678"
+                        placeholder={form.tipo_identificacion === "05" ? "Ej: 1712345678" : form.tipo_identificacion === "04" ? "Ej: 1712345678001" : "Ej: AB123456"}
                       />
                       {searchingCi && (
                         <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
@@ -243,14 +319,20 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
                 )}
 
                 <div className="sm:col-span-2">
-                  <Field label="Razón social" htmlFor="razon_social">
-                    <Input
-                      id="razon_social"
-                      value={form.razon_social}
-                      onChange={(event) => updateField("razon_social", event.target.value)}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Nombre o razón social del cliente"
-                    />
+                  <Field label="Razón social" htmlFor="razon_social" error={errors.razon_social}>
+                    <div className="relative">
+                      <Input
+                        id="razon_social"
+                        value={form.razon_social}
+                        onChange={(event) => updateField("razon_social", event.target.value)}
+                        maxLength={300}
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                        placeholder="Nombre o razón social del cliente"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.razon_social.length}/300
+                      </span>
+                    </div>
                   </Field>
                 </div>
               </div>
@@ -262,36 +344,51 @@ export function ClientFormModal({ open, onOpenChange, onSuccess, client }: Clien
                 <h3 className="text-sm font-semibold text-slate-700">Información de contacto</h3>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Teléfono" htmlFor="telefono">
+                <Field label="Teléfono" htmlFor="telefono" error={errors.telefono}>
                   <Input
                     id="telefono"
+                    inputMode="numeric"
                     value={form.telefono}
-                    onChange={(event) => updateField("telefono", event.target.value)}
+                    onChange={(event) => {
+                      const val = event.target.value.replace(/\D/g, "").slice(0, 10);
+                      updateField("telefono", val);
+                    }}
+                    maxLength={10}
                     className="bg-white shadow-none placeholder:text-slate-300"
                     placeholder="0991234567"
                   />
                 </Field>
 
-                <Field label="Correo electrónico" htmlFor="email">
+                <Field label="Correo electrónico" htmlFor="email" error={errors.email}>
                   <Input
                     id="email"
                     type="email"
                     value={form.email}
-                    onChange={(event) => updateField("email", event.target.value)}
+                    onChange={(event) => {
+                      const val = event.target.value.slice(0, 150);
+                      updateField("email", val);
+                    }}
+                    maxLength={150}
                     className="bg-white shadow-none placeholder:text-slate-300"
                     placeholder="cliente@empresa.com"
                   />
                 </Field>
 
                 <div className="sm:col-span-2">
-                  <Field label="Dirección" htmlFor="direccion">
-                    <Input
-                      id="direccion"
-                      value={form.direccion}
-                      onChange={(event) => updateField("direccion", event.target.value)}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Av. Principal 123, Ciudad"
-                    />
+                  <Field label="Dirección" htmlFor="direccion" error={errors.direccion}>
+                    <div className="relative">
+                      <Input
+                        id="direccion"
+                        value={form.direccion}
+                        onChange={(event) => updateField("direccion", event.target.value.slice(0, 300))}
+                        maxLength={300}
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                        placeholder="Av. Principal 123, Ciudad"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.direccion.length}/300
+                      </span>
+                    </div>
                   </Field>
                 </div>
               </div>

@@ -71,8 +71,14 @@ export function SecuencialesPanel({ showPanel = true, readOnly = false }: Secuen
   const [detail, setDetail] = useState<SecuencialItem | null>(null);
   const [detailPreview, setDetailPreview] = useState<SecuencialItem | null>(null);
   const [form, setForm] = useState<SecuencialFormInput>(initialForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [puntoSearch, setPuntoSearch] = useState("");
+  const [tipoSearch, setTipoSearch] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
+  const filteredPuntos = useMemo(() => puntos.filter((p) => !puntoSearch || p.codigo.toLowerCase().includes(puntoSearch.toLowerCase()) || p.descripcion.toLowerCase().includes(puntoSearch.toLowerCase())), [puntos, puntoSearch]);
+  const filteredTipos = useMemo(() => tiposDocumento.filter((t) => !tipoSearch || (t.nombre?.toLowerCase().includes(tipoSearch.toLowerCase()) || t.descripcion?.toLowerCase().includes(tipoSearch.toLowerCase()) || t.codigo.toLowerCase().includes(tipoSearch.toLowerCase()))), [tiposDocumento, tipoSearch]);
 
   const filteredLabel = useMemo(() => {
     if (filter === "TODOS") return "Todos";
@@ -311,10 +317,14 @@ export function SecuencialesPanel({ showPanel = true, readOnly = false }: Secuen
       return;
     }
     setForm(initialForm);
+    setErrors({});
+    setPuntoSearch("");
+    setTipoSearch("");
     setModalOpen(true);
   };
 
   const updateField = (name: keyof SecuencialFormInput, value: string | number) => {
+    setErrors((prev) => ({ ...prev, [name]: "" }));
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -332,8 +342,25 @@ export function SecuencialesPanel({ showPanel = true, readOnly = false }: Secuen
     setSecuenciales(data);
   };
 
+  const validateForm = (): boolean => {
+    const next: Record<string, string> = {};
+
+    if (form.id_punto_emision === 0) next.id_punto_emision = "Debe seleccionar un punto de emisión.";
+    if (!form.tipo_documento) next.tipo_documento = "Debe seleccionar un tipo de documento.";
+
+    setErrors(next);
+
+    const firstError = Object.values(next).find(Boolean);
+    if (firstError) {
+      toast.warning(firstError);
+      return false;
+    }
+    return true;
+  };
+
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validateForm()) return;
     setSaving(true);
 
     try {
@@ -662,10 +689,10 @@ export function SecuencialesPanel({ showPanel = true, readOnly = false }: Secuen
                   <h3 className="text-sm font-semibold text-slate-700">Configuración del secuencial</h3>
                 </div>
                 <div className="space-y-4">
-                  <Field label="Punto de emisión" htmlFor="id_punto_emision">
+                  <Field label="Punto de emisión" htmlFor="id_punto_emision" error={errors.id_punto_emision}>
                     <SelectPrimitive.Root 
                       value={form.id_punto_emision === 0 ? undefined : form.id_punto_emision.toString()} 
-                      onValueChange={(val) => updateField("id_punto_emision", Number(val))}
+                      onValueChange={(val) => { updateField("id_punto_emision", Number(val)); setPuntoSearch(""); }}
                       disabled={loadingCatalogs}
                     >
                       <SelectPrimitive.Trigger 
@@ -683,26 +710,40 @@ export function SecuencialesPanel({ showPanel = true, readOnly = false }: Secuen
                           position="popper"
                           sideOffset={4}
                         >
-                          <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((punto) => (
-                              <SelectPrimitive.Item 
-                                key={punto.id}
-                                value={punto.id.toString()}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{punto.codigo} - {punto.descripcion}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
+                          <div className="border-b border-slate-100 p-2">
+                            <Input
+                              value={puntoSearch}
+                              onChange={(event) => setPuntoSearch(event.target.value)}
+                              placeholder="Buscar punto de emisión..."
+                              className="h-8 bg-white shadow-none w-full"
+                              onKeyDown={(event) => event.stopPropagation()}
+                              onPointerDown={(event) => event.stopPropagation()}
+                            />
+                          </div>
+                          <SelectPrimitive.Viewport className="p-1 max-h-56 overflow-y-auto">
+                            {filteredPuntos.length === 0 ? (
+                              <div className="px-3 py-2 text-xs text-slate-500">Sin resultados.</div>
+                            ) : (
+                              filteredPuntos.map((punto) => (
+                                <SelectPrimitive.Item 
+                                  key={punto.id}
+                                  value={punto.id.toString()}
+                                  className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                >
+                                  <SelectPrimitive.ItemText>{punto.codigo} - {punto.descripcion}</SelectPrimitive.ItemText>
+                                </SelectPrimitive.Item>
+                              ))
+                            )}
                           </SelectPrimitive.Viewport>
                         </SelectPrimitive.Content>
                       </SelectPrimitive.Portal>
                     </SelectPrimitive.Root>
                   </Field>
 
-                  <Field label="Tipo de documento" htmlFor="tipo_documento">
+                  <Field label="Tipo de documento" htmlFor="tipo_documento" error={errors.tipo_documento}>
                     <SelectPrimitive.Root 
                       value={form.tipo_documento || undefined} 
-                      onValueChange={(val) => updateField("tipo_documento", val)}
+                      onValueChange={(val) => { updateField("tipo_documento", val); setTipoSearch(""); }}
                       disabled={loadingCatalogs}
                     >
                       <SelectPrimitive.Trigger 
@@ -720,16 +761,30 @@ export function SecuencialesPanel({ showPanel = true, readOnly = false }: Secuen
                           position="popper"
                           sideOffset={4}
                         >
-                          <SelectPrimitive.Viewport className="p-1">
-                            {tiposDocumento.map((tipo) => (
-                              <SelectPrimitive.Item 
-                                key={tipo.codigo}
-                                value={tipo.codigo}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{tipo.nombre || tipo.descripcion || tipo.codigo}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
+                          <div className="border-b border-slate-100 p-2">
+                            <Input
+                              value={tipoSearch}
+                              onChange={(event) => setTipoSearch(event.target.value)}
+                              placeholder="Buscar tipo de documento..."
+                              className="h-8 bg-white shadow-none w-full"
+                              onKeyDown={(event) => event.stopPropagation()}
+                              onPointerDown={(event) => event.stopPropagation()}
+                            />
+                          </div>
+                          <SelectPrimitive.Viewport className="p-1 max-h-56 overflow-y-auto">
+                            {filteredTipos.length === 0 ? (
+                              <div className="px-3 py-2 text-xs text-slate-500">Sin resultados.</div>
+                            ) : (
+                              filteredTipos.map((tipo) => (
+                                <SelectPrimitive.Item 
+                                  key={tipo.codigo}
+                                  value={tipo.codigo}
+                                  className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                >
+                                  <SelectPrimitive.ItemText>{tipo.nombre || tipo.descripcion || tipo.codigo}</SelectPrimitive.ItemText>
+                                </SelectPrimitive.Item>
+                              ))
+                            )}
                           </SelectPrimitive.Viewport>
                         </SelectPrimitive.Content>
                       </SelectPrimitive.Portal>

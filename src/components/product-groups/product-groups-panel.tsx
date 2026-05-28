@@ -67,6 +67,7 @@ export function ProductGroupsPanel({ showPanel = true, readOnly = false }: Produ
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<GrupoProducto | null>(null);
   const [form, setForm] = useState<GrupoProductoFormInput>(initialForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -195,24 +196,47 @@ export function ProductGroupsPanel({ showPanel = true, readOnly = false }: Produ
   const openCreate = () => {
     setEditing(null);
     setForm(initialForm);
+    setErrors({});
     setModalOpen(true);
   };
 
   const openEdit = (grupo: GrupoProducto) => {
     setEditing(grupo);
     setForm(toGrupoFormInput(grupo));
+    setErrors({});
     setModalOpen(true);
   };
 
   const updateField = (name: keyof GrupoProductoFormInput, value: string) => {
+    setErrors((prev) => ({ ...prev, [name]: "" }));
     setForm((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
+  const validateForm = (): boolean => {
+    const next: Record<string, string> = {};
+    const nombre = form.nombre.trim();
+
+    if (!nombre) next.nombre = "El nombre es obligatorio.";
+    else if (nombre.length < 3) next.nombre = "Debe tener al menos 3 caracteres.";
+    else if (nombre.length > 100) next.nombre = "No debe exceder 100 caracteres.";
+
+    if (form.descripcion && form.descripcion.length > 300) next.descripcion = "No debe exceder 300 caracteres.";
+
+    setErrors(next);
+    const firstError = Object.values(next).find(Boolean);
+    if (firstError) {
+      toast.warning(firstError);
+      return false;
+    }
+    return true;
+  };
+
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validateForm()) return;
     setSaving(true);
 
     try {
@@ -541,24 +565,36 @@ export function ProductGroupsPanel({ showPanel = true, readOnly = false }: Produ
                   <h3 className="text-sm font-semibold text-slate-700">Información del grupo</h3>
                 </div>
                 <div className="space-y-3">
-                  <Field label="Nombre" htmlFor="nombre">
-                    <Input
-                      id="nombre"
-                      value={form.nombre}
-                      onChange={(event) => updateField("nombre", event.target.value)}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Ej: Electrónica, Papelería, Servicios"
-                    />
+                  <Field label="Nombre" htmlFor="nombre" error={errors.nombre}>
+                    <div className="relative">
+                      <Input
+                        id="nombre"
+                        value={form.nombre}
+                        onChange={(event) => updateField("nombre", event.target.value.slice(0, 100))}
+                        maxLength={100}
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                        placeholder="Ej: Electrónica, Papelería, Servicios"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.nombre.length}/100
+                      </span>
+                    </div>
                   </Field>
 
-                  <Field label="Descripción" htmlFor="descripcion">
-                    <Input
-                      id="descripcion"
-                      value={form.descripcion}
-                      onChange={(event) => updateField("descripcion", event.target.value)}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Breve descripción del grupo (opcional)"
-                    />
+                  <Field label="Descripción" htmlFor="descripcion" error={errors.descripcion}>
+                    <div className="relative">
+                      <Input
+                        id="descripcion"
+                        value={form.descripcion}
+                        onChange={(event) => updateField("descripcion", event.target.value.slice(0, 300))}
+                        maxLength={300}
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                        placeholder="Breve descripción del grupo (opcional)"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.descripcion.length}/300
+                      </span>
+                    </div>
                   </Field>
                 </div>
               </div>

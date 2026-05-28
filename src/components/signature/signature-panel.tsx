@@ -54,6 +54,7 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
   const [detail, setDetail] = useState<FirmaElectronica | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FirmaUploadInput>(emptyForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -236,6 +237,7 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
   const openCreate = () => {
     setReplaceTarget(null);
     setForm(emptyForm);
+    setErrors({});
     setModalOpen(true);
   };
 
@@ -246,6 +248,7 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
       password: "",
       nombre: firma.nombre || "",
     });
+    setErrors({});
     setModalOpen(true);
   };
 
@@ -262,18 +265,37 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
   };
 
   const updateField = (name: keyof FirmaUploadInput, value: string | File | null) => {
+    setErrors((prev) => ({ ...prev, [name]: "" }));
     setForm((prev) => ({
       ...prev,
       [name]: value ?? "",
     }));
   };
 
+  const validateForm = (): boolean => {
+    const next: Record<string, string> = {};
+    const nombre = form.nombre.trim();
+
+    if (!form.firma) next.firma = "Selecciona un archivo de firma.";
+    if (!nombre) next.nombre = "El nombre identificativo es obligatorio.";
+    else if (nombre.length > 100) next.nombre = "No debe exceder 100 caracteres.";
+    else if (/^\d+$/.test(nombre)) next.nombre = "Debe contener al menos una letra.";
+
+    if (!form.password) next.password = "La contraseña del certificado es obligatoria.";
+
+    setErrors(next);
+
+    const firstError = Object.values(next).find(Boolean);
+    if (firstError) {
+      toast.warning(firstError);
+      return false;
+    }
+    return true;
+  };
+
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!form.firma) {
-      toast.warning("Selecciona un archivo de firma.");
-      return;
-    }
+    if (!validateForm()) return;
 
     setSaving(true);
 
@@ -520,7 +542,7 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
                   <h3 className="text-sm font-semibold text-slate-700">Certificado digital</h3>
                 </div>
                 <div className="space-y-3">
-                  <Field label="Archivo (.p12)" htmlFor="firma">
+                  <Field label="Archivo (.p12)" htmlFor="firma" error={errors.firma}>
                     <div className="relative">
                       <Input
                         id="firma"
@@ -529,7 +551,7 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
                         onChange={(event) =>
                           updateField("firma", event.target.files?.[0] ?? null)
                         }
-                        className="bg-white shadow-none file:hidden h-28 py-0 px-0 border-dashed border-2 border-slate-300 hover:border-app-primary/50 transition-colors cursor-pointer rounded-lg"
+                        className={`bg-white shadow-none file:hidden h-28 py-0 px-0 border-dashed border-2 ${errors.firma ? "border-rose-300" : "border-slate-300"} hover:border-app-primary/50 transition-colors cursor-pointer rounded-lg`}
                       />
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 pointer-events-none px-4">
                         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-app-primary/10">
@@ -560,14 +582,20 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
                     </div>
                   </Field>
 
-                  <Field label="Nombre identificativo" htmlFor="nombre">
-                    <Input
-                      id="nombre"
-                      value={form.nombre}
-                      onChange={(event) => updateField("nombre", event.target.value)}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Ej: Firma Principal 2025"
-                    />
+                  <Field label="Nombre identificativo" htmlFor="nombre" error={errors.nombre}>
+                    <div className="relative">
+                      <Input
+                        id="nombre"
+                        value={form.nombre}
+                        onChange={(event) => updateField("nombre", event.target.value)}
+                        maxLength={100}
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                        placeholder="Ej: Firma Principal 2025"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.nombre.length}/100
+                      </span>
+                    </div>
                   </Field>
                 </div>
               </div>
@@ -579,7 +607,7 @@ export function SignaturePanel({ showPanel = true, readOnly = false }: Signature
                   <h3 className="text-sm font-semibold text-slate-700">Credenciales</h3>
                 </div>
                 <div className="space-y-3">
-                  <Field label="Contraseña del certificado" htmlFor="password">
+                  <Field label="Contraseña del certificado" htmlFor="password" error={errors.password}>
                     <Input
                       id="password"
                       type="password"

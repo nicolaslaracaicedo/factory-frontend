@@ -62,6 +62,23 @@ import { emissionPointService } from "@/src/modules/emission-points/services/emi
 import type { PuntoEmision } from "@/src/modules/emission-points/types/emission-point.types";
 import { confirmAction } from "@/src/lib/confirm";
 
+const onlyLettersRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|:;"'<>,.?/~`]).{8,}$/;
+
+const validaCedula = (cedula: string): boolean => {
+  if (!/^\d{10}$/.test(cedula)) return false;
+  const digitoVerificador = Number(cedula[9]);
+  const coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2];
+  let suma = 0;
+  for (let i = 0; i < 9; i++) {
+    let valor = Number(cedula[i]) * coeficientes[i];
+    if (valor >= 10) valor -= 9;
+    suma += valor;
+  }
+  return (10 - (suma % 10)) % 10 === digitoVerificador;
+};
+
 const initialForm: UsuarioFormInput = {
   id_rol: 0,
   tipo_identificacion: "05",
@@ -131,6 +148,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<UsuarioItem | null>(null);
   const [form, setForm] = useState<UsuarioFormInput>(initialForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -277,16 +295,19 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
   const openCreate = () => {
     setEditing(null);
     setForm(initialForm);
+    setErrors({});
     setModalOpen(true);
   };
 
   const openEdit = (usuario: UsuarioItem) => {
     setEditing(usuario);
     setForm(toUsuarioFormInput(usuario));
+    setErrors({});
     setModalOpen(true);
   };
 
   const updateField = (name: keyof UsuarioFormInput, value: string | number) => {
+    setErrors((prev) => ({ ...prev, [name]: "" }));
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -326,8 +347,57 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
     return payload;
   };
 
+  const validateForm = (): boolean => {
+    const next: Record<string, string> = {};
+    const nombre = form.nombre.trim();
+    const apellido = form.apellido.trim();
+    const email = form.email.trim();
+    const identificacion = form.identificacion.trim();
+    const telefono = form.telefono.trim();
+
+    if (!nombre) next.nombre = "El nombre es obligatorio.";
+    else if (nombre.length > 100) next.nombre = "No debe exceder 100 caracteres.";
+    else if (!onlyLettersRegex.test(nombre)) next.nombre = "No debe contener números.";
+
+    if (!apellido) next.apellido = "El apellido es obligatorio.";
+    else if (apellido.length > 100) next.apellido = "No debe exceder 100 caracteres.";
+    else if (!onlyLettersRegex.test(apellido)) next.apellido = "No debe contener números.";
+
+    if (!identificacion) next.identificacion = "La identificación es obligatoria.";
+    else if (identificacion.length > 13) next.identificacion = "No debe exceder 13 caracteres.";
+    else if (!/^\d+$/.test(identificacion)) next.identificacion = "Solo se permiten dígitos.";
+    else if (identificacion.length === 10 && !validaCedula(identificacion)) next.identificacion = "Cédula inválida.";
+
+    if (!email) next.email = "El correo es obligatorio.";
+    else if (email.length > 150) next.email = "No debe exceder 150 caracteres.";
+    else if (!emailRegex.test(email)) next.email = "Correo electrónico inválido.";
+
+    if (!editing) {
+      if (!form.password) next.password = "La contraseña es obligatoria.";
+      else if (!passwordRegex.test(form.password)) next.password = "Debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial.";
+    } else if (form.password && !passwordRegex.test(form.password)) {
+      next.password = "Debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial.";
+    }
+
+    if (telefono && !/^\d+$/.test(telefono)) next.telefono = "Solo se permiten dígitos.";
+    else if (telefono && telefono.length !== 10) next.telefono = "Debe tener 10 dígitos (ej: 0991234567).";
+    else if (telefono && !telefono.startsWith("09")) next.telefono = "Debe comenzar con 09 (ej: 0991234567).";
+
+    if (form.id_rol === 0) next.id_rol = "Debe seleccionar un rol.";
+
+    setErrors(next);
+
+    const firstError = Object.values(next).find(Boolean);
+    if (firstError) {
+      toast.warning(firstError);
+      return false;
+    }
+    return true;
+  };
+
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validateForm()) return;
     setSaving(true);
 
     try {
@@ -543,32 +613,46 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
                   <h3 className="text-sm font-semibold text-slate-700">Datos personales</h3>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Nombre" htmlFor="nombre">
+                  <Field label="Nombre" htmlFor="nombre" error={errors.nombre}>
                     <Input
                       id="nombre"
                       value={form.nombre}
-                      onChange={(event) => updateField("nombre", event.target.value)}
+                      onChange={(event) => {
+                        const val = event.target.value;
+                        if (!onlyLettersRegex.test(val) && val !== "") return;
+                        updateField("nombre", val);
+                      }}
+                      maxLength={100}
                       className="bg-white shadow-none placeholder:text-slate-300"
                       placeholder="Ingresa el nombre"
                     />
                   </Field>
 
-                  <Field label="Apellido" htmlFor="apellido">
+                  <Field label="Apellido" htmlFor="apellido" error={errors.apellido}>
                     <Input
                       id="apellido"
                       value={form.apellido}
-                      onChange={(event) => updateField("apellido", event.target.value)}
+                      onChange={(event) => {
+                        const val = event.target.value;
+                        if (!onlyLettersRegex.test(val) && val !== "") return;
+                        updateField("apellido", val);
+                      }}
+                      maxLength={100}
                       className="bg-white shadow-none placeholder:text-slate-300"
                       placeholder="Ingresa el apellido"
                     />
                   </Field>
 
                   <div className="sm:col-span-2">
-                    <Field label="Número de identificación" htmlFor="identificacion">
+                    <Field label="Número de identificación" htmlFor="identificacion" error={errors.identificacion}>
                       <Input
                         id="identificacion"
                         value={form.identificacion}
-                        onChange={(event) => updateField("identificacion", event.target.value)}
+                        onChange={(event) => {
+                          const val = event.target.value.replace(/\D/g, "").slice(0, 13);
+                          updateField("identificacion", val);
+                        }}
+                        maxLength={13}
                         className="bg-white shadow-none placeholder:text-slate-300"
                         placeholder="Ej: 1712345678"
                       />
@@ -584,12 +668,13 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
                   <h3 className="text-sm font-semibold text-slate-700">Credenciales de acceso</h3>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Correo electrónico" htmlFor="email">
+                  <Field label="Correo electrónico" htmlFor="email" error={errors.email}>
                     <Input
                       id="email"
                       type="email"
                       value={form.email}
                       onChange={(event) => updateField("email", event.target.value)}
+                      maxLength={150}
                       className="bg-white shadow-none placeholder:text-slate-300"
                       placeholder="usuario@empresa.com"
                     />
@@ -600,11 +685,12 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
                     label="Contraseña"
                     value={form.password}
                     onChange={(val) => updateField("password", val)}
-                    placeholder={editing ? "Dejar en blanco para mantener actual" : "Mínimo 8 caracteres"}
+                    placeholder={editing ? "Dejar en blanco para mantener actual" : "Mín. 8 car., mayúsc., núm., car. especial"}
                   />
+                  {errors.password && <span className="text-xs text-rose-600 -mt-2">{errors.password}</span>}
 
                   <div className="sm:col-span-2">
-                    <Field label="Rol de usuario" htmlFor="id_rol">
+                    <Field label="Rol de usuario" htmlFor="id_rol" error={errors.id_rol}>
                       <SelectPrimitive.Root 
                         value={form.id_rol === 0 ? undefined : form.id_rol.toString()} 
                         onValueChange={(val) => updateField("id_rol", Number(val))}
@@ -699,24 +785,34 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
                   <h3 className="text-sm font-semibold text-slate-700">Información de contacto</h3>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Teléfono" htmlFor="telefono">
+                  <Field label="Teléfono" htmlFor="telefono" error={errors.telefono}>
                     <Input
                       id="telefono"
                       value={form.telefono}
-                      onChange={(event) => updateField("telefono", event.target.value)}
+                      onChange={(event) => {
+                        const val = event.target.value.replace(/\D/g, "").slice(0, 10);
+                        updateField("telefono", val);
+                      }}
+                      maxLength={10}
                       className="bg-white shadow-none placeholder:text-slate-300"
                       placeholder="0991234567"
                     />
                   </Field>
 
                   <Field label="Dirección" htmlFor="direccion">
-                    <Input
-                      id="direccion"
-                      value={form.direccion}
-                      onChange={(event) => updateField("direccion", event.target.value)}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Av. Principal 123, Ciudad"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="direccion"
+                        value={form.direccion}
+                        onChange={(event) => updateField("direccion", event.target.value)}
+                        maxLength={300}
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                        placeholder="Av. Principal 123, Ciudad"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.direccion.length}/300
+                      </span>
+                    </div>
                   </Field>
                 </div>
               </div>

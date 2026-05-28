@@ -66,6 +66,7 @@ export function EmissionPointsPanel({ showPanel = true, readOnly = false }: Emis
   const [detailData, setDetailData] = useState<PuntoEmision | null>(null);
   const [editing, setEditing] = useState<PuntoEmision | null>(null);
   const [form, setForm] = useState<PuntoEmisionFormInput>(initialForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [estFilter, setEstFilter] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -259,12 +260,14 @@ export function EmissionPointsPanel({ showPanel = true, readOnly = false }: Emis
   const openCreate = () => {
     setEditing(null);
     setForm(initialForm);
+    setErrors({});
     setModalOpen(true);
   };
 
   const openEdit = (punto: PuntoEmision) => {
     setEditing(punto);
     setForm(toPuntoFormInput(punto));
+    setErrors({});
     setModalOpen(true);
   };
 
@@ -281,14 +284,40 @@ export function EmissionPointsPanel({ showPanel = true, readOnly = false }: Emis
   };
 
   const updateField = (name: keyof PuntoEmisionFormInput, value: string | number) => {
+    setErrors((prev) => ({ ...prev, [name]: "" }));
     setForm((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
+  const validateForm = (): boolean => {
+    const next: Record<string, string> = {};
+    const codigo = form.codigo.trim();
+    const descripcion = form.descripcion.trim();
+
+    if (form.id_establecimiento === 0) next.id_establecimiento = "Debe seleccionar un establecimiento.";
+
+    if (!codigo) next.codigo = "El código es obligatorio.";
+    else if (!/^\d+$/.test(codigo)) next.codigo = "Solo se permiten dígitos.";
+    else if (codigo.length !== 3) next.codigo = "Debe tener exactamente 3 dígitos (ej. 001).";
+
+    if (!descripcion) next.descripcion = "La descripción es obligatoria.";
+    else if (descripcion.length < 3) next.descripcion = "Debe tener al menos 3 caracteres.";
+    else if (descripcion.length > 100) next.descripcion = "No debe exceder 100 caracteres.";
+
+    setErrors(next);
+    const firstError = Object.values(next).find(Boolean);
+    if (firstError) {
+      toast.warning(firstError);
+      return false;
+    }
+    return true;
+  };
+
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validateForm()) return;
     setSaving(true);
 
     try {
@@ -623,7 +652,7 @@ export function EmissionPointsPanel({ showPanel = true, readOnly = false }: Emis
                   <h3 className="text-sm font-semibold text-slate-700">Información del punto</h3>
                 </div>
                 <div className="space-y-3">
-                  <Field label="Establecimiento" htmlFor="id_establecimiento">
+                  <Field label="Establecimiento" htmlFor="id_establecimiento" error={errors.id_establecimiento}>
                     <SelectPrimitive.Root 
                       value={form.id_establecimiento === 0 ? undefined : form.id_establecimiento.toString()} 
                       onValueChange={(val) => updateField("id_establecimiento", Number(val))}
@@ -661,25 +690,35 @@ export function EmissionPointsPanel({ showPanel = true, readOnly = false }: Emis
                   </Field>
 
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Código" htmlFor="codigo">
+                    <Field label="Código" htmlFor="codigo" error={errors.codigo}>
                       <Input
                         id="codigo"
                         value={form.codigo}
-                        onChange={(event) => updateField("codigo", event.target.value)}
+                        onChange={(event) => {
+                          const val = event.target.value.replace(/\D/g, "").slice(0, 3);
+                          updateField("codigo", val);
+                        }}
                         disabled={Boolean(editing)}
+                        maxLength={3}
                         className="bg-white shadow-none placeholder:text-slate-300"
                         placeholder="Ej: 001, 002"
                       />
                     </Field>
 
-                    <Field label="Descripción" htmlFor="descripcion">
-                      <Input
-                        id="descripcion"
-                        value={form.descripcion}
-                        onChange={(event) => updateField("descripcion", event.target.value)}
-                        className="bg-white shadow-none placeholder:text-slate-300"
-                        placeholder="Ej: Principal, Bodega"
-                      />
+                    <Field label="Descripción" htmlFor="descripcion" error={errors.descripcion}>
+                      <div className="relative">
+                        <Input
+                          id="descripcion"
+                          value={form.descripcion}
+                          onChange={(event) => updateField("descripcion", event.target.value)}
+                          maxLength={100}
+                          className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                          placeholder="Ej: Principal, Bodega"
+                        />
+                        <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                          {form.descripcion.length}/100
+                        </span>
+                      </div>
                     </Field>
                   </div>
                 </div>
