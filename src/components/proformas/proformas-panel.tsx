@@ -394,29 +394,35 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
     setEditorOpen(true);
   };
 
-  const openEdit = (prof: ProformaItem) => {
+  const openEdit = async (prof: ProformaItem) => {
     if (readOnly) return;
-    setEditing(prof);
-    const mapped = toProformaFormState(prof);
-    setForm({
-      id_punto_emision: mapped.id_punto_emision,
-      id_cliente: mapped.id_cliente,
-      fecha_emision: mapped.fecha_emision,
-      fecha_vencimiento: mapped.fecha_vencimiento || "",
-      observaciones: mapped.observaciones || "",
-      detalles: mapped.detalles.map((d) => ({
-        id_producto: d.id_producto,
-        codigo: d.codigo || "",
-        descripcion: d.descripcion || "",
-        cantidad: d.cantidad,
-        precio_unitario: d.precio_unitario,
-        descuento: d.descuento.toString(),
-        tipo_descuento: "VALOR" as const,
-        codigo_iva: d.codigo_iva || "2",
-        porcentaje_iva: d.porcentaje_iva || 12,
-      })),
-    });
-    setEditorOpen(true);
+    try {
+      const full = await proformasService.getProforma(prof.id);
+      setEditing(full);
+      const mapped = toProformaFormState(full);
+      setForm({
+        id_punto_emision: mapped.id_punto_emision,
+        id_cliente: mapped.id_cliente,
+        fecha_emision: mapped.fecha_emision,
+        fecha_vencimiento: mapped.fecha_vencimiento || "",
+        observaciones: mapped.observaciones || "",
+        detalles: mapped.detalles.map((d) => ({
+          id_producto: d.id_producto ?? undefined,
+          codigo: d.codigo || "",
+          descripcion: d.descripcion || "",
+          cantidad: d.cantidad,
+          precio_unitario: d.precio_unitario,
+          descuento: d.descuento.toString(),
+          tipo_descuento: "VALOR" as const,
+          codigo_iva: d.codigo_iva || "2",
+          porcentaje_iva: d.porcentaje_iva || 12,
+        })),
+      });
+      setEditorOpen(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo cargar la proforma.";
+      toast.error(message);
+    }
   };
 
   const closeEditor = () => {

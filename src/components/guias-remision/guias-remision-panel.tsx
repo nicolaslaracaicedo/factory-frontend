@@ -348,15 +348,21 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
     setEditorOpen(true);
   };
 
-  const openEdit = (guia: GuiaRemisionItem) => {
+  const openEdit = async (guia: GuiaRemisionItem) => {
     if (readOnly) return;
-    setEditing(guia);
-    setForm(toGuiaFormState(guia));
-    setClienteQuery("");
-    setClienteSearchResults([]);
-    setProductoQueries({});
-    setProductoFocus({});
-    setEditorOpen(true);
+    try {
+      const full = await guiasRemisionService.getGuia(guia.id);
+      setEditing(full);
+      setForm(toGuiaFormState(full));
+      setClienteQuery("");
+      setClienteSearchResults([]);
+      setProductoQueries({});
+      setProductoFocus({});
+      setEditorOpen(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo cargar la guía.";
+      toast.error(message);
+    }
   };
 
   const openDetail = (guia: GuiaRemisionItem) => {

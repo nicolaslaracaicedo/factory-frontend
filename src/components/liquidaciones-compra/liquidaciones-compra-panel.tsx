@@ -364,13 +364,26 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
     setEditorOpen(true);
   };
 
-  const openEdit = (liq: LiquidacionCompraItem) => {
+  const openEdit = async (liq: LiquidacionCompraItem) => {
     if (readOnly) return;
-    setEditing(liq);
-    setForm(toLiquidacionFormState(liq));
-    setProductoQueries({});
-    setProductoFocus({});
-    setEditorOpen(true);
+    try {
+      const full = await liquidacionesCompraService.getLiquidacion(liq.id);
+      setEditing(full);
+      const mapped = toLiquidacionFormState(full);
+      mapped.detalles.forEach((d) => {
+        if (!d.id_producto && d.codigo) {
+          const found = productos.find((p) => p.codigo === d.codigo);
+          if (found) d.id_producto = found.id;
+        }
+      });
+      setForm(mapped);
+      setProductoQueries({});
+      setProductoFocus({});
+      setEditorOpen(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo cargar la liquidación.";
+      toast.error(message);
+    }
   };
 
   const openDetail = (liq: LiquidacionCompraItem) => {

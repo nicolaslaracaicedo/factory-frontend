@@ -413,31 +413,37 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
     setEditorOpen(true);
   };
 
-  const openEdit = (rec: RecurrenteItem) => {
+  const openEdit = async (rec: RecurrenteItem) => {
     if (readOnly) return;
-    setEditing(rec);
-    const mapped = toRecurrenteFormState(rec);
-    setForm({
-      id_cliente: mapped.id_cliente,
-      id_punto_emision: mapped.id_punto_emision,
-      descripcion: mapped.descripcion,
-      frecuencia: mapped.frecuencia,
-      dia_emision: mapped.dia_emision,
-      proxima_facturacion: mapped.proxima_facturacion,
-      forma_pago: mapped.forma_pago,
-      detalles: mapped.detalles.map((d) => ({
-        id_producto: d.id_producto,
-        codigo: d.codigo || "",
-        descripcion: d.descripcion || "",
-        cantidad: d.cantidad,
-        precio_unitario: d.precio_unitario,
-        descuento: d.descuento.toString(),
-        tipo_descuento: "VALOR" as const,
-        codigo_iva: d.codigo_iva || "2",
-        porcentaje_iva: d.porcentaje_iva || 0,
-      })),
-    });
-    setEditorOpen(true);
+    try {
+      const full = await recurrentesService.getRecurrente(rec.id);
+      setEditing(full);
+      const mapped = toRecurrenteFormState(full);
+      setForm({
+        id_cliente: mapped.id_cliente,
+        id_punto_emision: mapped.id_punto_emision,
+        descripcion: mapped.descripcion,
+        frecuencia: mapped.frecuencia,
+        dia_emision: mapped.dia_emision,
+        proxima_facturacion: mapped.proxima_facturacion,
+        forma_pago: mapped.forma_pago,
+        detalles: mapped.detalles.map((d) => ({
+          id_producto: d.id_producto ?? undefined,
+          codigo: d.codigo || "",
+          descripcion: d.descripcion || "",
+          cantidad: d.cantidad,
+          precio_unitario: d.precio_unitario,
+          descuento: d.descuento.toString(),
+          tipo_descuento: "VALOR" as const,
+          codigo_iva: d.codigo_iva || "2",
+          porcentaje_iva: d.porcentaje_iva || 0,
+        })),
+      });
+      setEditorOpen(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo cargar el recurrente.";
+      toast.error(message);
+    }
   };
 
   const closeEditor = () => {
