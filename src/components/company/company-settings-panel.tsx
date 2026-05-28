@@ -731,7 +731,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                                   maxLength={150}
                                   value={form.razon_social}
                                   onChange={(event) =>
-                                    updateField("razon_social", event.target.value)
+                                    updateField("razon_social", event.target.value.slice(0, 150))
                                   }
                                   className="bg-white shadow-none pr-10"
                                 />
@@ -765,7 +765,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                               inputMode="numeric"
                               maxLength={13}
                               value={form.ruc}
-                              onChange={(event) => updateField("ruc", event.target.value.replace(/\D/g, ""))}
+                              onChange={(event) => updateField("ruc", event.target.value.replace(/\D/g, "").slice(0, 13))}
                               className="bg-white shadow-none"
                             />
                           </Field>
@@ -1314,7 +1314,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                     <Input
                       id="wizard-razon-social"
                       value={form.razon_social}
-                      onChange={(event) => updateField("razon_social", event.target.value)}
+                      onChange={(event) => updateField("razon_social", event.target.value.slice(0, 150))}
                     />
                   </Field>
 
@@ -1335,7 +1335,7 @@ export function CompanySettingsPanel({ showPanel = true, initialCompany = null, 
                         inputMode="numeric"
                         maxLength={13}
                         value={form.ruc}
-                        onChange={(event) => updateField("ruc", event.target.value.replace(/\D/g, ""))}
+                        onChange={(event) => updateField("ruc", event.target.value.replace(/\D/g, "").slice(0, 13))}
                       />
                     </Field>
                   </div>
