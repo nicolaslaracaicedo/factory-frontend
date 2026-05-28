@@ -833,7 +833,14 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
                         id="prof-fecha"
                         type="date"
                         value={form.fecha_emision}
-                        onChange={(event) => setForm((f) => ({ ...f, fecha_emision: event.target.value }))}
+                        onChange={(event) => {
+                          const newEmi = event.target.value;
+                          setForm((f) => ({ 
+                            ...f, 
+                            fecha_emision: newEmi,
+                            fecha_vencimiento: (f.fecha_vencimiento && newEmi > f.fecha_vencimiento) ? newEmi : f.fecha_vencimiento
+                          }));
+                        }}
                         className="bg-white shadow-none"
                       />
                     </Field>
@@ -842,6 +849,7 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
                       <Input
                         id="prof-venc"
                         type="date"
+                        min={form.fecha_emision}
                         value={form.fecha_vencimiento}
                         onChange={(event) => setForm((f) => ({ ...f, fecha_vencimiento: event.target.value }))}
                         className="bg-white shadow-none"
@@ -1102,13 +1110,18 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
                   <FileText className="h-3.5 w-3.5 text-slate-500" />
                   <h3 className="text-sm font-semibold text-slate-700">Observaciones</h3>
                 </div>
-                <Textarea
-                  value={form.observaciones}
-                  onChange={(event) => setForm((f) => ({ ...f, observaciones: event.target.value }))}
-                  rows={2}
-                  placeholder="Notas u observaciones adicionales..."
-                  className="bg-white shadow-none placeholder:text-slate-300"
-                />
+                <div className="relative">
+                  <Textarea
+                    value={form.observaciones}
+                    onChange={(event) => setForm((f) => ({ ...f, observaciones: event.target.value.slice(0, 300) }))}
+                    rows={2}
+                    placeholder="Notas u observaciones adicionales..."
+                    className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                  />
+                  <span className="absolute right-2 bottom-2 text-[10px] text-slate-400 pointer-events-none select-none">
+                    {form.observaciones.length}/300
+                  </span>
+                </div>
               </div>
             </div>
 

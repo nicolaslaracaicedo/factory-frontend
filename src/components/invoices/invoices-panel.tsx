@@ -425,6 +425,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
     setEditorOpen(false);
     setEditing(null);
     setForm(initialForm);
+    setMontoStr("");
   };
 
   const openEdit = async (factura: FacturaItem) => {
@@ -432,6 +433,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
       const data = await invoiceService.getFactura(factura.id);
       setEditing(data);
       setForm(toFacturaFormState(data));
+      setMontoStr(data.monto_recibido && data.monto_recibido > 0 ? data.monto_recibido.toFixed(2) : "");
       setEditorOpen(true);
     } catch (error) {
       const message =
@@ -1097,13 +1099,18 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                   ) : null}
 
                   <Field label="Observación" htmlFor="observacion">
-                    <Input
-                      id="observacion"
-                      value={form.observacion}
-                      onChange={(event) => updateField("observacion", event.target.value)}
-                      placeholder="Notas u observaciones adicionales"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="observacion"
+                        value={form.observacion}
+                        onChange={(event) => updateField("observacion", event.target.value.slice(0, 300))}
+                        placeholder="Notas u observaciones adicionales"
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.observacion.length}/300
+                      </span>
+                    </div>
                   </Field>
                 </div>
               </div>
@@ -1397,21 +1404,31 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                       <div key={`dato-${index}`} className="flex gap-3 items-end">
                         <div className="flex-1">
                           <label className="block text-xs font-medium text-slate-600 mb-1">Nombre</label>
-                          <Input
-                            placeholder="Ej: Contrato"
-                            value={item.nombre}
-                            onChange={(event) => updateDatoAdicional(index, "nombre", event.target.value)}
-                            className="bg-white shadow-none placeholder:text-slate-300"
-                          />
+                          <div className="relative">
+                            <Input
+                              placeholder="Ej: Contrato"
+                              value={item.nombre}
+                              onChange={(event) => updateDatoAdicional(index, "nombre", event.target.value.slice(0, 300))}
+                              className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                            />
+                            <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                              {item.nombre.length}/300
+                            </span>
+                          </div>
                         </div>
                         <div className="flex-1">
                           <label className="block text-xs font-medium text-slate-600 mb-1">Valor</label>
-                          <Input
-                            placeholder="Ej: CT-2026-001"
-                            value={item.valor}
-                            onChange={(event) => updateDatoAdicional(index, "valor", event.target.value)}
-                            className="bg-white shadow-none placeholder:text-slate-300"
-                          />
+                          <div className="relative">
+                            <Input
+                              placeholder="Ej: CT-2026-001"
+                              value={item.valor}
+                              onChange={(event) => updateDatoAdicional(index, "valor", event.target.value.slice(0, 300))}
+                              className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                            />
+                            <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                              {item.valor.length}/300
+                            </span>
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -1494,12 +1511,18 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                       value={isCredito ? "0.00" : montoStr}
                       onChange={(event) => {
                         if (isCredito) return;
-                        const raw = event.target.value.replace(/[^0-9.,]/g, "").replace(",", ".");
-                        const parts = raw.split(".");
-                        const cleaned = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : raw;
-                        const finalVal = cleaned.includes(".") ? cleaned.slice(0, cleaned.indexOf(".") + 3) : cleaned;
-                        const num = parseFloat(finalVal);
-                        setMontoStr(event.target.value);
+                        const val = event.target.value;
+                        let cleaned = val.replace(/[^0-9.,]/g, "");
+                        const firstSepIndex = cleaned.search(/[.,]/);
+                        if (firstSepIndex !== -1) {
+                          const separator = cleaned[firstSepIndex];
+                          const before = cleaned.slice(0, firstSepIndex);
+                          const after = cleaned.slice(firstSepIndex + 1).replace(/[.,]/g, "");
+                          cleaned = before + separator + after.slice(0, 2);
+                        }
+                        setMontoStr(cleaned);
+                        const parsedVal = cleaned.replace(",", ".");
+                        const num = parseFloat(parsedVal);
                         updateField("monto_recibido", !isNaN(num) && num >= 0 ? Math.round(num * 100) / 100 : 0);
                       }}
                       readOnly={isCredito}

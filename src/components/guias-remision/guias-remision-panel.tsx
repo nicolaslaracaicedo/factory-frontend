@@ -799,33 +799,54 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
 
                 <div className="grid gap-4 sm:grid-cols-3">
                   <Field label="RUC Transportista *" htmlFor="guia-ruc">
-                    <Input
-                      id="guia-ruc"
-                      value={form.ruc_transportista}
-                      onChange={(event) => setForm((f) => ({ ...f, ruc_transportista: event.target.value }))}
-                      placeholder="1712345678001"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="guia-ruc"
+                        value={form.ruc_transportista}
+                        onChange={(event) => {
+                          const value = event.target.value.replace(/\D/g, "").slice(0, 13);
+                          setForm((f) => ({ ...f, ruc_transportista: value }));
+                        }}
+                        placeholder="1712345678001"
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-12"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.ruc_transportista.length}/13
+                      </span>
+                    </div>
                   </Field>
 
                   <Field label="Razón Social Transportista *" htmlFor="guia-razon">
-                    <Input
-                      id="guia-razon"
-                      value={form.razon_social_transportista}
-                      onChange={(event) => setForm((f) => ({ ...f, razon_social_transportista: event.target.value }))}
-                      placeholder="Transportes SA"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="guia-razon"
+                        value={form.razon_social_transportista}
+                        onChange={(event) => setForm((f) => ({ ...f, razon_social_transportista: event.target.value.slice(0, 300) }))}
+                        placeholder="Transportes SA"
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.razon_social_transportista.length}/300
+                      </span>
+                    </div>
                   </Field>
 
                   <Field label="Placa Vehículo *" htmlFor="guia-placa">
-                    <Input
-                      id="guia-placa"
-                      value={form.placa}
-                      onChange={(event) => setForm((f) => ({ ...f, placa: event.target.value.toUpperCase() }))}
-                      placeholder="ABC-1234"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="guia-placa"
+                        value={form.placa}
+                        onChange={(event) => {
+                          const val = event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 8);
+                          setForm((f) => ({ ...f, placa: val }));
+                        }}
+                        placeholder="ABC-1234"
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-12"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.placa.length}/8
+                      </span>
+                    </div>
                   </Field>
                 </div>
 
@@ -835,7 +856,14 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                       id="guia-ini"
                       type="date"
                       value={form.fecha_ini_transporte}
-                      onChange={(event) => setForm((f) => ({ ...f, fecha_ini_transporte: event.target.value }))}
+                      onChange={(event) => {
+                        const newIni = event.target.value;
+                        setForm((f) => ({
+                          ...f,
+                          fecha_ini_transporte: newIni,
+                          ...(newIni > f.fecha_fin_transporte && f.fecha_fin_transporte ? { fecha_fin_transporte: newIni } : {})
+                        }));
+                      }}
                       className="bg-white shadow-none"
                     />
                   </Field>
@@ -844,6 +872,7 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                     <Input
                       id="guia-fin"
                       type="date"
+                      min={form.fecha_ini_transporte || undefined}
                       value={form.fecha_fin_transporte}
                       onChange={(event) => setForm((f) => ({ ...f, fecha_fin_transporte: event.target.value }))}
                       className="bg-white shadow-none"
@@ -896,24 +925,34 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                   </Field>
 
                   <Field label="Ruta" htmlFor="guia-ruta">
-                    <Input
-                      id="guia-ruta"
-                      value={form.ruta}
-                      onChange={(event) => setForm((f) => ({ ...f, ruta: event.target.value }))}
-                      placeholder="Quito - Guayaquil"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="guia-ruta"
+                        value={form.ruta}
+                        onChange={(event) => setForm((f) => ({ ...f, ruta: event.target.value.slice(0, 300) }))}
+                        placeholder="Quito - Guayaquil"
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.ruta.length}/300
+                      </span>
+                    </div>
                   </Field>
                 </div>
 
                 <Field label="Dirección de destino *" htmlFor="guia-dir">
-                  <Input
-                    id="guia-dir"
-                    value={form.direccion_destino}
-                    onChange={(event) => setForm((f) => ({ ...f, direccion_destino: event.target.value }))}
-                    placeholder="Av. 9 de Octubre 123"
-                    className="bg-white shadow-none placeholder:text-slate-300"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="guia-dir"
+                      value={form.direccion_destino}
+                      onChange={(event) => setForm((f) => ({ ...f, direccion_destino: event.target.value.slice(0, 300) }))}
+                      placeholder="Av. 9 de Octubre 123"
+                      className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                    />
+                    <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                      {form.direccion_destino.length}/300
+                    </span>
+                  </div>
                 </Field>
               </div>
 

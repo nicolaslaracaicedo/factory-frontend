@@ -824,13 +824,18 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                   </Field>
 
                   <Field label="Descripción *" htmlFor="rec-desc">
-                    <Input
-                      id="rec-desc"
-                      value={form.descripcion}
-                      onChange={(event) => setForm((f) => ({ ...f, descripcion: event.target.value }))}
-                      placeholder="Ej: Servicio mensual de internet"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="rec-desc"
+                        value={form.descripcion}
+                        onChange={(event) => setForm((f) => ({ ...f, descripcion: event.target.value.slice(0, 300) }))}
+                        placeholder="Ej: Servicio mensual de internet"
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.descripcion.length}/300
+                      </span>
+                    </div>
                   </Field>
                 </div>
 

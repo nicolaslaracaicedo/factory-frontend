@@ -453,7 +453,7 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
       return;
     }
     if (!form.motivo.trim()) {
-      toast.warning("Ingresa el motivo principal.");
+      toast.warning("Ingresa el motivo de la nota.");
       return;
     }
     if (form.motivos.length === 0) {
@@ -711,8 +711,19 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
                   <Field label="Fecha de emisión *" htmlFor="fecha_emision">
                     <Input id="fecha_emision" type="date" value={form.fecha_emision} onChange={(event) => updateField("fecha_emision", event.target.value)} className="bg-white shadow-none" />
                   </Field>
-                  <Field label="Motivo principal *" htmlFor="motivo">
-                    <Input id="motivo" value={form.motivo} onChange={(event) => updateField("motivo", event.target.value)} placeholder="Ej: Intereses por mora" className="bg-white shadow-none placeholder:text-slate-300" />
+                  <Field label="Motivo *" htmlFor="motivo">
+                    <div className="relative">
+                      <Input 
+                        id="motivo" 
+                        value={form.motivo} 
+                        onChange={(event) => updateField("motivo", event.target.value.slice(0, 300))} 
+                        placeholder="Ej: Intereses por mora" 
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-14" 
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.motivo.length}/300
+                      </span>
+                    </div>
                   </Field>
                 </div>
               </div>
@@ -802,24 +813,32 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
                       <div key={`motivo-${index}`} className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3 items-start">
                         <div className="flex-1 min-w-0">
                           <Field label="Razón" htmlFor={`razon-${index}`}>
-                            <Input id={`razon-${index}`} value={item.razon} onChange={(event) => updateMotivo(index, "razon", event.target.value)} className="bg-white shadow-none" />
+                            <div className="relative">
+                              <Input 
+                                id={`razon-${index}`} 
+                                value={item.razon} 
+                                onChange={(event) => updateMotivo(index, "razon", event.target.value.slice(0, 300))} 
+                                className="bg-white shadow-none pr-14" 
+                              />
+                              <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                                {item.razon.length}/300
+                              </span>
+                            </div>
                           </Field>
                         </div>
                         <div className="w-32 shrink-0">
                           <Field label="Valor" htmlFor={`valor-${index}`}>
                             <Input id={`valor-${index}`} type="text" inputMode="decimal" value={motivoValorStrs[index] ?? (item.valor || "")} onChange={(event) => {
-                              const raw = event.target.value.replace(/[^0-9.,]/g, "").replace(",", ".");
-                              const parts = raw.split(".");
-                              const cleaned = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : raw;
-                              const finalVal = cleaned.includes(".") ? cleaned.slice(0, cleaned.indexOf(".") + 3) : cleaned;
+                              const raw = event.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                              const finalVal = raw.includes(".") ? raw.slice(0, raw.indexOf(".") + 3) : raw;
                               const num = parseFloat(finalVal);
-                              setMotivoValorStrs((prev) => { const n = [...prev]; n[index] = event.target.value; return n; });
+                              setMotivoValorStrs((prev) => { const n = [...prev]; n[index] = finalVal; return n; });
                               updateMotivo(index, "valor", !isNaN(num) && num >= 0 ? Math.round(num * 100) / 100 : 0);
                             }} className="bg-white shadow-none h-8 text-xs text-right" placeholder="0.00" />
                           </Field>
                         </div>
                         {index === 0 && (
-                          <div className="w-28 shrink-0">
+                          <div className="w-48 shrink-0">
                             <Field label="IVA" htmlFor="id_iva_debit">
                               <SelectPrimitive.Root value={form.codigo_iva || undefined} onValueChange={(val) => {
                                 const ivaSel = codigosIva.find((i) => i.codigo === val);

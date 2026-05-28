@@ -901,13 +901,18 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                     />
                   </Field>
                   <Field label="Motivo *" htmlFor="motivo">
-                    <Input
-                      id="motivo"
-                      value={form.motivo}
-                      onChange={(event) => updateField("motivo", event.target.value)}
-                      placeholder="Ej: Anulación de factura"
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="motivo"
+                        value={form.motivo}
+                        onChange={(event) => updateField("motivo", event.target.value.slice(0, 300))}
+                        placeholder="Ej: Anulación de factura"
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.motivo.length}/300
+                      </span>
+                    </div>
                   </Field>
                 </div>
               </div>

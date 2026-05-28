@@ -1254,14 +1254,19 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                   <h3 className="text-sm font-semibold text-slate-700">Observaciones</h3>
                 </div>
                 <Field label="Observación" htmlFor="observacion">
-                  <Textarea
-                    id="observacion"
-                    value={form.observacion}
-                    onChange={(e) => setForm({ ...form, observacion: e.target.value })}
-                    rows={2}
-                    placeholder="Notas adicionales sobre la venta..."
-                    className="bg-white shadow-none placeholder:text-slate-300"
-                  />
+                  <div className="relative">
+                    <Textarea
+                      id="observacion"
+                      value={form.observacion}
+                      onChange={(e) => setForm({ ...form, observacion: e.target.value.slice(0, 300) })}
+                      rows={2}
+                      placeholder="Notas adicionales sobre la venta..."
+                      className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                    />
+                    <span className="absolute right-2 bottom-2 text-[10px] text-slate-400 pointer-events-none select-none">
+                      {form.observacion.length}/300
+                    </span>
+                  </div>
                 </Field>
               </div>
             </div>
@@ -1301,12 +1306,18 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                       inputMode="decimal"
                       value={montoStr}
                       onChange={(event) => {
-                        const raw = event.target.value.replace(/[^0-9.,]/g, "").replace(",", ".");
-                        const parts = raw.split(".");
-                        const cleaned = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : raw;
-                        const finalVal = cleaned.includes(".") ? cleaned.slice(0, cleaned.indexOf(".") + 3) : cleaned;
-                        const num = parseFloat(finalVal);
-                        setMontoStr(event.target.value);
+                        const val = event.target.value;
+                        let cleaned = val.replace(/[^0-9.,]/g, "");
+                        const firstSepIndex = cleaned.search(/[.,]/);
+                        if (firstSepIndex !== -1) {
+                          const separator = cleaned[firstSepIndex];
+                          const before = cleaned.slice(0, firstSepIndex);
+                          const after = cleaned.slice(firstSepIndex + 1).replace(/[.,]/g, "");
+                          cleaned = before + separator + after.slice(0, 2);
+                        }
+                        setMontoStr(cleaned);
+                        const parsedVal = cleaned.replace(",", ".");
+                        const num = parseFloat(parsedVal);
                         setMontoRecibido(!isNaN(num) && num >= 0 ? Math.round(num * 100) / 100 : 0);
                       }}
                       className="bg-white shadow-none h-9"
@@ -1315,8 +1326,16 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                   </Field>
                   <div className="flex justify-between items-center bg-slate-50 rounded-lg px-3 py-2">
                     <span className="text-sm font-medium text-slate-600">Cambio:</span>
-                    <span className={`text-lg font-bold ${montoRecibido >= totales.total ? "text-emerald-600" : "text-rose-600"}`}>
-                      {montoRecibido > 0 ? formatMoney(montoRecibido - totales.total) : formatMoney(0)}
+                    <span
+                      className={`text-lg font-bold ${
+                        (montoStr !== "" || montoRecibido > 0) && (montoRecibido - totales.total) < 0
+                          ? "text-rose-600"
+                          : "text-emerald-600"
+                      }`}
+                    >
+                      {(montoStr !== "" || montoRecibido > 0)
+                        ? formatMoney(montoRecibido - totales.total)
+                        : formatMoney(0)}
                     </span>
                   </div>
                 </div>
