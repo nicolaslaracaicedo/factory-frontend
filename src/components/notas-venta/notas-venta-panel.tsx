@@ -185,6 +185,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
   const [montoRecibido, setMontoRecibido] = useState(0);
   const [montoStr, setMontoStr] = useState("");
   const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [puntoSearch, setPuntoSearch] = useState("");
   const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
   const { setActiveSection } = useDashboardSection();
 
@@ -210,6 +211,8 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
     const option = formaPagoOptions.find((o) => o.value === value);
     return option?.label || value || "-";
   };
+
+  const filteredPuntos = useMemo(() => puntos.filter((p) => !puntoSearch || p.codigo.toLowerCase().includes(puntoSearch.toLowerCase()) || p.descripcion.toLowerCase().includes(puntoSearch.toLowerCase())), [puntos, puntoSearch]);
 
   const getPuntoLabel = (id?: number) => {
     if (!id) return "-";
@@ -479,7 +482,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
       setBreadcrumbs([
         { label: "Inicio", onClick: () => navigateTo("dashboard") },
         { label: "Notas de Venta", onClick: () => navigateTo("notas-venta") },
-        { label: editing ? "Editar nota de venta" : "Nueva nota de venta" },
+        { label: editing ? `Nota de venta #${editing.numero_comprobante || editing.id}` : "Nueva nota de venta" },
       ]);
     } else {
       setHeaderVisible(true);
@@ -915,8 +918,11 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                           position="popper"
                           sideOffset={4}
                         >
+                          <div className="border-b border-slate-100 p-2">
+                            <Input value={puntoSearch} onChange={(e) => setPuntoSearch(e.target.value)} placeholder="Buscar punto..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                          </div>
                           <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((punto) => (
+                            {filteredPuntos.map((punto) => (
                               <SelectPrimitive.Item
                                 key={punto.id}
                                 value={punto.id.toString()}

@@ -146,6 +146,7 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
   const [globalFilter, setGlobalFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filterEstado, setFilterEstado] = useState<string>("TODOS");
+  const [puntoSearch, setPuntoSearch] = useState("");
   const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
   const { setActiveSection } = useDashboardSection();
 
@@ -155,6 +156,8 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
     if (s === "desc") return <ArrowDown size={11} className="ml-1 text-sky-500" />;
     return <ChevronsUpDown size={11} className="ml-1 text-slate-300" />;
   }
+
+  const filteredPuntos = useMemo(() => puntos.filter((p) => !puntoSearch || p.codigo.toLowerCase().includes(puntoSearch.toLowerCase()) || p.descripcion.toLowerCase().includes(puntoSearch.toLowerCase())), [puntos, puntoSearch]);
 
   const filteredByEstado = useMemo(() => {
     if (filterEstado === "TODOS") return guias;
@@ -304,7 +307,7 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
       setBreadcrumbs([
         { label: "Inicio", onClick: () => navigateTo("dashboard") },
         { label: "Guías de remisión", onClick: () => navigateTo("guias-remision") },
-        { label: editing ? "Editar guía" : "Nueva guía" },
+        { label: editing ? `Guía #${editing.numero_comprobante || editing.numero || editing.id}` : "Nueva guía" },
       ]);
     } else {
       setHeaderVisible(true);
@@ -683,8 +686,11 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                           position="popper"
                           sideOffset={4}
                         >
+                          <div className="border-b border-slate-100 p-2">
+                            <Input value={puntoSearch} onChange={(e) => setPuntoSearch(e.target.value)} placeholder="Buscar punto..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                          </div>
                           <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((p) => (
+                            {filteredPuntos.map((p) => (
                               <SelectPrimitive.Item
                                 key={p.id}
                                 value={p.id.toString()}

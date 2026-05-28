@@ -139,6 +139,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
   const [emailAddress, setEmailAddress] = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const [codigosIva, setCodigosIva] = useState<CodigoIva[]>([]);
+  const [puntoSearch, setPuntoSearch] = useState("");
 
   function SortIcon({ column }: { column: any }) {
     const sorted = column.getIsSorted();
@@ -161,7 +162,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
       ),
       cell: ({ row }) => (
         <div className="flex flex-col gap-0.5">
-          <div className="font-semibold text-slate-900">{row.original.numero || `Nota #${row.original.id}`}</div>
+          <div className="font-semibold text-slate-900">{row.original.numero_comprobante || row.original.numero || `Nota #${row.original.id}`}</div>
           <div className="text-slate-500 text-xs">{getPuntoLabel(row.original.id_punto_emision)}</div>
         </div>
       ),
@@ -341,10 +342,13 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
   useEffect(() => {
     if (editorOpen) {
       setHeaderVisible(false);
+      const titulo = editing
+        ? `Nota de crédito #${editing.numero_comprobante || editing.numero || editing.id}`
+        : "Nueva nota";
       setBreadcrumbs([
         { label: "Inicio", onClick: () => navigateTo("dashboard") },
         { label: "Notas de crédito", onClick: () => navigateTo("notas-credito") },
-        { label: editing ? "Editar nota" : "Nueva nota" },
+        { label: titulo },
       ]);
     } else {
       setHeaderVisible(true);
@@ -741,6 +745,8 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
     return cliente?.razon_social || fallback || "-";
   };
 
+  const filteredPuntos = useMemo(() => puntos.filter((p) => !puntoSearch || p.codigo.toLowerCase().includes(puntoSearch.toLowerCase()) || p.descripcion.toLowerCase().includes(puntoSearch.toLowerCase())), [puntos, puntoSearch]);
+
   const getPuntoLabel = (puntoId?: number) => {
     const punto = puntos.find((item) => item.id === puntoId);
     return punto ? `${punto.codigo} - ${punto.descripcion}` : "-";
@@ -867,8 +873,11 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                           position="popper"
                           sideOffset={4}
                         >
+                          <div className="border-b border-slate-100 p-2">
+                            <Input value={puntoSearch} onChange={(e) => setPuntoSearch(e.target.value)} placeholder="Buscar punto..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                          </div>
                           <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((punto) => (
+                            {filteredPuntos.map((punto) => (
                               <SelectPrimitive.Item
                                 key={punto.id}
                                 value={punto.id.toString()}

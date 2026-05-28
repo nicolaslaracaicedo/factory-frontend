@@ -135,6 +135,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
   const [emailFactura, setEmailFactura] = useState<FacturaItem | null>(null);
   const [emailAddress, setEmailAddress] = useState("");
   const [emailSending, setEmailSending] = useState(false);
+  const [puntoSearch, setPuntoSearch] = useState("");
   const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
   const { setActiveSection } = useDashboardSection();
 
@@ -171,7 +172,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
       ),
       cell: ({ row }) => (
         <div className="flex flex-col gap-0.5">
-          <div className="font-semibold text-slate-900">{row.original.numero || `Factura #${row.original.id}`}</div>
+          <div className="font-semibold text-slate-900">{row.original.numero_comprobante || row.original.numero || `Factura #${row.original.id}`}</div>
           <div className="text-slate-500 text-xs">{getPuntoLabel(row.original.id_punto_emision)}</div>
         </div>
       ),
@@ -352,7 +353,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
       setBreadcrumbs([
         { label: "Inicio", onClick: () => navigateTo("dashboard") },
         { label: "Facturas", onClick: () => navigateTo("facturas") },
-        { label: editing ? "Editar factura" : "Nueva factura" },
+        { label: editing ? `Factura #${editing.numero_comprobante || editing.numero || editing.id}` : "Nueva factura" },
       ]);
     } else {
       setHeaderVisible(true);
@@ -867,6 +868,8 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
   const cambio = montoRecibidoDisplay - totales.total;
   const showPagoCard = (isContado && form.forma_pago === "01") || isCredito;
 
+  const filteredPuntos = useMemo(() => puntos.filter((p) => !puntoSearch || p.codigo.toLowerCase().includes(puntoSearch.toLowerCase()) || p.descripcion.toLowerCase().includes(puntoSearch.toLowerCase())), [puntos, puntoSearch]);
+
   const getPuntoLabel = (puntoId?: number) => {
     const punto = puntos.find((item) => item.id === puntoId);
     return punto ? `${punto.codigo} - ${punto.descripcion}` : "-";
@@ -977,8 +980,11 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                           position="popper"
                           sideOffset={4}
                         >
+                          <div className="border-b border-slate-100 p-2">
+                            <Input value={puntoSearch} onChange={(e) => setPuntoSearch(e.target.value)} placeholder="Buscar punto..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                          </div>
                           <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((punto) => (
+                            {filteredPuntos.map((punto) => (
                               <SelectPrimitive.Item
                                 key={punto.id}
                                 value={punto.id.toString()}

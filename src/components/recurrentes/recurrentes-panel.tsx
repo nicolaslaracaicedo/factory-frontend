@@ -186,6 +186,7 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
   const [filterEstado, setFilterEstado] = useState<string>("");
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [productoQueries, setProductoQueries] = useState<Record<number, string>>({});
+  const [puntoSearch, setPuntoSearch] = useState("");
   const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
   const { setActiveSection } = useDashboardSection();
 
@@ -203,6 +204,8 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
       default: return "bg-slate-100 text-slate-700";
     }
   };
+
+  const filteredPuntos = useMemo(() => puntos.filter((p) => !puntoSearch || p.codigo.toLowerCase().includes(puntoSearch.toLowerCase()) || p.descripcion.toLowerCase().includes(puntoSearch.toLowerCase())), [puntos, puntoSearch]);
 
   const filteredByEstado = useMemo(() => {
     if (!filterEstado || filterEstado === "TODOS") return recurrentes;
@@ -381,7 +384,7 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
       setBreadcrumbs([
         { label: "Inicio", onClick: () => navigateTo("dashboard") },
         { label: "Facturación Recurrente", onClick: () => navigateTo("recurrentes") },
-        { label: editing ? "Editar recurrente" : "Nueva recurrente" },
+        { label: editing ? `Recurrente #${editing.id}` : "Nueva recurrente" },
       ]);
     } else {
       setHeaderVisible(true);
@@ -799,8 +802,11 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                       </SelectPrimitive.Trigger>
                       <SelectPrimitive.Portal>
                         <SelectPrimitive.Content className="z-50 min-w-[340px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" position="popper" sideOffset={4}>
+                          <div className="border-b border-slate-100 p-2">
+                            <Input value={puntoSearch} onChange={(e) => setPuntoSearch(e.target.value)} placeholder="Buscar punto..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                          </div>
                           <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((p) => (
+                            {filteredPuntos.map((p) => (
                               <SelectPrimitive.Item key={p.id} value={p.id.toString()} className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
                                 <SelectPrimitive.ItemText>{p.codigo} - {p.descripcion}</SelectPrimitive.ItemText>
                               </SelectPrimitive.Item>

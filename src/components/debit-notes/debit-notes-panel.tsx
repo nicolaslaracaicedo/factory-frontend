@@ -117,6 +117,7 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
   const [emailNota, setEmailNota] = useState<NotaDebitoItem | null>(null);
   const [emailAddress, setEmailAddress] = useState("");
   const [emailSending, setEmailSending] = useState(false);
+  const [puntoSearch, setPuntoSearch] = useState("");
 
   function SortIcon({ column }: { column: any }) {
     const sorted = column.getIsSorted();
@@ -139,7 +140,7 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
       ),
       cell: ({ row }) => (
         <div className="flex flex-col gap-0.5">
-          <div className="font-semibold text-slate-900">{row.original.numero || `Nota #${row.original.id}`}</div>
+          <div className="font-semibold text-slate-900">{row.original.numero_comprobante || row.original.numero || `Nota #${row.original.id}`}</div>
           <div className="text-slate-500 text-xs">{getPuntoLabel(row.original.id_punto_emision)}</div>
         </div>
       ),
@@ -565,6 +566,8 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
     return cliente?.razon_social || fallback || "-";
   };
 
+  const filteredPuntos = useMemo(() => puntos.filter((p) => !puntoSearch || p.codigo.toLowerCase().includes(puntoSearch.toLowerCase()) || p.descripcion.toLowerCase().includes(puntoSearch.toLowerCase())), [puntos, puntoSearch]);
+
   const getPuntoLabel = (puntoId?: number) => {
     const punto = puntos.find((item) => item.id === puntoId);
     return punto ? `${punto.codigo} - ${punto.descripcion}` : "-";
@@ -587,10 +590,13 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
   useEffect(() => {
     if (editorOpen) {
       setHeaderVisible(false);
+      const titulo = editing
+        ? `Nota de débito #${editing.numero_comprobante || editing.numero || editing.id}`
+        : "Nueva nota";
       setBreadcrumbs([
         { label: "Inicio", onClick: () => navigateTo("dashboard") },
         { label: "Notas de débito", onClick: () => navigateTo("notas-debito") },
-        { label: editing ? "Editar nota" : "Nueva nota" },
+        { label: titulo },
       ]);
     } else { setHeaderVisible(true); setBreadcrumbs(null); }
     return () => { setHeaderVisible(true); setBreadcrumbs(null); };
@@ -688,8 +694,11 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
                       </SelectPrimitive.Trigger>
                       <SelectPrimitive.Portal>
                         <SelectPrimitive.Content className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" position="popper" sideOffset={4}>
+                          <div className="border-b border-slate-100 p-2">
+                            <Input value={puntoSearch} onChange={(e) => setPuntoSearch(e.target.value)} placeholder="Buscar punto..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                          </div>
                           <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((punto) => (
+                            {filteredPuntos.map((punto) => (
                               <SelectPrimitive.Item key={punto.id} value={punto.id.toString()} className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
                                 <SelectPrimitive.ItemText>{punto.codigo} - {punto.descripcion}</SelectPrimitive.ItemText>
                               </SelectPrimitive.Item>

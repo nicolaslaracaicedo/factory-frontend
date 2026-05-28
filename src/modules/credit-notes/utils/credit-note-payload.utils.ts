@@ -42,6 +42,7 @@ const normalizeDetalle = (value: UnknownRecord): NotaCreditoDetalle => ({
 const normalizeNota = (value: UnknownRecord): NotaCreditoItem => ({
   id: toNumber(value.id, 0),
   numero: toText(value.numero ?? value.numero_nota ?? value.secuencial, ""),
+  numero_comprobante: toText(value.numero_comprobante, ""),
   estado: toText(value.estado ?? value.status, ""),
   id_punto_emision: toNumber(value.id_punto_emision ?? value.punto_emision_id, 0) || undefined,
   id_factura_ref: toNumber(value.id_factura_ref ?? value.factura_ref_id, 0) || undefined,

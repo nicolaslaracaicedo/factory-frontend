@@ -134,11 +134,16 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
   const [emailAddress, setEmailAddress] = useState("");
   const [codigosIva, setCodigosIva] = useState<CodigoIva[]>([]);
   const [emailSending, setEmailSending] = useState(false);
+  const [puntoSearch, setPuntoSearch] = useState("");
+  const [proveedorSearch, setProveedorSearch] = useState("");
 
   const getProductoQuery = (index: number) => productoQueries[index] ?? "";
   const setProductoQuery = (index: number, value: string) => {
     setProductoQueries((prev) => ({ ...prev, [index]: value }));
   };
+
+  const filteredPuntos = useMemo(() => puntos.filter((p) => !puntoSearch || p.codigo.toLowerCase().includes(puntoSearch.toLowerCase()) || p.descripcion.toLowerCase().includes(puntoSearch.toLowerCase())), [puntos, puntoSearch]);
+  const filteredProveedores = useMemo(() => proveedores.filter((p) => !proveedorSearch || p.razon_social.toLowerCase().includes(proveedorSearch.toLowerCase()) || p.identificacion.toLowerCase().includes(proveedorSearch.toLowerCase())), [proveedores, proveedorSearch]);
 
   const getFilteredProductos = (index: number) => {
     const query = getProductoQuery(index).trim().toLowerCase();
@@ -159,7 +164,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
       setBreadcrumbs([
         { label: "Inicio", onClick: () => navigateTo("dashboard") },
         { label: "Liquidaciones de Compra", onClick: () => navigateTo("liquidaciones-compra") },
-        { label: editing ? "Editar liquidación" : "Nueva liquidación" },
+        { label: editing ? `Liquidación #${editing.numero_comprobante || editing.numero || editing.id}` : "Nueva liquidación" },
       ]);
     } else {
       setHeaderVisible(true);
@@ -859,8 +864,11 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
                           position="popper"
                           sideOffset={4}
                         >
+                          <div className="border-b border-slate-100 p-2">
+                            <Input value={puntoSearch} onChange={(e) => setPuntoSearch(e.target.value)} placeholder="Buscar punto..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                          </div>
                           <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((p) => (
+                            {filteredPuntos.map((p) => (
                               <SelectPrimitive.Item 
                                 key={p.id}
                                 value={p.id.toString()}
@@ -896,8 +904,11 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
                           position="popper"
                           sideOffset={4}
                         >
+                          <div className="border-b border-slate-100 p-2">
+                            <Input value={proveedorSearch} onChange={(e) => setProveedorSearch(e.target.value)} placeholder="Buscar proveedor..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                          </div>
                           <SelectPrimitive.Viewport className="p-1 max-h-60 overflow-y-auto">
-                            {proveedores.map((prov) => (
+                            {filteredProveedores.map((prov) => (
                               <SelectPrimitive.Item 
                                 key={prov.id}
                                 value={prov.id.toString()}

@@ -137,6 +137,8 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
   const [emailItem, setEmailItem] = useState<RetencionItem | null>(null);
   const [emailAddress, setEmailAddress] = useState("");
   const [emailSending, setEmailSending] = useState(false);
+  const [puntoSearch, setPuntoSearch] = useState("");
+  const [proveedorSearch, setProveedorSearch] = useState("");
 
   function SortIcon({ column }: { column: any }) {
     const s = column.getIsSorted();
@@ -158,7 +160,7 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
           Número <SortIcon column={column} />
         </button>
       ),
-      cell: ({ row }) => <span className="font-semibold text-slate-900">{row.original.numero || "-"}</span>,
+      cell: ({ row }) => <span className="font-semibold text-slate-900">{row.original.numero_comprobante || row.original.numero || "-"}</span>,
     },
     {
       accessorKey: "estado",
@@ -322,7 +324,7 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
       setBreadcrumbs([
         { label: "Inicio", onClick: () => navigateTo("dashboard") },
         { label: "Retenciones", onClick: () => navigateTo("retenciones") },
-        { label: editing ? "Editar retención" : "Nueva retención" },
+        { label: editing ? `Retención #${editing.numero_comprobante || editing.numero || editing.id}` : "Nueva retención" },
       ]);
     } else {
       setHeaderVisible(true);
@@ -572,6 +574,9 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
     return estado === "BORRADOR" || estado === "RECHAZADA";
   };
 
+  const filteredPuntos = useMemo(() => puntos.filter((p) => !puntoSearch || p.codigo.toLowerCase().includes(puntoSearch.toLowerCase()) || p.descripcion.toLowerCase().includes(puntoSearch.toLowerCase())), [puntos, puntoSearch]);
+  const filteredProveedores = useMemo(() => proveedores.filter((p) => !proveedorSearch || p.razon_social.toLowerCase().includes(proveedorSearch.toLowerCase()) || p.identificacion.toLowerCase().includes(proveedorSearch.toLowerCase())), [proveedores, proveedorSearch]);
+
   const getPuntoLabel = (id: number) => {
     const p = puntos.find((x) => x.id === id);
     return p ? `${p.codigo} - ${p.descripcion}` : `ID ${id}`;
@@ -704,8 +709,11 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
                           position="popper"
                           sideOffset={4}
                         >
+                          <div className="border-b border-slate-100 p-2">
+                            <Input value={puntoSearch} onChange={(e) => setPuntoSearch(e.target.value)} placeholder="Buscar punto..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                          </div>
                           <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((p) => (
+                            {filteredPuntos.map((p) => (
                               <SelectPrimitive.Item
                                 key={p.id}
                                 value={p.id.toString()}
@@ -741,8 +749,11 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
                           position="popper"
                           sideOffset={4}
                         >
+                          <div className="border-b border-slate-100 p-2">
+                            <Input value={proveedorSearch} onChange={(e) => setProveedorSearch(e.target.value)} placeholder="Buscar proveedor..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                          </div>
                           <SelectPrimitive.Viewport className="p-1">
-                            {proveedores.map((p) => (
+                            {filteredProveedores.map((p) => (
                               <SelectPrimitive.Item
                                 key={p.id}
                                 value={p.id.toString()}

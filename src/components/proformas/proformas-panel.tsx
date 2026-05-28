@@ -165,6 +165,7 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [productoQueries, setProductoQueries] = useState<Record<number, string>>({});
   const [filterEstado, setFilterEstado] = useState<string>("");
+  const [puntoSearch, setPuntoSearch] = useState("");
   const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
   const { setActiveSection } = useDashboardSection();
 
@@ -185,6 +186,8 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
       default: return "bg-slate-100 text-slate-700";
     }
   };
+
+  const filteredPuntos = useMemo(() => puntos.filter((p) => !puntoSearch || p.codigo.toLowerCase().includes(puntoSearch.toLowerCase()) || p.descripcion.toLowerCase().includes(puntoSearch.toLowerCase())), [puntos, puntoSearch]);
 
   const filteredByEstado = useMemo(() => {
     if (!filterEstado) return proformas;
@@ -356,7 +359,7 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
       setBreadcrumbs([
         { label: "Inicio", onClick: () => navigateTo("dashboard") },
         { label: "Proformas", onClick: () => navigateTo("proformas") },
-        { label: editing ? "Editar proforma" : "Nueva proforma" },
+        { label: editing ? `Proforma #${editing.numero || editing.id}` : "Nueva proforma" },
       ]);
     } else {
       setHeaderVisible(true);
@@ -799,8 +802,11 @@ export function ProformasPanel({ showPanel = true, readOnly = false }: Proformas
                           position="popper"
                           sideOffset={4}
                         >
+                          <div className="border-b border-slate-100 p-2">
+                            <Input value={puntoSearch} onChange={(e) => setPuntoSearch(e.target.value)} placeholder="Buscar punto..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                          </div>
                           <SelectPrimitive.Viewport className="p-1">
-                            {puntos.map((p) => (
+                            {filteredPuntos.map((p) => (
                               <SelectPrimitive.Item
                                 key={p.id}
                                 value={p.id.toString()}

@@ -1,6 +1,7 @@
 export interface NotaCreditoItem {
   id: number;
   numero?: string;
+  numero_comprobante?: string;
   estado?: string;
   id_punto_emision?: number;
   id_factura_ref?: number;
