@@ -1338,7 +1338,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                             </span>
 
                             <span className="text-xs text-amber-600 font-medium">
-                              {producto?.tiene_ice ? `${producto.porcentaje_ice}% · ${formatMoney(getDetalleSubtotal(detalle) * ((producto.porcentaje_ice ?? 0) / 100))}` : "-"}
+                              {producto?.tiene_ice ? formatMoney(getDetalleSubtotal(detalle) * ((producto.porcentaje_ice ?? 0) / 100)) : "-"}
                             </span>
 
                             <span className="text-xs text-purple-600 font-medium">

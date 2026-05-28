@@ -15,7 +15,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Edit, Eye, PlusCircle, Power, Send, Trash2, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Printer, Trash, Package, User, Calendar, FileCheck, Tag, Receipt, FileX, RefreshCw, DollarSign, Mail } from "lucide-react";
+import { Edit, Eye, PlusCircle, Power, Send, Trash2, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ChevronsUpDown, ChevronDown, ListFilter, MoreVertical, FileText, Plus, X, Printer, Trash, Package, User, Calendar, FileCheck, Tag, Receipt, FileX, RefreshCw, Calculator, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/src/components/ui/button";
 import {
@@ -855,20 +855,20 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
             <aside className="space-y-4 lg:sticky lg:top-6">
               <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="h-3.5 w-3.5 text-slate-500" />
+                  <Calculator className="h-3.5 w-3.5 text-slate-500" />
                   <h4 className="text-sm font-semibold text-slate-700">Totales</h4>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Subtotal débito:</span>
+                  <span className="text-slate-700">Subtotal débito:</span>
                   <span className="font-medium text-slate-800">{formatMoney(totales.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">{form.porcentaje_iva > 0 ? `IVA (${form.porcentaje_iva}%):` : "IVA:"}</span>
+                  <span className="text-slate-700">{form.porcentaje_iva > 0 ? `IVA (${form.porcentaje_iva}%):` : "IVA:"}</span>
                   <span className="font-medium text-slate-800">{formatMoney(totales.iva)}</span>
                 </div>
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2">
                   <span className="text-sm font-bold text-slate-800">Total débito:</span>
-                  <span className="text-lg font-extrabold text-sky-700">{formatMoney(totales.total)}</span>
+                  <span className="text-xl font-extrabold text-sky-700">{formatMoney(totales.total)}</span>
                 </div>
                 {parseFloat(montoStr || "0") > 0 && (
                   <div className="flex justify-between text-xs text-slate-500 pt-1 border-t border-dashed border-slate-200">

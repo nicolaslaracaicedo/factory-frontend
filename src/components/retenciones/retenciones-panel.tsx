@@ -991,7 +991,7 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
                 </div>
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2">
                   <span className="text-sm font-bold text-slate-800">Total retenido:</span>
-                  <span className="text-lg font-extrabold text-sky-700">${formatMoney(totales.totalRetenido)}</span>
+                  <span className="text-xl font-extrabold text-sky-700">${formatMoney(totales.totalRetenido)}</span>
                 </div>
               </div>
 

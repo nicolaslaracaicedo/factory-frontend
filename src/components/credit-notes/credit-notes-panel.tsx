@@ -1094,14 +1094,14 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                             {form.id_factura_ref > 0 && detalle.porcentaje_ice === 0 ? (
                               <span className="text-xs text-slate-400">-</span>
                             ) : form.id_factura_ref > 0 ? (
-                              <span className="text-xs text-slate-800">{detalle.porcentaje_ice}%</span>
+                              <span className="text-xs text-amber-600 font-medium">{(base * detalle.porcentaje_ice / 100).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             ) : (
                               <Input type="number" min={0} step="0.01" value={detalle.porcentaje_ice} onChange={(event) => updateDetail(index, "porcentaje_ice", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs" />
                             )}
                             {form.id_factura_ref > 0 && detalle.valor_unitario_irbpnr === 0 ? (
                               <span className="text-xs text-slate-400">-</span>
                             ) : form.id_factura_ref > 0 ? (
-                              <span className="text-xs text-slate-800">{(detalle.valor_unitario_irbpnr ?? 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="text-xs text-purple-600 font-medium">{(detalle.valor_unitario_irbpnr ?? 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             ) : (
                               <Input type="number" min={0} step="0.01" value={detalle.valor_unitario_irbpnr} onChange={(event) => updateDetail(index, "valor_unitario_irbpnr", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs" />
                             )}
@@ -1157,9 +1157,9 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                     <span className="font-medium text-purple-600">${formatMoney(totales.irbpnr)}</span>
                   </div>
                 )}
-                <div className="border-t border-slate-200 pt-2 flex justify-between">
-                  <span className="font-semibold text-slate-800">Total:</span>
-                  <span className="text-lg font-extrabold text-sky-700">${formatMoney(totales.total)}</span>
+                <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2">
+                  <span className="text-sm font-bold text-slate-800">Total:</span>
+                  <span className="text-xl font-extrabold text-sky-700">${formatMoney(totales.total)}</span>
                 </div>
               </div>
 

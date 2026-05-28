@@ -629,10 +629,11 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
           irbpnrValues: producto?.tiene_irbpnr
             ? acc.irbpnrValues.includes(irbpnrVal) ? acc.irbpnrValues : [...acc.irbpnrValues, irbpnrVal]
             : acc.irbpnrValues,
+          ivaPcts: acc.ivaPcts.includes(ivaPct) ? acc.ivaPcts : [...acc.ivaPcts, ivaPct],
           total: acc.total + total,
         };
       },
-      { subtotal: 0, descuento: 0, iva: 0, ice: 0, irbpnr: 0, icePcts: [] as number[], irbpnrValues: [] as number[], total: 0 }
+      { subtotal: 0, descuento: 0, iva: 0, ice: 0, irbpnr: 0, icePcts: [] as number[], irbpnrValues: [] as number[], ivaPcts: [] as number[], total: 0 }
     );
   };
 
@@ -1093,7 +1094,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
 
                             {/* ICE (read-only, calculated from product) */}
                             <span className="text-xs text-amber-600 font-medium">
-                              {producto?.tiene_ice ? `${producto.porcentaje_ice}% · ${(base * ((producto.porcentaje_ice ?? 0) / 100)).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
+                              {producto?.tiene_ice ? (base * ((producto.porcentaje_ice ?? 0) / 100)).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
                             </span>
 
                             {/* IRBPNR (read-only, calculated from product) */}
@@ -1143,7 +1144,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
                 )}
                 {totales.iva > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-700">IVA:</span>
+                    <span className="text-slate-700">{totales.ivaPcts.length === 1 ? `IVA (${totales.ivaPcts[0]}%):` : "IVA:"}</span>
                     <span className="font-medium text-slate-800">{formatCurrency(totales.iva)}</span>
                   </div>
                 )}
