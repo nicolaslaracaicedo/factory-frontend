@@ -73,6 +73,8 @@ import { providerService } from "@/src/modules/providers/services/provider.servi
 import type { Proveedor } from "@/src/modules/providers/types/provider.types";
 import { productService } from "@/src/modules/products/services/product.service";
 import type { Producto } from "@/src/modules/products/types/product.types";
+import { ivaService } from "@/src/modules/iva/services/iva.service";
+import type { CodigoIva } from "@/src/modules/iva/types/iva.types";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
 import { useDashboardSection } from "@/src/components/dashboard/dashboard-section-context";
 import { Loader } from "@/src/components/ui/loader";
@@ -102,16 +104,6 @@ const initialFormState: LiquidacionCompraFormState = {
   detalles: [initialDetail()],
 };
 
-const codigosIva = [
-  { value: "0", label: "0%", porcentaje: 0 },
-  { value: "2", label: "12%", porcentaje: 12 },
-  { value: "3", label: "14%", porcentaje: 14 },
-  { value: "4", label: "15%", porcentaje: 15 },
-  { value: "5", label: "5%", porcentaje: 5 },
-  { value: "6", label: "No objeto de impuesto", porcentaje: 0 },
-  { value: "7", label: "Exento de IVA", porcentaje: 0 },
-];
-
 export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }: LiquidacionesCompraPanelProps) {
   const [liquidaciones, setLiquidaciones] = useState<LiquidacionCompraItem[]>([]);
   const [puntos, setPuntos] = useState<PuntoEmision[]>([]);
@@ -140,6 +132,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailItem, setEmailItem] = useState<LiquidacionCompraItem | null>(null);
   const [emailAddress, setEmailAddress] = useState("");
+  const [codigosIva, setCodigosIva] = useState<CodigoIva[]>([]);
   const [emailSending, setEmailSending] = useState(false);
 
   const getProductoQuery = (index: number) => productoQueries[index] ?? "";
@@ -199,14 +192,16 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
   const loadCatalogs = async () => {
     setLoadingCatalogs(true);
     try {
-      const [puntosData, proveedoresData, productosData] = await Promise.all([
+      const [puntosData, proveedoresData, productosData, ivaData] = await Promise.all([
         emissionPointService.listPuntos(),
         providerService.listProveedores(),
-        productService.listProductos()
+        productService.listProductos(),
+        ivaService.listCodigos(true),
       ]);
       setPuntos(puntosData);
       setProveedores(proveedoresData);
       setProductos(productosData);
+      setCodigosIva(ivaData);
     } catch {
       toast.error("Error al cargar catálogos");
     } finally {
@@ -559,7 +554,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
   };
 
   const handleIvaChange = (idx: number, codigo: string) => {
-    const ivaOption = codigosIva.find((i) => i.value === codigo);
+    const ivaOption = codigosIva.find((i) => i.codigo === codigo);
     updateDetalle(idx, { codigo_iva: codigo, porcentaje_iva: ivaOption?.porcentaje || 0 });
   };
 
@@ -993,15 +988,14 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
                               onValueChange={(val) => {
                                 const p = productos.find((item) => item.id === Number(val));
                                 if (p) {
-                                  const ivaCodigo = p.iva_codigo || String(p.id_iva);
-                                  const ivaPorcentaje = p.iva_porcentaje ?? p.porcentaje_iva ?? codigosIva.find((i) => i.value === ivaCodigo)?.porcentaje ?? 15;
+                                  const iva = codigosIva.find((i) => i.id === p.id_iva);
                                   updateDetalle(idx, {
                                     id_producto: p.id,
                                     codigo: p.codigo || "",
                                     descripcion: p.descripcion || "",
                                     precio_unitario: p.precio || 0,
-                                    codigo_iva: ivaCodigo,
-                                    porcentaje_iva: ivaPorcentaje,
+                                    codigo_iva: iva?.codigo || "4",
+                                    porcentaje_iva: iva?.porcentaje || 0,
                                   });
                                 }
                                 setProductoQuery(idx, "");
@@ -1089,7 +1083,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
 
                             {/* IVA (read-only, from product) */}
                             <span className="text-xs text-slate-500">
-                              {detalle.porcentaje_iva}%
+                              {codigosIva.find((i) => i.codigo === detalle.codigo_iva)?.nombre ?? `IVA ${detalle.porcentaje_iva}%`}
                             </span>
 
                             {/* ICE (read-only, calculated from product) */}

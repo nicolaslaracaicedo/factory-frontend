@@ -913,7 +913,7 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                   </div>
                   <Button type="button" variant="secondary" className="h-9 px-3" onClick={addDetalle}>
                     <Plus className="mr-1.5 h-4 w-4" />
-                    Agregar producto
+                    Agregar
                   </Button>
                 </div>
 
@@ -933,10 +933,7 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                           <div className="relative">
                             {detalle.id_producto > 0 ? (
                               <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-sm font-medium text-slate-800 truncate" title={detalle.descripcion}>{detalle.descripcion}</span>
-                                  <span className="text-[10px] text-slate-500">{detalle.codigo}</span>
-                                </div>
+                                <span className="text-xs font-medium text-slate-800 truncate" title={detalle.descripcion}>{detalle.descripcion}</span>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -991,10 +988,9 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                                               setProductoQuery(idx, "");
                                               setProductoFocus((prev) => ({ ...prev, [idx]: false }));
                                             }}
-                                            className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0 flex flex-col"
+                                            className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
                                           >
                                             <span className="font-medium text-slate-800 truncate">{p.descripcion}</span>
-                                            <span className="text-[10px] text-slate-500">{p.codigo}</span>
                                           </button>
                                         ))
                                       )}
@@ -1006,24 +1002,24 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                           </div>
 
                           {/* Código */}
-                          <div className="text-sm font-medium text-slate-700 truncate" title={detalle.codigo || "-"}>
+                          <div className="text-xs font-medium text-slate-700 truncate" title={detalle.codigo || "-"}>
                             {detalle.codigo || "-"}
                           </div>
 
                           {/* Descripción */}
-                          <div className="text-sm font-medium text-slate-700 truncate" title={detalle.descripcion || "-"}>
+                          <div className="text-xs font-medium text-slate-700 truncate" title={detalle.descripcion || "-"}>
                             {detalle.descripcion || "-"}
                           </div>
 
                           {/* Cantidad */}
                           <div>
-                            <Input
-                              type="number"
-                              min={1}
-                              value={detalle.cantidad}
-                              onChange={(event) => updateDetalle(idx, { cantidad: Number(event.target.value) })}
-                              className="h-9 bg-white shadow-none text-center"
-                            />
+                              <Input
+                                type="number"
+                                min={1}
+                                value={detalle.cantidad}
+                                onChange={(event) => updateDetalle(idx, { cantidad: Number(event.target.value) })}
+                                className="h-9 bg-white shadow-none text-xs text-center"
+                              />
                           </div>
 
                           {/* Delete */}

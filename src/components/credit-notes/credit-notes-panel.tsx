@@ -44,6 +44,8 @@ import { invoiceService } from "@/src/modules/invoices/services/invoice.service"
 import type { FacturaItem } from "@/src/modules/invoices/types/invoice.types";
 import { productService } from "@/src/modules/products/services/product.service";
 import type { Producto } from "@/src/modules/products/types/product.types";
+import { ivaService } from "@/src/modules/iva/services/iva.service";
+import type { CodigoIva } from "@/src/modules/iva/types/iva.types";
 import { Loader } from "@/src/components/ui/loader";
 import { ClientFormModal } from "@/src/components/clients/client-form-modal";
 import { useBreadcrumbs } from "@/src/components/ui/breadcrumbs-context";
@@ -136,6 +138,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
   const [emailNota, setEmailNota] = useState<NotaCreditoItem | null>(null);
   const [emailAddress, setEmailAddress] = useState("");
   const [emailSending, setEmailSending] = useState(false);
+  const [codigosIva, setCodigosIva] = useState<CodigoIva[]>([]);
 
   function SortIcon({ column }: { column: any }) {
     const sorted = column.getIsSorted();
@@ -305,16 +308,18 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
     const loadCatalogs = async () => {
       setLoadingCatalogs(true);
       try {
-        const [clientesData, puntosData, facturasData, productosData] = await Promise.all([
+        const [clientesData, puntosData, facturasData, productosData, ivaData] = await Promise.all([
           clientService.listClientes("ACTIVO"),
           emissionPointService.listPuntos("ACTIVO"),
           invoiceService.listFacturas(),
           productService.listProductos("ACTIVO"),
+          ivaService.listCodigos(true),
         ]);
         setClientes(clientesData);
         setPuntos(puntosData);
         setFacturas(facturasData);
         setProductos(productosData);
+        setCodigosIva(ivaData);
       } catch (error) {
         const message =
           error instanceof Error
@@ -1020,7 +1025,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                       />
                       <Button type="button" variant="secondary" onClick={addDetail} className="h-9 px-3">
                         <PlusCircle className="mr-1.5 h-4 w-4" />
-                        Agregar detalle
+                        Agregar
                       </Button>
                     </div>
                   )}
@@ -1087,7 +1092,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                             {form.id_factura_ref > 0 && detalle.porcentaje_iva === 0 ? (
                               <span className="text-xs text-slate-400">-</span>
                             ) : form.id_factura_ref > 0 ? (
-                              <span className="text-xs text-slate-800">{detalle.porcentaje_iva}%</span>
+                              <span className="text-xs text-slate-800">{codigosIva.find((i) => i.codigo === detalle.codigo_iva)?.nombre ?? `IVA ${detalle.porcentaje_iva}%`}</span>
                             ) : (
                               <Input type="number" min={0} step="0.01" value={detalle.porcentaje_iva} onChange={(event) => updateDetail(index, "porcentaje_iva", Number(event.target.value))} className="bg-white shadow-none h-8 text-xs" />
                             )}

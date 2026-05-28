@@ -1110,7 +1110,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                       </Button>
                       <Button type="button" variant="secondary" onClick={addDetail} className="h-9 px-3">
                         <PlusCircle className="mr-1.5 h-4 w-4" />
-                        Agregar Item
+                        Agregar
                       </Button>
                     </div>
                   </div>

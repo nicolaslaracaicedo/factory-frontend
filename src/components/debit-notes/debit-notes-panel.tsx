@@ -782,8 +782,8 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
                     <h3 className="text-sm font-semibold text-slate-700">Motivos</h3>
                   </div>
                   {form.id_factura_ref > 0 && (
-                    <Button type="button" variant="secondary" onClick={addMotivo} className="h-8 px-2.5 text-xs">
-                      <PlusCircle className="mr-1 h-3.5 w-3.5" /> Agregar motivo
+                    <Button type="button" variant="secondary" onClick={addMotivo} className="h-9 px-3">
+                      <PlusCircle className="mr-1.5 h-4 w-4" /> Agregar
                     </Button>
                   )}
                 </div>

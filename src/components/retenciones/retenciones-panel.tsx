@@ -840,7 +840,7 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
                   </div>
                   <Button type="button" variant="secondary" className="h-9 px-3" onClick={addDetalle}>
                     <PlusCircle className="mr-1.5 h-4 w-4" />
-                    Agregar detalle
+                    Agregar
                   </Button>
                 </div>
 
