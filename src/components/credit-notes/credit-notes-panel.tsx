@@ -843,7 +843,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
           className="space-y-6"
           onSubmit={submitForm}
         >
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-6 desktop:grid-cols-[minmax(0,1fr)_320px]">
             <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
               {/* SECCIÓN: Información general */}
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
@@ -1046,8 +1046,8 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                 </div>
                 {form.id_factura_ref > 0 ? (
                   <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                    <div className="min-w-[960px]">
-                      <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                  <div className="min-w-[740px] desktop:min-w-[960px]">
+                    <div className="hidden lg:grid grid-cols-[55px_minmax(130px,1fr)_50px_75px_52px_72px_58px_62px_65px_40px] gap-2 bg-slate-50 px-2 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700 desktop:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px] desktop:gap-3 desktop:px-3">
                         <span>Código</span>
                         <span>Descripción</span>
                         <span>Cant.</span>
@@ -1065,7 +1065,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                           const base = detalle.cantidad * detalle.precio_unitario - descuentoValor;
                           const subtotalLinea = base;
                           return (
-                          <div key={`detalle-${index}`} className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px]">
+                          <div key={`detalle-${index}`} className="grid items-center gap-2 bg-white px-2 py-2 desktop:gap-3 desktop:px-3 lg:grid-cols-[55px_minmax(130px,1fr)_50px_75px_52px_72px_58px_62px_65px_40px] desktop:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px]">
                             {form.id_factura_ref > 0 ? (
                               <span className="text-xs text-slate-800 truncate">{detalle.codigo || "-"}</span>
                             ) : (
@@ -1142,7 +1142,7 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
               </div>
             </div>
 
-            <aside className="space-y-4 lg:sticky lg:top-6">
+            <aside className="space-y-4 desktop:sticky desktop:top-6">
               <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
                 <div className="flex items-center gap-2 mb-3">
                   <Calculator className="h-3.5 w-3.5 text-slate-500" />
@@ -1182,6 +1182,12 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
                 </div>
               </div>
 
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">!</span>
+                <p className="text-xs text-amber-800">
+                  <span className="font-semibold">Normativa SRI:</span> El Servicio de Rentas Internas (SRI) de Ecuador no permite emitir notas de crédito para facturas emitidas a Consumidor Final. Selecciona una factura con cliente registrado.
+                </p>
+              </div>
 
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <Button type="submit" disabled={saving} className="h-10 w-full">

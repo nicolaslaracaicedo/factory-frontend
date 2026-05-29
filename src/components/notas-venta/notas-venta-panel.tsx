@@ -888,7 +888,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
           className="space-y-6"
           onSubmit={submitForm}
         >
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-6 desktop:grid-cols-[minmax(0,1fr)_320px]">
             <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
               {/* SECCIÓN: Información general */}
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
@@ -1123,7 +1123,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                   <div className="min-w-[570px]">
-                    <div className="hidden lg:grid lg:grid-cols-[60px_minmax(180px,1fr)_60px_85px_62px_80px_44px] lg:gap-3 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                    <div className="hidden lg:grid grid-cols-[55px_minmax(130px,1fr)_55px_75px_52px_65px_40px] gap-2 bg-slate-50 px-2 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700 desktop:grid-cols-[60px_minmax(180px,1fr)_60px_85px_62px_80px_44px] desktop:gap-3 desktop:px-3">
                       <span>Código</span>
                       <span>Descripción</span>
                       <span>Cant.</span>
@@ -1139,7 +1139,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                         return (
                           <div
                             key={`detalle-${index}`}
-                            className="grid items-center gap-3 bg-white px-3 py-2 lg:grid-cols-[60px_minmax(180px,1fr)_60px_85px_62px_80px_44px]"
+                            className="grid items-center gap-2 bg-white px-2 py-2 desktop:gap-3 desktop:px-3 lg:grid-cols-[55px_minmax(130px,1fr)_55px_75px_52px_65px_40px] desktop:grid-cols-[60px_minmax(180px,1fr)_60px_85px_62px_80px_44px]"
                           >
                             <span className="text-xs text-slate-500 truncate">
                               {producto?.codigo || detalle.codigo || "-"}
@@ -1271,7 +1271,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
               </div>
             </div>
 
-            <aside className="space-y-4 lg:sticky lg:top-6">
+            <aside className="grid gap-4 md:grid-cols-2 desktop:block desktop:space-y-4 desktop:sticky desktop:top-6">
               <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
                 <div className="flex items-center gap-2 mb-3">
                   <Calculator className="h-3.5 w-3.5 text-slate-500" />
@@ -1341,16 +1341,16 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                 </div>
               )}
 
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 md:col-span-2">
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">!</span>
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">!</span>
                   <div className="text-xs text-amber-800">
                     <span className="font-semibold">Normativa SRI (Régimen RIMPE):</span> En las Notas de Venta no se desglosan impuestos. El precio unitario y los subtotales ya incluyen IVA/ICE de forma unificada según la ley vigente.
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 md:col-span-2 desktop:col-auto">
                 <Button type="submit" disabled={saving || totalExceeds50} className="h-10 w-full">
                   {saving ? "Guardando..." : totalExceeds50 ? "Seleccione un cliente" : editing ? "Guardar cambios" : "Crear nota"}
                 </Button>

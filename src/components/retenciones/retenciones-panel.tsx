@@ -680,7 +680,7 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
           className="space-y-6"
           onSubmit={submitForm}
         >
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-6 desktop:grid-cols-[minmax(0,1fr)_320px]">
             <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                 <div className="flex items-center gap-2">
@@ -990,7 +990,7 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
               </div>
             </div>
 
-            <aside className="space-y-4 lg:sticky lg:top-6">
+            <aside className="space-y-4 desktop:sticky desktop:top-6">
               <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
                 <div className="flex items-center gap-2 mb-3">
                   <Calculator className="h-3.5 w-3.5 text-slate-500" />

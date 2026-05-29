@@ -663,7 +663,7 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
               className="space-y-6"
               onSubmit={submitForm}
             >
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-6 desktop:grid-cols-[minmax(0,1fr)_320px]">
             <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                 <div className="flex items-center gap-2">
@@ -970,7 +970,7 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                   <div className="min-w-[700px]">
-                    <div className="grid grid-cols-[minmax(250px,1fr)_120px_minmax(150px,1fr)_100px_50px] gap-3 bg-slate-50 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-700 border-b border-slate-200">
+                    <div className="grid grid-cols-[minmax(180px,1fr)_100px_minmax(120px,1fr)_80px_44px] gap-2 bg-slate-50 px-2 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 border-b border-slate-200 desktop:grid-cols-[minmax(250px,1fr)_120px_minmax(150px,1fr)_100px_50px] desktop:gap-3 desktop:px-4">
                       <span>Buscar Producto</span>
                       <span>Código</span>
                       <span>Descripción</span>
@@ -979,7 +979,7 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                     </div>
                     <div className="divide-y divide-slate-100">
                       {form.detalles.map((detalle, idx) => (
-                        <div key={idx} className="grid grid-cols-[minmax(250px,1fr)_120px_minmax(150px,1fr)_100px_50px] items-center gap-3 bg-white px-4 py-2">
+                        <div key={idx} className="grid grid-cols-[minmax(180px,1fr)_100px_minmax(120px,1fr)_80px_44px] items-center gap-2 bg-white px-2 py-2 desktop:grid-cols-[minmax(250px,1fr)_120px_minmax(150px,1fr)_100px_50px] desktop:gap-3 desktop:px-4">
                           {/* Buscar Producto */}
                           <div className="relative">
                             {detalle.id_producto > 0 ? (
@@ -1093,7 +1093,7 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
               </div>
             </div>
 
-            <aside className="space-y-4 lg:sticky lg:top-6">
+            <aside className="space-y-4 desktop:sticky desktop:top-6">
               <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
                 <div className="flex items-center gap-2 mb-3">
                   <FileText className="h-3.5 w-3.5 text-slate-500" />

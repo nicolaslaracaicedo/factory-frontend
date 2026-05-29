@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ComponentType } from "react";
+import * as Tooltip from "@radix-ui/react-tooltip";
 import {
   Building2,
+  ChevronsLeft,
+  ChevronsRight,
   ClipboardList,
   FileCode,
   FileSearch,
@@ -36,6 +39,8 @@ interface SideNavProps {
   groups: SidebarGroup[];
   activeKey: string;
   onSelect: (key: string) => void;
+  collapsed: boolean;
+  onToggle: () => void;
 }
 
 export const iconByKey: Record<string, ComponentType<{ className?: string }>> = {
@@ -66,12 +71,11 @@ export const iconByKey: Record<string, ComponentType<{ className?: string }>> = 
   usuarios: UserCog,
 };
 
-export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {
+export function SideNav({ groups, activeKey, onSelect, collapsed, onToggle }: SideNavProps) {
   const [company, setCompany] = useState<Company | null>(() => readCompanyCache());
   const [runIntro, setRunIntro] = useState(false);
 
   useEffect(() => {
-    // Cargar caché inmediatamente para mostrar el logo sin esperar a la API
     const cached = readCompanyCache();
     if (cached) setCompany(cached);
 
@@ -99,66 +103,127 @@ export function SideNav({ groups, activeKey, onSelect }: SideNavProps) {
   }, []);
 
   return (
-    <motion.aside
-      initial={runIntro ? { opacity: 0, x: -12 } : false}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="dashboard-sidebar sticky top-0 h-screen overflow-y-auto border-r border-slate-200 bg-white/90 backdrop-blur"
-    >
-      <div className="dashboard-sidebar-logo flex h-18 items-center justify-center px-4">
-        <div className="flex w-full justify-center">
-          {company?.logo ? (
-            <img
-              src={company.logo}
-              alt="Logo de empresa"
-              loading="eager"
-              fetchPriority="high"
-              decoding="sync"
-              className="dashboard-sidebar-logo-image max-h-13 w-full object-contain"
-            />
+    <Tooltip.Provider delayDuration={200} skipDelayDuration={400}>
+      <motion.aside
+        initial={runIntro ? { opacity: 0, x: -12 } : false}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="dashboard-sidebar sticky top-0 h-screen overflow-y-auto border-r border-slate-200 bg-white/90 backdrop-blur"
+      >
+        {/* Toggle + Logo area */}
+        <div className="dashboard-sidebar-logo flex h-18 items-center justify-center px-2">
+          {collapsed ? (
+            <button
+              type="button"
+              onClick={onToggle}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              title="Expandir sidebar"
+            >
+              <ChevronsRight className="h-5 w-5" />
+            </button>
           ) : (
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Logo
+            <div className="flex w-full items-center justify-between gap-2">
+              <div className="flex min-w-0 flex-1 justify-center">
+                {company?.logo ? (
+                  <img
+                    src={company.logo}
+                    alt="Logo de empresa"
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="sync"
+                    className="dashboard-sidebar-logo-image max-h-13 w-full object-contain"
+                  />
+                ) : (
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Logo
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={onToggle}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                title="Colapsar sidebar"
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </button>
             </div>
           )}
         </div>
-      </div>
 
-      <nav className="dashboard-nav space-y-2 px-2.5 pb-5">
-        {groups.map((group) => (
-          <section key={group.title} className="dashboard-nav-section">
-            <p className="dashboard-nav-title px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              {group.title}
-            </p>
-
-            {group.items.map((item) => {
+        <nav className={`dashboard-nav pb-5 ${collapsed ? "px-2.5" : "space-y-2 px-2.5"}`}>
+          {collapsed ? (
+            groups.flatMap((group) => group.items).map((item) => {
               const Icon = iconByKey[item.key] ?? LayoutGrid;
-
               return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => onSelect(item.key)}
-                  className={`dashboard-nav-item group flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-left text-[13px] font-semibold transition-all duration-200 ease-out hover:bg-slate-100 hover:translate-x-0.5 ${
-                    activeKey === item.key ? "bg-app-primary/10 text-app-primary" : "text-slate-700"
-                  }`}
-                >
-                  <span
-                    className={`dashboard-nav-icon rounded-md p-[3px] ${
-                      activeKey === item.key
-                        ? "bg-app-primary/20 text-app-primary"
-                        : "bg-slate-100 text-slate-500 group-hover:bg-app-primary/20 group-hover:text-app-primary"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span>{item.label}</span>
-                </button>
+                <Tooltip.Root key={item.key}>
+                  <Tooltip.Trigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(item.key)}
+                      className={`dashboard-nav-item group flex w-full items-center justify-center rounded-lg p-1.5 text-[13px] font-semibold transition-all duration-200 ease-out hover:bg-slate-100 ${
+                        activeKey === item.key ? "bg-app-primary/10 text-app-primary" : "text-slate-700"
+                      }`}
+                    >
+                      <span
+                        className={`dashboard-nav-icon rounded-md p-[3px] ${
+                          activeKey === item.key
+                            ? "bg-app-primary/20 text-app-primary"
+                            : "bg-slate-100 text-slate-500 group-hover:bg-app-primary/20 group-hover:text-app-primary"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </span>
+                    </button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content
+                      side="right"
+                      sideOffset={8}
+                      className="z-50 rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm"
+                    >
+                      {item.label}
+                      <Tooltip.Arrow className="fill-slate-900" />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
               );
-            })}
-          </section>
-        ))}
-      </nav>
-    </motion.aside>
+            })
+          ) : (
+            groups.map((group) => (
+              <section key={group.title} className="dashboard-nav-section">
+                <p className="dashboard-nav-title px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  {group.title}
+                </p>
+                {group.items.map((item) => {
+                  const Icon = iconByKey[item.key] ?? LayoutGrid;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => onSelect(item.key)}
+                      className={`dashboard-nav-item group flex w-full items-center gap-2.5 rounded-lg py-[7px] text-left text-[13px] font-semibold transition-all duration-200 ease-out px-3 hover:translate-x-0.5 hover:bg-slate-100 ${
+                        activeKey === item.key ? "bg-app-primary/10 text-app-primary" : "text-slate-700"
+                      }`}
+                    >
+                      <span
+                        className={`dashboard-nav-icon rounded-md p-[3px] ${
+                          activeKey === item.key
+                            ? "bg-app-primary/20 text-app-primary"
+                            : "bg-slate-100 text-slate-500 group-hover:bg-app-primary/20 group-hover:text-app-primary"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </section>
+            ))
+          )}
+        </nav>
+      </motion.aside>
+    </Tooltip.Provider>
   );
 }

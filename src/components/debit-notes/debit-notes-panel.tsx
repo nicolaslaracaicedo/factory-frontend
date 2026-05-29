@@ -677,7 +677,7 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
           className="space-y-6"
           onSubmit={submitForm}
         >
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-6 desktop:grid-cols-[minmax(0,1fr)_320px]">
             <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
               {/* Información general */}
               <div className="bg-slate-100 rounded-xl p-4 space-y-4">
@@ -880,7 +880,7 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
               </div>
             </div>
 
-            <aside className="space-y-4 lg:sticky lg:top-6">
+            <aside className="space-y-4 desktop:sticky desktop:top-6">
               <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
                 <div className="flex items-center gap-2 mb-2">
                   <Calculator className="h-3.5 w-3.5 text-slate-500" />
@@ -905,6 +905,14 @@ export function DebitNotesPanel({ showPanel = true, readOnly = false }: DebitNot
                   </div>
                 )}
               </div>
+
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">!</span>
+                <p className="text-xs text-amber-800">
+                  <span className="font-semibold">Normativa SRI:</span> El Servicio de Rentas Internas (SRI) de Ecuador no permite emitir notas de débito para facturas emitidas a Consumidor Final. Selecciona una factura con cliente registrado.
+                </p>
+              </div>
+
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <Button type="submit" disabled={saving} className="h-10 w-full">
                   {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear nota de débito"}

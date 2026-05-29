@@ -86,6 +86,7 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --breakpoint-desktop: 1440px;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -662,22 +663,18 @@ input:-webkit-autofill + label {
 }
 
 @media (min-width: 1024px) and (max-width: 1440px) and (max-height: 900px) {
-  .dashboard-shell {
-    grid-template-columns: 210px minmax(0, 1fr);
-  }
-
   .dashboard-sidebar {
     font-size: 12px;
   }
 
   .dashboard-sidebar-logo {
     height: 52px;
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
   }
 
   .dashboard-sidebar-logo-image {
-    max-height: 36px;
+    max-height: 28px;
   }
 
   .dashboard-nav {

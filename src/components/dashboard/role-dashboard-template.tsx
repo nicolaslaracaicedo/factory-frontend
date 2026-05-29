@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LayoutGrid } from "lucide-react";
 import { ModuleCard } from "@/src/components/dashboard/module-card";
@@ -64,6 +64,7 @@ function RoleDashboardContent({
   const config = roleDashboardConfig[role];
   const sidebarGroups = roleSidebarItems[role];
   const navbarGroups = roleNavbarItems[role];
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { headerVisible } = useBreadcrumbs();
   const router = useRouter();
   const pathname = usePathname();
@@ -129,11 +130,14 @@ function RoleDashboardContent({
   return (
     <DashboardSectionProvider activeSection={activeSection} setActiveSection={setActiveSection}>
       <DashboardShell
+        sidebarCollapsed={sidebarCollapsed}
         sidebar={
           <SideNav
             groups={sidebarGroups}
             activeKey={activeSection}
             onSelect={setActiveSection}
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed((prev) => !prev)}
           />
         }
       >
