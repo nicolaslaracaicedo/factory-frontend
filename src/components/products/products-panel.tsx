@@ -99,6 +99,7 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
   const [editing, setEditing] = useState<Producto | null>(null);
   const [form, setForm] = useState<ProductoFormInput>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<"basicos" | "precios">("basicos");
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -383,6 +384,7 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
   const openCreate = () => {
     setEditing(null);
     setErrors({});
+    setActiveTab("basicos");
     setForm({
       ...initialForm,
       id_grupo: grupos[0]?.id ?? 0,
@@ -397,12 +399,14 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
       setEditing(detail);
       setForm(toProductoFormInput(detail));
       setErrors({});
+      setActiveTab("basicos");
       setModalOpen(true);
     } catch (error) {
       toast.error("No se pudieron cargar los detalles del producto.");
       setEditing(producto);
       setForm(toProductoFormInput(producto));
       setErrors({});
+      setActiveTab("basicos");
       setModalOpen(true);
     }
   };
@@ -465,6 +469,10 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
     setErrors(next);
     const firstError = Object.values(next).find(Boolean);
     if (firstError) {
+      const preciosFields = ["unidad_medida", "precio", "porcentaje_ice", "codigo_ice", "valor_unitario_irbpnr"] as const;
+      const hasPreciosError = preciosFields.some((f) => next[f]);
+      if (hasPreciosError) setActiveTab("precios");
+      else setActiveTab("basicos");
       toast.warning(firstError);
       return false;
     }
@@ -857,396 +865,328 @@ export function ProductsPanel({ showPanel = true, readOnly = false }: ProductsPa
                 </div>
               </div>
 
-              {/* Formulario */}
-              <form className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]" onSubmit={submitForm}>
-              {/* SECCIÓN: Identificación */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Tag className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Identificación</h3>
-                </div>
-                {/* Modo CREAR: codigo + tipo en fila 1, descripcion en fila 2 (span-2) */}
-                {/* Modo EDITAR: tipo + descripcion en la misma fila (2 columnas) */}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {!editing && (
-                    <Field label="Código" htmlFor="codigo" error={errors.codigo}>
-                      <Input
-                        id="codigo"
-                        value={form.codigo}
-                        onChange={(event) => {
-                          const val = event.target.value.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 25);
-                          updateField("codigo", val);
-                        }}
-                        maxLength={25}
-                        className="bg-white shadow-none placeholder:text-slate-300"
-                        placeholder="Ej: PROD-001"
-                      />
-                    </Field>
-                  )}
-
-                  <Field label="Tipo" htmlFor="tipo" error={errors.tipo}>
-                    <SelectPrimitive.Root
-                      value={form.tipo || undefined}
-                      onValueChange={(val) => updateField("tipo", val)}
-                    >
-                      <SelectPrimitive.Trigger
-                        id="tipo"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
-                      >
-                        <SelectPrimitive.Value placeholder="Selecciona un tipo..." />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content
-                          className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <SelectPrimitive.Viewport className="p-1">
-                            <SelectPrimitive.Item
-                              value="PRODUCTO"
-                              className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                            >
-                              <SelectPrimitive.ItemText>Producto</SelectPrimitive.ItemText>
-                            </SelectPrimitive.Item>
-                            <SelectPrimitive.Item
-                              value="SERVICIO"
-                              className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                            >
-                              <SelectPrimitive.ItemText>Servicio</SelectPrimitive.ItemText>
-                            </SelectPrimitive.Item>
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-
-                  {/* Descripcion: col-span-2 al crear (bajo codigo+tipo), col-span-1 al editar (junto a tipo) */}
-                  <div className={editing ? "" : "sm:col-span-2"}>
-                    <Field label="Descripción" htmlFor="descripcion" error={errors.descripcion}>
-                      <div className="relative">
-                        <Input
-                          id="descripcion"
-                          value={form.descripcion}
-                          onChange={(event) => updateField("descripcion", event.target.value.slice(0, 300))}
-                          maxLength={300}
-                          className="bg-white shadow-none placeholder:text-slate-300 pr-10"
-                          placeholder="Nombre o descripción del producto/servicio"
-                        />
-                        <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
-                          {form.descripcion.length}/300
-                        </span>
-                      </div>
-                  </Field>
-                </div>
+            {/* Tabs Navigation */}
+            <div className="border-b border-slate-200 bg-slate-50/50">
+              <div className="flex px-6">
+                {[
+                  { id: "basicos" as const, label: "Datos Básicos", icon: Tag },
+                  { id: "precios" as const, label: "Precios e Impuestos", icon: DollarSign },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => { setActiveTab(tab.id); setErrors({}); }}
+                    className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                      activeTab === tab.id
+                        ? "text-sky-600"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    <tab.icon className="h-4 w-4" />
+                    {tab.label}
+                    {activeTab === tab.id && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-600" />
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* SECCIÓN: Clasificación */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Layers className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Clasificación</h3>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Grupo" htmlFor="id_grupo" error={errors.id_grupo}>
-                    <SelectPrimitive.Root
-                      value={form.id_grupo === 0 ? undefined : form.id_grupo.toString()}
-                      onValueChange={(val) => updateField("id_grupo", Number(val))}
-                      onOpenChange={(open) => {
-                        if (!open) setGrupoSearch("");
-                      }}
-                      disabled={loadingGrupos}
-                    >
-                      <SelectPrimitive.Trigger
-                        id="id_grupo"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                      >
-                        <SelectPrimitive.Value placeholder={loadingGrupos ? "Cargando..." : "Selecciona un grupo..."} />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content
-                          className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <div className="p-2">
-                            <input
-                              type="search"
-                              value={grupoSearch}
-                              onChange={(event) => setGrupoSearch(event.target.value)}
-                              placeholder="Buscar grupo..."
-                              className="h-8 w-full rounded-md border border-slate-200 px-2 text-sm text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                              disabled={loadingGrupos}
+            {/* Formulario */}
+            <form className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-200px)]" onSubmit={submitForm}>
+              <AnimatePresence mode="wait">
+                {activeTab === "basicos" && (
+                  <motion.div
+                    key="basicos"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-4"
+                  >
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Identificación</h3>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {!editing && (
+                          <Field label="Código" htmlFor="codigo" error={errors.codigo}>
+                            <Input
+                              id="codigo"
+                              value={form.codigo}
+                              onChange={(event) => {
+                                const val = event.target.value.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 25);
+                                updateField("codigo", val);
+                              }}
+                              maxLength={25}
+                              className="bg-white shadow-none placeholder:text-slate-300"
+                              placeholder="Ej: PROD-001"
                             />
-                          </div>
-                          <SelectPrimitive.Viewport className="max-h-56 overflow-y-auto p-1">
-                            {gruposFiltrados.map((grupo) => (
-                              <SelectPrimitive.Item
-                                key={grupo.id}
-                                value={grupo.id.toString()}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{grupo.nombre}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                            {gruposFiltrados.length === 0 && !loadingGrupos && (
-                              <div className="px-3 py-2 text-xs text-slate-400">
-                                Sin resultados.
-                              </div>
-                            )}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
+                          </Field>
+                        )}
 
-                  <Field label="IVA" htmlFor="id_iva" error={errors.id_iva}>
-                    <SelectPrimitive.Root
-                      value={form.id_iva === 0 ? undefined : form.id_iva.toString()}
-                      onValueChange={(val) => updateField("id_iva", Number(val))}
-                      disabled={loadingIva}
-                    >
-                      <SelectPrimitive.Trigger
-                        id="id_iva"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                      >
-                        <SelectPrimitive.Value placeholder={loadingIva ? "Cargando..." : "Selecciona IVA..."} />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content
-                          className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <SelectPrimitive.Viewport className="p-1">
-                            {codigosIva.map((iva) => (
-                              <SelectPrimitive.Item
-                                key={iva.id}
-                                value={iva.id.toString()}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{iva.nombre} ({iva.porcentaje}%)</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-                </div>
-              </div>
-
-              {/* SECCIÓN: Precio y Unidad */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Precio y Unidad</h3>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Unidad de Medida" htmlFor="unidad_medida" error={errors.unidad_medida}>
-                    <SelectPrimitive.Root
-                      value={form.unidad_medida || undefined}
-                      onValueChange={(val) => updateField("unidad_medida", val)}
-                      onOpenChange={(open) => {
-                        if (!open) setUnidadSearch("");
-                      }}
-                    >
-                      <SelectPrimitive.Trigger
-                        id="unidad_medida"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
-                      >
-                        <SelectPrimitive.Value placeholder="Selecciona una unidad..." />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content
-                          className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <div className="p-2">
-                            <input
-                              type="search"
-                              value={unidadSearch}
-                              onChange={(event) => setUnidadSearch(event.target.value)}
-                              placeholder="Buscar unidad..."
-                              className="h-8 w-full rounded-md border border-slate-200 px-2 text-sm text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                            />
-                          </div>
-                          <SelectPrimitive.Viewport className="max-h-56 overflow-y-auto p-1">
-                            {unidadesFiltradas.map((unidad) => (
-                              <SelectPrimitive.Item
-                                key={unidad.value}
-                                value={unidad.value}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{unidad.label}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                            {unidadesFiltradas.length === 0 && (
-                              <div className="px-3 py-2 text-xs text-slate-400">
-                                Sin resultados.
-                              </div>
-                            )}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-
-                  <Field label="Precio" htmlFor="precio" error={errors.precio}>
-                    <Input
-                      id="precio"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={form.precio}
-                      onChange={(event) => updateField("precio", Number(event.target.value))}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="0.00"
-                    />
-                  </Field>
-                </div>
-              </div>
-
-              {/* SECCIÓN: Configuración ICE */}
-              <div className="bg-slate-50 rounded-xl p-4 space-y-3 border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium text-slate-700">¿Aplica ICE?</span>
-                    <span className="text-xs text-slate-500">Impuesto a los Consumos Especiales</span>
-                  </div>
-                  <Switch
-                    checked={form.tiene_ice}
-                    onCheckedChange={(checked) => updateField("tiene_ice", checked)}
-                  />
-                </div>
-
-                {form.tiene_ice && (
-                  <div className="space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Field label="Porcentaje ICE" htmlFor="porcentaje_ice" error={errors.porcentaje_ice}>
-                        <Input
-                          id="porcentaje_ice"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={form.porcentaje_ice ?? ""}
-                          onChange={(event) => updateField("porcentaje_ice", Number(event.target.value))}
-                          className="bg-white shadow-none placeholder:text-slate-300"
-                          placeholder="Ej: 5, 10, 15"
-                        />
-                      </Field>
-                      <Field label="Código SRI ICE" htmlFor="codigo_ice" error={errors.codigo_ice}>
-                        <SelectPrimitive.Root
-                          value={form.codigo_ice || undefined}
-                          onValueChange={(val) => {
-                            updateField("codigo_ice", val);
-                            updateField("porcentaje_ice", iceSRIMap[val] ?? 0);
-                          }}
-                        >
-                          <SelectPrimitive.Trigger
-                            id="codigo_ice"
-                            className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                        <Field label="Tipo" htmlFor="tipo" error={errors.tipo}>
+                          <SelectPrimitive.Root
+                            value={form.tipo || undefined}
+                            onValueChange={(val) => updateField("tipo", val)}
                           >
-                            <SelectPrimitive.Value placeholder="Selecciona un código SRI..." />
-                            <SelectPrimitive.Icon>
-                              <ChevronDown className="h-4 w-4 text-slate-400" />
-                            </SelectPrimitive.Icon>
-                          </SelectPrimitive.Trigger>
-                          <SelectPrimitive.Portal>
-                            <SelectPrimitive.Content
-                              className="z-50 min-w-[320px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                              position="popper"
-                              sideOffset={4}
+                            <SelectPrimitive.Trigger
+                              id="tipo"
+                              className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
                             >
-                              <SelectPrimitive.Viewport className="p-1 max-h-52 overflow-y-auto">
-                                {[
-                                  { value: "3021", label: "3021 - Vehículos Motorizados" },
-                                  { value: "3031", label: "3031 - Videojuegos" },
-                                  { value: "3041", label: "3041 - Servicios Telefonía Móvil" },
-                                  { value: "3072", label: "3072 - Bebidas Energizantes" },
-                                  { value: "3073", label: "3073 - Bebidas Gaseosas" },
-                                  { value: "3081", label: "3081 - Perfumes" },
-                                  { value: "3091", label: "3091 - Productos Plásticos" },
-                                ].map((option) => (
-                                  <SelectPrimitive.Item
-                                    key={option.value}
-                                    value={option.value}
-                                    className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                                  >
-                                    <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                              <SelectPrimitive.Value placeholder="Selecciona un tipo..." />
+                              <SelectPrimitive.Icon>
+                                <ChevronDown className="h-4 w-4 text-slate-400" />
+                              </SelectPrimitive.Icon>
+                            </SelectPrimitive.Trigger>
+                            <SelectPrimitive.Portal>
+                              <SelectPrimitive.Content
+                                className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                                position="popper"
+                                sideOffset={4}
+                              >
+                                <SelectPrimitive.Viewport className="p-1">
+                                  <SelectPrimitive.Item value="PRODUCTO" className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                                    <SelectPrimitive.ItemText>Producto</SelectPrimitive.ItemText>
                                   </SelectPrimitive.Item>
-                                ))}
-                              </SelectPrimitive.Viewport>
-                            </SelectPrimitive.Content>
-                          </SelectPrimitive.Portal>
-                        </SelectPrimitive.Root>
-                      </Field>
+                                  <SelectPrimitive.Item value="SERVICIO" className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                                    <SelectPrimitive.ItemText>Servicio</SelectPrimitive.ItemText>
+                                  </SelectPrimitive.Item>
+                                </SelectPrimitive.Viewport>
+                              </SelectPrimitive.Content>
+                            </SelectPrimitive.Portal>
+                          </SelectPrimitive.Root>
+                        </Field>
+
+                        <div className={editing ? "" : "sm:col-span-2"}>
+                          <Field label="Descripción" htmlFor="descripcion" error={errors.descripcion}>
+                            <div className="relative">
+                              <Input
+                                id="descripcion"
+                                value={form.descripcion}
+                                onChange={(event) => updateField("descripcion", event.target.value.slice(0, 300))}
+                                maxLength={300}
+                                className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                                placeholder="Nombre o descripción del producto/servicio"
+                              />
+                              <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                                {form.descripcion.length}/300
+                              </span>
+                            </div>
+                          </Field>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
 
-              {/* SECCIÓN: Configuración IRBPNR */}
-              <div className="bg-slate-50 rounded-xl p-4 space-y-3 border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium text-slate-700">¿Aplica IRBPNR?</span>
-                    <span className="text-xs text-slate-500">Impuesto Redimible a las Botellas Plásticas No Retornables</span>
-                  </div>
-                  <Switch
-                    checked={form.tiene_irbpnr}
-                    onCheckedChange={(checked) => updateField("tiene_irbpnr", checked)}
-                  />
-                </div>
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Layers className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Clasificación</h3>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Grupo" htmlFor="id_grupo" error={errors.id_grupo}>
+                          <SelectPrimitive.Root
+                            value={form.id_grupo === 0 ? undefined : form.id_grupo.toString()}
+                            onValueChange={(val) => updateField("id_grupo", Number(val))}
+                            onOpenChange={(open) => { if (!open) setGrupoSearch(""); }}
+                            disabled={loadingGrupos}
+                          >
+                            <SelectPrimitive.Trigger
+                              id="id_grupo"
+                              className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                            >
+                              <SelectPrimitive.Value placeholder={loadingGrupos ? "Cargando..." : "Selecciona un grupo..."} />
+                              <SelectPrimitive.Icon><ChevronDown className="h-4 w-4 text-slate-400" /></SelectPrimitive.Icon>
+                            </SelectPrimitive.Trigger>
+                            <SelectPrimitive.Portal>
+                              <SelectPrimitive.Content className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" position="popper" sideOffset={4}>
+                                <div className="p-2">
+                                  <input type="search" value={grupoSearch} onChange={(event) => setGrupoSearch(event.target.value)} placeholder="Buscar grupo..." className="h-8 w-full rounded-md border border-slate-200 px-2 text-sm text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100" disabled={loadingGrupos} />
+                                </div>
+                                <SelectPrimitive.Viewport className="max-h-56 overflow-y-auto p-1">
+                                  {gruposFiltrados.map((grupo) => (
+                                    <SelectPrimitive.Item key={grupo.id} value={grupo.id.toString()} className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                                      <SelectPrimitive.ItemText>{grupo.nombre}</SelectPrimitive.ItemText>
+                                    </SelectPrimitive.Item>
+                                  ))}
+                                  {gruposFiltrados.length === 0 && !loadingGrupos && (
+                                    <div className="px-3 py-2 text-xs text-slate-400">Sin resultados.</div>
+                                  )}
+                                </SelectPrimitive.Viewport>
+                              </SelectPrimitive.Content>
+                            </SelectPrimitive.Portal>
+                          </SelectPrimitive.Root>
+                        </Field>
 
-                {form.tiene_irbpnr && (
-                  <Field label="Valor Unitario IRBPNR" htmlFor="valor_unitario_irbpnr" error={errors.valor_unitario_irbpnr}>
-                    <Input
-                      id="valor_unitario_irbpnr"
-                      type="number"
-                      step="0.0001"
-                      min="0"
-                      value={form.valor_unitario_irbpnr ?? ""}
-                      onChange={(event) => updateField("valor_unitario_irbpnr", Number(event.target.value))}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Ej: 0.02"
-                    />
-                  </Field>
+                        <Field label="IVA" htmlFor="id_iva" error={errors.id_iva}>
+                          <SelectPrimitive.Root
+                            value={form.id_iva === 0 ? undefined : form.id_iva.toString()}
+                            onValueChange={(val) => updateField("id_iva", Number(val))}
+                            disabled={loadingIva}
+                          >
+                            <SelectPrimitive.Trigger
+                              id="id_iva"
+                              className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                            >
+                              <SelectPrimitive.Value placeholder={loadingIva ? "Cargando..." : "Selecciona IVA..."} />
+                              <SelectPrimitive.Icon><ChevronDown className="h-4 w-4 text-slate-400" /></SelectPrimitive.Icon>
+                            </SelectPrimitive.Trigger>
+                            <SelectPrimitive.Portal>
+                              <SelectPrimitive.Content className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" position="popper" sideOffset={4}>
+                                <SelectPrimitive.Viewport className="p-1">
+                                  {codigosIva.map((iva) => (
+                                    <SelectPrimitive.Item key={iva.id} value={iva.id.toString()} className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                                      <SelectPrimitive.ItemText>{iva.nombre} ({iva.porcentaje}%)</SelectPrimitive.ItemText>
+                                    </SelectPrimitive.Item>
+                                  ))}
+                                </SelectPrimitive.Viewport>
+                              </SelectPrimitive.Content>
+                            </SelectPrimitive.Portal>
+                          </SelectPrimitive.Root>
+                        </Field>
+                      </div>
+                    </div>
+                  </motion.div>
                 )}
-              </div>
+
+                {activeTab === "precios" && (
+                  <motion.div
+                    key="precios"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-4"
+                  >
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Precio y Unidad</h3>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Unidad de Medida" htmlFor="unidad_medida" error={errors.unidad_medida}>
+                          <SelectPrimitive.Root
+                            value={form.unidad_medida || undefined}
+                            onValueChange={(val) => updateField("unidad_medida", val)}
+                            onOpenChange={(open) => { if (!open) setUnidadSearch(""); }}
+                          >
+                            <SelectPrimitive.Trigger
+                              id="unidad_medida"
+                              className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                            >
+                              <SelectPrimitive.Value placeholder="Selecciona una unidad..." />
+                              <SelectPrimitive.Icon><ChevronDown className="h-4 w-4 text-slate-400" /></SelectPrimitive.Icon>
+                            </SelectPrimitive.Trigger>
+                            <SelectPrimitive.Portal>
+                              <SelectPrimitive.Content className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" position="popper" sideOffset={4}>
+                                <div className="p-2">
+                                  <input type="search" value={unidadSearch} onChange={(event) => setUnidadSearch(event.target.value)} placeholder="Buscar unidad..." className="h-8 w-full rounded-md border border-slate-200 px-2 text-sm text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100" />
+                                </div>
+                                <SelectPrimitive.Viewport className="max-h-56 overflow-y-auto p-1">
+                                  {unidadesFiltradas.map((unidad) => (
+                                    <SelectPrimitive.Item key={unidad.value} value={unidad.value} className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                                      <SelectPrimitive.ItemText>{unidad.label}</SelectPrimitive.ItemText>
+                                    </SelectPrimitive.Item>
+                                  ))}
+                                  {unidadesFiltradas.length === 0 && (
+                                    <div className="px-3 py-2 text-xs text-slate-400">Sin resultados.</div>
+                                  )}
+                                </SelectPrimitive.Viewport>
+                              </SelectPrimitive.Content>
+                            </SelectPrimitive.Portal>
+                          </SelectPrimitive.Root>
+                        </Field>
+
+                        <Field label="Precio" htmlFor="precio" error={errors.precio}>
+                          <Input
+                            id="precio"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={form.precio}
+                            onChange={(event) => updateField("precio", Number(event.target.value))}
+                            className="bg-white shadow-none placeholder:text-slate-300"
+                            placeholder="0.00"
+                          />
+                        </Field>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-xl p-4 space-y-3 border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium text-slate-700">¿Aplica ICE?</span>
+                          <span className="text-xs text-slate-500">Impuesto a los Consumos Especiales</span>
+                        </div>
+                        <Switch checked={form.tiene_ice} onCheckedChange={(checked) => updateField("tiene_ice", checked)} />
+                      </div>
+                      {form.tiene_ice && (
+                        <div className="space-y-3">
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <Field label="Porcentaje ICE" htmlFor="porcentaje_ice" error={errors.porcentaje_ice}>
+                              <Input id="porcentaje_ice" type="number" step="0.01" min="0" value={form.porcentaje_ice ?? ""} onChange={(event) => updateField("porcentaje_ice", Number(event.target.value))} className="bg-white shadow-none placeholder:text-slate-300" placeholder="Ej: 5, 10, 15" />
+                            </Field>
+                            <Field label="Código SRI ICE" htmlFor="codigo_ice" error={errors.codigo_ice}>
+                              <SelectPrimitive.Root value={form.codigo_ice || undefined} onValueChange={(val) => { updateField("codigo_ice", val); updateField("porcentaje_ice", iceSRIMap[val] ?? 0); }}>
+                                <SelectPrimitive.Trigger id="codigo_ice" className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200">
+                                  <SelectPrimitive.Value placeholder="Selecciona un código SRI..." />
+                                  <SelectPrimitive.Icon><ChevronDown className="h-4 w-4 text-slate-400" /></SelectPrimitive.Icon>
+                                </SelectPrimitive.Trigger>
+                                <SelectPrimitive.Portal>
+                                  <SelectPrimitive.Content className="z-50 min-w-[320px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" position="popper" sideOffset={4}>
+                                    <SelectPrimitive.Viewport className="p-1 max-h-52 overflow-y-auto">
+                                      {[
+                                        { value: "3021", label: "3021 - Vehículos Motorizados" },
+                                        { value: "3031", label: "3031 - Videojuegos" },
+                                        { value: "3041", label: "3041 - Servicios Telefonía Móvil" },
+                                        { value: "3072", label: "3072 - Bebidas Energizantes" },
+                                        { value: "3073", label: "3073 - Bebidas Gaseosas" },
+                                        { value: "3081", label: "3081 - Perfumes" },
+                                        { value: "3091", label: "3091 - Productos Plásticos" },
+                                      ].map((option) => (
+                                        <SelectPrimitive.Item key={option.value} value={option.value} className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                                          <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                                        </SelectPrimitive.Item>
+                                      ))}
+                                    </SelectPrimitive.Viewport>
+                                  </SelectPrimitive.Content>
+                                </SelectPrimitive.Portal>
+                              </SelectPrimitive.Root>
+                            </Field>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-slate-50 rounded-xl p-4 space-y-3 border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium text-slate-700">¿Aplica IRBPNR?</span>
+                          <span className="text-xs text-slate-500">Impuesto Redimible a las Botellas Plásticas No Retornables</span>
+                        </div>
+                        <Switch checked={form.tiene_irbpnr} onCheckedChange={(checked) => updateField("tiene_irbpnr", checked)} />
+                      </div>
+                      {form.tiene_irbpnr && (
+                        <Field label="Valor Unitario IRBPNR" htmlFor="valor_unitario_irbpnr" error={errors.valor_unitario_irbpnr}>
+                          <Input id="valor_unitario_irbpnr" type="number" step="0.0001" min="0" value={form.valor_unitario_irbpnr ?? ""} onChange={(event) => updateField("valor_unitario_irbpnr", Number(event.target.value))} className="bg-white shadow-none placeholder:text-slate-300" placeholder="Ej: 0.02" />
+                        </Field>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Botones de acción */}
               <div className="flex justify-end gap-3 pt-2">
-                <Button
-                  variant="secondary"
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="h-10 px-4"
-                >
+                <Button variant="secondary" type="button" onClick={() => setModalOpen(false)} className="h-10 px-4">
                   Cancelar
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={saving}
-                  className="h-10 px-4"
-                >
+                <Button type="submit" disabled={saving} className="h-10 px-4">
                   {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear producto"}
                 </Button>
               </div>
-              </form>
+            </form>
             </motion.div>
           </Dialog.Content>
         </Dialog.Portal>

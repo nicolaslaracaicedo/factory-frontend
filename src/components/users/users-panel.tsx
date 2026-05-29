@@ -16,6 +16,7 @@ import {
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import {
+  User,
   Users,
   UserCog,
   Edit3,
@@ -33,7 +34,6 @@ import {
   ArrowDown,
   ChevronsUpDown,
   X,
-  Shield,
   Lock,
   Phone,
   Eye,
@@ -149,6 +149,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
   const [editing, setEditing] = useState<UsuarioItem | null>(null);
   const [form, setForm] = useState<UsuarioFormInput>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<"personal" | "acceso">("personal");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -296,6 +297,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
     setEditing(null);
     setForm(initialForm);
     setErrors({});
+    setActiveTab("personal");
     setModalOpen(true);
   };
 
@@ -303,6 +305,7 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
     setEditing(usuario);
     setForm(toUsuarioFormInput(usuario));
     setErrors({});
+    setActiveTab("personal");
     setModalOpen(true);
   };
 
@@ -389,6 +392,10 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
 
     const firstError = Object.values(next).find(Boolean);
     if (firstError) {
+      const accesoFields = ["email", "password", "id_rol"] as const;
+      const hasAccesoError = accesoFields.some((f) => next[f]);
+      if (hasAccesoError) setActiveTab("acceso");
+      else setActiveTab("personal");
       toast.warning(firstError);
       return false;
     }
@@ -604,218 +611,265 @@ export function UsersPanel({ showPanel = true }: UsersPanelProps) {
               </div>
             </div>
 
-            {/* Formulario */}
-            <form className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]" onSubmit={submitForm}>
-              {/* SECCIÓN: Datos personales */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Datos personales</h3>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Nombre" htmlFor="nombre" error={errors.nombre}>
-                    <Input
-                      id="nombre"
-                      value={form.nombre}
-                      onChange={(event) => {
-                        const val = event.target.value;
-                        if (!onlyLettersRegex.test(val) && val !== "") return;
-                        updateField("nombre", val);
-                      }}
-                      maxLength={100}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Ingresa el nombre"
-                    />
-                  </Field>
-
-                  <Field label="Apellido" htmlFor="apellido" error={errors.apellido}>
-                    <Input
-                      id="apellido"
-                      value={form.apellido}
-                      onChange={(event) => {
-                        const val = event.target.value;
-                        if (!onlyLettersRegex.test(val) && val !== "") return;
-                        updateField("apellido", val);
-                      }}
-                      maxLength={100}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="Ingresa el apellido"
-                    />
-                  </Field>
-
-                  <div className="sm:col-span-2">
-                    <Field label="Número de identificación" htmlFor="identificacion" error={errors.identificacion}>
-                      <Input
-                        id="identificacion"
-                        value={form.identificacion}
-                        onChange={(event) => {
-                          const val = event.target.value.replace(/\D/g, "").slice(0, 13);
-                          updateField("identificacion", val);
-                        }}
-                        maxLength={13}
-                        className="bg-white shadow-none placeholder:text-slate-300"
-                        placeholder="Ej: 1712345678"
-                      />
-                    </Field>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECCIÓN: Credenciales de acceso */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Lock className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Credenciales de acceso</h3>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Correo electrónico" htmlFor="email" error={errors.email}>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={form.email}
-                      onChange={(event) => updateField("email", event.target.value)}
-                      maxLength={150}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="usuario@empresa.com"
-                    />
-                  </Field>
-
-                  <PasswordField 
-                    id="password"
-                    label="Contraseña"
-                    value={form.password}
-                    onChange={(val) => updateField("password", val)}
-                    placeholder={editing ? "Dejar en blanco para mantener actual" : "Mín. 8 car., mayúsc., núm., car. especial"}
-                  />
-                  {errors.password && <span className="text-xs text-rose-600 -mt-2">{errors.password}</span>}
-
-                  <div className="sm:col-span-2">
-                    <Field label="Rol de usuario" htmlFor="id_rol" error={errors.id_rol}>
-                      <SelectPrimitive.Root 
-                        value={form.id_rol === 0 ? undefined : form.id_rol.toString()} 
-                        onValueChange={(val) => updateField("id_rol", Number(val))}
-                      >
-                        <SelectPrimitive.Trigger 
-                          id="id_rol"
-                          className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
-                        >
-                          <SelectPrimitive.Value placeholder="Selecciona un rol..." />
-                          <SelectPrimitive.Icon>
-                            <ChevronDown className="h-4 w-4 text-slate-400" />
-                          </SelectPrimitive.Icon>
-                        </SelectPrimitive.Trigger>
-                        <SelectPrimitive.Portal>
-                          <SelectPrimitive.Content 
-                            className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                            position="popper"
-                            sideOffset={4}
-                          >
-                            <SelectPrimitive.Viewport className="p-1">
-                              <SelectPrimitive.Item 
-                                value="1" 
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>Administrador - Control total del sistema</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                              <SelectPrimitive.Item 
-                                value="2" 
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>Facturador - Emite comprobantes electrónicos</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                              <SelectPrimitive.Item 
-                                value="3" 
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>Contador - Revisa reportes y tributación</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            </SelectPrimitive.Viewport>
-                          </SelectPrimitive.Content>
-                        </SelectPrimitive.Portal>
-                      </SelectPrimitive.Root>
-                    </Field>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECCIÓN: Punto de emisión por defecto */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Punto de emisión</h3>
-                </div>
-                <Field label="Punto de emisión por defecto" htmlFor="id_punto_emision_default">
-                  <SelectPrimitive.Root 
-                    value={form.id_punto_emision_default === 0 ? undefined : form.id_punto_emision_default.toString()} 
-                    onValueChange={(val) => updateField("id_punto_emision_default", Number(val))}
-                    disabled={loadingPuntos}
+            {/* Tabs Navigation */}
+            <div className="border-b border-slate-200 bg-slate-50/50">
+              <div className="flex px-6">
+                {[
+                  { id: "personal" as const, label: "Datos Personales", icon: User },
+                  { id: "acceso" as const, label: "Acceso", icon: Lock },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => { setActiveTab(tab.id); setErrors({}); }}
+                    className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                      activeTab === tab.id
+                        ? "text-sky-600"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
                   >
-                    <SelectPrimitive.Trigger 
-                      id="id_punto_emision_default"
-                      className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                    >
-                      <SelectPrimitive.Value placeholder={loadingPuntos ? "Cargando..." : "Selecciona un punto de emisión..."} />
-                      <SelectPrimitive.Icon>
-                        <ChevronDown className="h-4 w-4 text-slate-400" />
-                      </SelectPrimitive.Icon>
-                    </SelectPrimitive.Trigger>
-                    <SelectPrimitive.Portal>
-                      <SelectPrimitive.Content className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" position="popper" sideOffset={4}>
-                        <SelectPrimitive.Viewport className="p-1">
-                          {puntos.map((punto) => (
-                            <SelectPrimitive.Item 
-                              key={punto.id}
-                              value={punto.id.toString()}
-                              className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                            >
-                              <SelectPrimitive.ItemText>{punto.codigo} - {punto.descripcion}</SelectPrimitive.ItemText>
-                            </SelectPrimitive.Item>
-                          ))}
-                        </SelectPrimitive.Viewport>
-                      </SelectPrimitive.Content>
-                    </SelectPrimitive.Portal>
-                  </SelectPrimitive.Root>
-                </Field>
+                    <tab.icon className="h-4 w-4" />
+                    {tab.label}
+                    {activeTab === tab.id && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-600" />
+                    )}
+                  </button>
+                ))}
               </div>
+            </div>
 
-              {/* SECCIÓN: Información de contacto */}
-              <div className="bg-slate-100 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Phone className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Información de contacto</h3>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Teléfono" htmlFor="telefono" error={errors.telefono}>
-                    <Input
-                      id="telefono"
-                      value={form.telefono}
-                      onChange={(event) => {
-                        const val = event.target.value.replace(/\D/g, "").slice(0, 10);
-                        updateField("telefono", val);
-                      }}
-                      maxLength={10}
-                      className="bg-white shadow-none placeholder:text-slate-300"
-                      placeholder="0991234567"
-                    />
-                  </Field>
+            {/* Formulario */}
+            <form className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-200px)]" onSubmit={submitForm}>
+              <AnimatePresence mode="wait">
+                {activeTab === "personal" && (
+                  <motion.div
+                    key="personal"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-4"
+                  >
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <User className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Datos personales</h3>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Nombre" htmlFor="nombre" error={errors.nombre}>
+                          <Input
+                            id="nombre"
+                            value={form.nombre}
+                            onChange={(event) => {
+                              const val = event.target.value;
+                              if (!onlyLettersRegex.test(val) && val !== "") return;
+                              updateField("nombre", val);
+                            }}
+                            maxLength={100}
+                            className="bg-white shadow-none placeholder:text-slate-300"
+                            placeholder="Ingresa el nombre"
+                          />
+                        </Field>
 
-                  <Field label="Dirección" htmlFor="direccion">
-                    <div className="relative">
-                      <Input
-                        id="direccion"
-                        value={form.direccion}
-                        onChange={(event) => updateField("direccion", event.target.value)}
-                        maxLength={300}
-                        className="bg-white shadow-none placeholder:text-slate-300 pr-10"
-                        placeholder="Av. Principal 123, Ciudad"
-                      />
-                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
-                        {form.direccion.length}/300
-                      </span>
+                        <Field label="Apellido" htmlFor="apellido" error={errors.apellido}>
+                          <Input
+                            id="apellido"
+                            value={form.apellido}
+                            onChange={(event) => {
+                              const val = event.target.value;
+                              if (!onlyLettersRegex.test(val) && val !== "") return;
+                              updateField("apellido", val);
+                            }}
+                            maxLength={100}
+                            className="bg-white shadow-none placeholder:text-slate-300"
+                            placeholder="Ingresa el apellido"
+                          />
+                        </Field>
+
+                        <div className="sm:col-span-2">
+                          <Field label="Número de identificación" htmlFor="identificacion" error={errors.identificacion}>
+                            <Input
+                              id="identificacion"
+                              value={form.identificacion}
+                              onChange={(event) => {
+                                const val = event.target.value.replace(/\D/g, "").slice(0, 13);
+                                updateField("identificacion", val);
+                              }}
+                              maxLength={13}
+                              className="bg-white shadow-none placeholder:text-slate-300"
+                              placeholder="Ej: 1712345678"
+                            />
+                          </Field>
+                        </div>
+                      </div>
                     </div>
-                  </Field>
-                </div>
-              </div>
+
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Información de contacto</h3>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Teléfono" htmlFor="telefono" error={errors.telefono}>
+                          <Input
+                            id="telefono"
+                            value={form.telefono}
+                            onChange={(event) => {
+                              const val = event.target.value.replace(/\D/g, "").slice(0, 10);
+                              updateField("telefono", val);
+                            }}
+                            maxLength={10}
+                            className="bg-white shadow-none placeholder:text-slate-300"
+                            placeholder="0991234567"
+                          />
+                        </Field>
+
+                        <Field label="Dirección" htmlFor="direccion">
+                          <div className="relative">
+                            <Input
+                              id="direccion"
+                              value={form.direccion}
+                              onChange={(event) => updateField("direccion", event.target.value)}
+                              maxLength={300}
+                              className="bg-white shadow-none placeholder:text-slate-300 pr-10"
+                              placeholder="Av. Principal 123, Ciudad"
+                            />
+                            <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                              {form.direccion.length}/300
+                            </span>
+                          </div>
+                        </Field>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTab === "acceso" && (
+                  <motion.div
+                    key="acceso"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-4"
+                  >
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Lock className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Credenciales de acceso</h3>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Correo electrónico" htmlFor="email" error={errors.email}>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={form.email}
+                            onChange={(event) => updateField("email", event.target.value)}
+                            maxLength={150}
+                            className="bg-white shadow-none placeholder:text-slate-300"
+                            placeholder="usuario@empresa.com"
+                          />
+                        </Field>
+
+                        <PasswordField 
+                          id="password"
+                          label="Contraseña"
+                          value={form.password}
+                          onChange={(val) => updateField("password", val)}
+                          placeholder={editing ? "Dejar en blanco para mantener actual" : "Mín. 8 car., mayúsc., núm., car. especial"}
+                        />
+                        {errors.password && <span className="text-xs text-rose-600 -mt-2">{errors.password}</span>}
+
+                        <div className="sm:col-span-2">
+                          <Field label="Rol de usuario" htmlFor="id_rol" error={errors.id_rol}>
+                            <SelectPrimitive.Root 
+                              value={form.id_rol === 0 ? undefined : form.id_rol.toString()} 
+                              onValueChange={(val) => updateField("id_rol", Number(val))}
+                            >
+                              <SelectPrimitive.Trigger 
+                                id="id_rol"
+                                className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                              >
+                                <SelectPrimitive.Value placeholder="Selecciona un rol..." />
+                                <SelectPrimitive.Icon>
+                                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                                </SelectPrimitive.Icon>
+                              </SelectPrimitive.Trigger>
+                              <SelectPrimitive.Portal>
+                                <SelectPrimitive.Content 
+                                  className="z-50 min-w-[200px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                                  position="popper"
+                                  sideOffset={4}
+                                >
+                                  <SelectPrimitive.Viewport className="p-1">
+                                    <SelectPrimitive.Item 
+                                      value="1" 
+                                      className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                    >
+                                      <SelectPrimitive.ItemText>Administrador - Control total del sistema</SelectPrimitive.ItemText>
+                                    </SelectPrimitive.Item>
+                                    <SelectPrimitive.Item 
+                                      value="2" 
+                                      className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                    >
+                                      <SelectPrimitive.ItemText>Facturador - Emite comprobantes electrónicos</SelectPrimitive.ItemText>
+                                    </SelectPrimitive.Item>
+                                    <SelectPrimitive.Item 
+                                      value="3" 
+                                      className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                    >
+                                      <SelectPrimitive.ItemText>Contador - Revisa reportes y tributación</SelectPrimitive.ItemText>
+                                    </SelectPrimitive.Item>
+                                  </SelectPrimitive.Viewport>
+                                </SelectPrimitive.Content>
+                              </SelectPrimitive.Portal>
+                            </SelectPrimitive.Root>
+                          </Field>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-700">Punto de emisión</h3>
+                      </div>
+                      <Field label="Punto de emisión por defecto" htmlFor="id_punto_emision_default">
+                        <SelectPrimitive.Root 
+                          value={form.id_punto_emision_default === 0 ? undefined : form.id_punto_emision_default.toString()} 
+                          onValueChange={(val) => updateField("id_punto_emision_default", Number(val))}
+                          disabled={loadingPuntos}
+                        >
+                          <SelectPrimitive.Trigger 
+                            id="id_punto_emision_default"
+                            className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                          >
+                            <SelectPrimitive.Value placeholder={loadingPuntos ? "Cargando..." : "Selecciona un punto de emisión..."} />
+                            <SelectPrimitive.Icon>
+                              <ChevronDown className="h-4 w-4 text-slate-400" />
+                            </SelectPrimitive.Icon>
+                          </SelectPrimitive.Trigger>
+                          <SelectPrimitive.Portal>
+                            <SelectPrimitive.Content className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" position="popper" sideOffset={4}>
+                              <SelectPrimitive.Viewport className="p-1">
+                                {puntos.map((punto) => (
+                                  <SelectPrimitive.Item 
+                                    key={punto.id}
+                                    value={punto.id.toString()}
+                                    className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                  >
+                                    <SelectPrimitive.ItemText>{punto.codigo} - {punto.descripcion}</SelectPrimitive.ItemText>
+                                  </SelectPrimitive.Item>
+                                ))}
+                              </SelectPrimitive.Viewport>
+                            </SelectPrimitive.Content>
+                          </SelectPrimitive.Portal>
+                        </SelectPrimitive.Root>
+                      </Field>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Botones de acción */}
               <div className="flex justify-end gap-3 pt-2">
