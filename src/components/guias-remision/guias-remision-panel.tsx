@@ -970,7 +970,7 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                   <div className="min-w-[700px]">
-                    <div className="grid grid-cols-[minmax(180px,1fr)_100px_minmax(120px,1fr)_80px_44px] gap-2 bg-slate-50 px-2 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 border-b border-slate-200 desktop:grid-cols-[minmax(250px,1fr)_120px_minmax(150px,1fr)_100px_50px] desktop:gap-3 desktop:px-4">
+                    <div className="grid grid-cols-[minmax(180px,1fr)_100px_minmax(120px,1fr)_80px_44px] gap-2 bg-slate-50 px-2 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 border-b border-slate-200">
                       <span>Buscar Producto</span>
                       <span>Código</span>
                       <span>Descripción</span>
@@ -979,7 +979,7 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
                     </div>
                     <div className="divide-y divide-slate-100">
                       {form.detalles.map((detalle, idx) => (
-                        <div key={idx} className="grid grid-cols-[minmax(180px,1fr)_100px_minmax(120px,1fr)_80px_44px] items-center gap-2 bg-white px-2 py-2 desktop:grid-cols-[minmax(250px,1fr)_120px_minmax(150px,1fr)_100px_50px] desktop:gap-3 desktop:px-4">
+                        <div key={idx} className="grid grid-cols-[minmax(180px,1fr)_100px_minmax(120px,1fr)_80px_44px] items-center gap-2 bg-white px-2 py-2">
                           {/* Buscar Producto */}
                           <div className="relative">
                             {detalle.id_producto > 0 ? (

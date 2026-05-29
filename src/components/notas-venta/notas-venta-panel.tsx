@@ -1123,7 +1123,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                   <div className="min-w-[570px]">
-                    <div className="hidden lg:grid grid-cols-[55px_minmax(130px,1fr)_55px_75px_52px_65px_40px] gap-2 bg-slate-50 px-2 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700 desktop:grid-cols-[60px_minmax(180px,1fr)_60px_85px_62px_80px_44px] desktop:gap-3 desktop:px-3">
+                    <div className="hidden lg:grid grid-cols-[55px_minmax(130px,1fr)_55px_75px_52px_65px_40px] gap-2 bg-slate-50 px-2 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                       <span>Código</span>
                       <span>Descripción</span>
                       <span>Cant.</span>
@@ -1139,7 +1139,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                         return (
                           <div
                             key={`detalle-${index}`}
-                            className="grid items-center gap-2 bg-white px-2 py-2 desktop:gap-3 desktop:px-3 lg:grid-cols-[55px_minmax(130px,1fr)_55px_75px_52px_65px_40px] desktop:grid-cols-[60px_minmax(180px,1fr)_60px_85px_62px_80px_44px]"
+                            className="grid items-center gap-2 bg-white px-2 py-2 lg:grid-cols-[55px_minmax(130px,1fr)_55px_75px_52px_65px_40px]"
                           >
                             <span className="text-xs text-slate-500 truncate">
                               {producto?.codigo || detalle.codigo || "-"}

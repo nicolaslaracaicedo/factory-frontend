@@ -968,8 +968,8 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                  <div className="min-w-[740px] desktop:min-w-[960px]">
-                    <div className="hidden lg:grid grid-cols-[55px_minmax(130px,1fr)_50px_75px_52px_72px_58px_62px_65px_40px] gap-2 bg-slate-50 px-2 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700 desktop:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px] desktop:gap-3 desktop:px-3">
+                  <div className="min-w-[740px]">
+                    <div className="hidden lg:grid grid-cols-[55px_minmax(130px,1fr)_50px_75px_52px_72px_58px_62px_65px_40px] gap-2 bg-slate-50 px-2 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                       <span>Código</span>
                       <span>Descripción</span>
                       <span>Cant.</span>
@@ -993,7 +993,7 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                         const irbpnrTotal = producto?.tiene_irbpnr ? detalle.cantidad * (producto.valor_unitario_irbpnr ?? 0) : 0;
                         const subtotalLinea = base;
                         return (
-                          <div key={`det-${idx}`} className="grid items-center gap-2 bg-white px-2 py-2 desktop:gap-3 desktop:px-3 lg:grid-cols-[55px_minmax(130px,1fr)_50px_75px_52px_72px_58px_62px_65px_40px] desktop:grid-cols-[60px_minmax(180px,1fr)_60px_90px_62px_88px_72px_76px_80px_44px]">
+                          <div key={`det-${idx}`} className="grid items-center gap-2 bg-white px-2 py-2 lg:grid-cols-[55px_minmax(130px,1fr)_50px_75px_52px_72px_58px_62px_65px_40px]">
                             <span className="text-xs text-slate-500 truncate">{detalle.codigo || "-"}</span>
 
                             <SelectPrimitive.Root value={detalle.id_producto ? detalle.id_producto.toString() : undefined} onValueChange={(val) => handleProductoChange(idx, Number(val))}>
