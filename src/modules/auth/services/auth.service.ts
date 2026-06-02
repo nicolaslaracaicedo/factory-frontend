@@ -3,6 +3,10 @@ import type {
   LoginResponse,
   RegisterRequest,
   RegisterResponse,
+  VerifyEmailRequest,
+  VerifyEmailResponse,
+  ReenviarVerificacionRequest,
+  ReenviarVerificacionResponse,
 } from "@/src/modules/auth/types/auth.types";
 import { buildLoginResponse, toOptionalString, toRecord } from "@/src/modules/auth/utils/auth-payload.utils";
 
@@ -85,6 +89,32 @@ export const authService = {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(payload.message || "No se pudo restablecer la contraseña.");
+    }
+    return payload;
+  },
+
+  async verificarEmail(data: VerifyEmailRequest): Promise<VerifyEmailResponse> {
+    const response = await fetch("/api/auth/verificar-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.message || "No se pudo verificar el correo.");
+    }
+    return payload;
+  },
+
+  async reenviarVerificacion(data: ReenviarVerificacionRequest): Promise<ReenviarVerificacionResponse> {
+    const response = await fetch("/api/auth/reenviar-verificacion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.message || "No se pudo reenviar el código.");
     }
     return payload;
   },

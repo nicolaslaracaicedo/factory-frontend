@@ -72,6 +72,10 @@ export const buildLoginResponse = (
       apellido: toOptionalString(user.apellido),
       email: toOptionalString(user.email),
       role,
+      email_verificado: (() => {
+        const val = user.email_verificado ?? source.email_verificado ?? raw.email_verificado;
+        return typeof val === "boolean" ? val : undefined;
+      })(),
       puntoEmisionDefault: (() => {
         const tryExtract = (obj: UnknownRecord | undefined | null): number | null => {
           if (!obj) return null;

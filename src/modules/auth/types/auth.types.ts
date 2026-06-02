@@ -28,6 +28,7 @@ export interface AuthUser {
   apellido?: string;
   email?: string;
   role: UserRole;
+  email_verificado?: boolean;
   puntoEmisionDefault?: number | null;
 }
 
@@ -37,5 +38,26 @@ export interface LoginResponse {
 }
 
 export interface RegisterResponse {
+  message: string;
+}
+
+export interface VerifyEmailRequest {
+  ruc: string;
+  cedula: string;
+  codigo: string;
+}
+
+export interface VerifyEmailResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface ReenviarVerificacionRequest {
+  ruc: string;
+  cedula: string;
+}
+
+export interface ReenviarVerificacionResponse {
+  success: boolean;
   message: string;
 }

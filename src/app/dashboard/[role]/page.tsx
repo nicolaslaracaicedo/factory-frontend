@@ -19,6 +19,11 @@ export default function RoleDashboardPage() {
   }, [params.role]);
 
   useEffect(() => {
+    if (useAuthStore.persist.hasHydrated()) {
+      setHydrated(true);
+      return;
+    }
+
     const unsubscribe = useAuthStore.persist.onFinishHydration(() => {
       setHydrated(true);
     });

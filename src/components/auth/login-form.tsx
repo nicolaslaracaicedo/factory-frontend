@@ -16,6 +16,7 @@ import { roleToSlug } from "@/src/modules/auth/utils/role.utils";
 import { RecoverPasswordModal } from "@/src/components/auth/recover-password-modal";
 import { BrandPanel } from "@/src/components/auth/brand-panel";
 import { FloatingInput } from "@/src/components/auth/floating-input";
+import { VerifyEmailModal } from "@/src/components/auth/verify-email-modal";
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,8 @@ export function LoginForm() {
   const router = useRouter();
   const setSession = useAuthStore((state) => state.setSession);
   const [showPassword, setShowPassword] = React.useState(false);
+  const [verifyModalOpen, setVerifyModalOpen] = React.useState(false);
+  const [pendingLoginResponse, setPendingLoginResponse] = React.useState<{ ruc: string; cedula: string; email?: string } | null>(null);
   const minLoginDelayMs = 2000;
   const contactEmail = "nalara2@espe.edu.ec";
   const contactNumber = "+593 98 481 0928";
@@ -66,7 +69,17 @@ export function LoginForm() {
       await ensureMinDelay();
 
       setSession(response);
-      router.replace(`/dashboard/${roleToSlug[response.user.role]}`);
+
+      if (response.user.email_verificado === false) {
+        setPendingLoginResponse({
+          ruc: values.ruc,
+          cedula: values.cedula,
+          email: response.user.email,
+        });
+        setVerifyModalOpen(true);
+      } else {
+        router.replace(`/dashboard/${roleToSlug[response.user.role]}`);
+      }
     } catch (error) {
       await ensureMinDelay();
       const message =
@@ -299,6 +312,28 @@ export function LoginForm() {
 
       {/* Brand Panel */}
       <BrandPanel variant="login" />
+
+      {/* Email Verification Modal */}
+      {pendingLoginResponse && (
+        <VerifyEmailModal
+          open={verifyModalOpen}
+          onOpenChange={(open) => {
+            setVerifyModalOpen(open);
+            if (!open) {
+              useAuthStore.getState().clearSession();
+              setPendingLoginResponse(null);
+            }
+          }}
+          ruc={pendingLoginResponse.ruc}
+          cedula={pendingLoginResponse.cedula}
+          email={pendingLoginResponse.email}
+          onVerified={() => {
+            useAuthStore.getState().clearSession();
+            toast.success("Correo verificado correctamente. Inicia sesión nuevamente.");
+            router.push("/auth/login");
+          }}
+        />
+      )}
     </div>
   );
 }

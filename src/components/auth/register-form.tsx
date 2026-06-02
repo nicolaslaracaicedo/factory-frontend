@@ -18,6 +18,7 @@ import type { RegisterFormValues } from "@/src/modules/auth/schemas/auth.schemas
 import { TermsModal } from "@/src/components/auth/terms-modal";
 import { BrandPanel } from "@/src/components/auth/brand-panel";
 import { FloatingInput } from "@/src/components/auth/floating-input";
+import { VerifyEmailModal } from "@/src/components/auth/verify-email-modal";
 
 // -- Validation helpers --------------------------------------------------------
 
@@ -172,6 +173,8 @@ export function RegisterForm() {
   const [showPw,  setShowPw]  = React.useState(false);
   const [showCpw, setShowCpw] = React.useState(false);
   const [acceptedTerms, setAcceptedTerms] = React.useState(false);
+  const [verifyModalOpen, setVerifyModalOpen] = React.useState(false);
+  const [verifyData, setVerifyData] = React.useState<{ ruc: string; cedula: string; email: string } | null>(null);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -245,7 +248,12 @@ export function RegisterForm() {
       toast.success(res.message);
       form.reset();
       setAcceptedTerms(false);
-      router.push("/auth/login");
+      setVerifyData({
+        ruc: values.ruc,
+        cedula: values.identificacion,
+        email: values.email,
+      });
+      setVerifyModalOpen(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo registrar.");
     }
@@ -612,6 +620,26 @@ export function RegisterForm() {
 
       {/* Brand Panel */}
       <BrandPanel variant="register" />
+
+      {/* Email Verification Modal */}
+      {verifyData && (
+        <VerifyEmailModal
+          open={verifyModalOpen}
+          onOpenChange={(open) => {
+            setVerifyModalOpen(open);
+            if (!open) {
+              router.push("/auth/login");
+            }
+          }}
+          ruc={verifyData.ruc}
+          cedula={verifyData.cedula}
+          email={verifyData.email}
+          onVerified={() => {
+            toast.success("Correo verificado correctamente. Ahora puedes iniciar sesión.");
+            router.push("/auth/login");
+          }}
+        />
+      )}
     </div>
   );
 }
