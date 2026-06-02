@@ -8,8 +8,6 @@ import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 
 export function CompanyThemeSync() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const token = useAuthStore((state) => state.token);
-  const clearSession = useAuthStore((state) => state.clearSession);
 
   useEffect(() => {
     const cached = readCompanyCache();
@@ -39,19 +37,18 @@ export function CompanyThemeSync() {
       }
 
       try {
-        const company = await companyService.getCompany(token ?? undefined);
+        const company = await companyService.getCompany();
         applyCompanyTheme(company);
         writeCompanyCache(company);
         writeCompanyThemeCache(company);
-      } catch (error) {
-        if (error instanceof Error && "status" in error && (error as { status: number }).status === 401) {
-          clearSession();
-        }
+      } catch {
+        console.error("Error al obtener datos de empresa. Se usará tema por defecto.");
+        applyCompanyTheme(null);
       }
     };
 
     void syncTheme();
-  }, [isAuthenticated, token, clearSession]);
+  }, [isAuthenticated]);
 
   return null;
 }

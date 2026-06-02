@@ -4,7 +4,9 @@ const API_URL =
   process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 const getAuthHeaders = (token: string | undefined): HeadersInit => {
-  const headers: HeadersInit = {};
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -37,6 +39,7 @@ export async function POST(
   const backendResponse = await fetch(`${API_URL}/api/guias-remision/${id}/emitir`, {
     method: "POST",
     headers: getAuthHeaders(token),
+    body: JSON.stringify({}),
     cache: "no-store",
   });
 

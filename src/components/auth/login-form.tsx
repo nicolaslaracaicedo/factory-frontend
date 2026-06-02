@@ -68,7 +68,7 @@ export function LoginForm() {
       });
       await ensureMinDelay();
 
-      setSession(response);
+      setSession({ user: response.user });
 
       if (response.user.email_verificado === false) {
         setPendingLoginResponse({

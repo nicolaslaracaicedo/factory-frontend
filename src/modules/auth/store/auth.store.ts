@@ -5,10 +5,9 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import type { AuthUser } from "@/src/modules/auth/types/auth.types";
 
 interface AuthState {
-  token: string | null;
   user: AuthUser | null;
   isAuthenticated: boolean;
-  setSession: (payload: { token: string; user: AuthUser }) => void;
+  setSession: (payload: { user: AuthUser }) => void;
   clearSession: () => void;
 }
 
@@ -25,18 +24,15 @@ const storage = createJSONStorage(() =>
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      token: null,
       user: null,
       isAuthenticated: false,
-      setSession: ({ token, user }) =>
+      setSession: ({ user }) =>
         set({
-          token,
           user,
           isAuthenticated: true,
         }),
       clearSession: () =>
         set({
-          token: null,
           user: null,
           isAuthenticated: false,
         }),
@@ -44,8 +40,15 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "factory_auth",
       storage,
+      version: 2,
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<AuthState> & { token?: string };
+        return {
+          user: state.user ?? null,
+          isAuthenticated: Boolean(state.isAuthenticated),
+        };
+      },
       partialize: (state) => ({
-        token: state.token,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),

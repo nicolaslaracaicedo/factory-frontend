@@ -5,7 +5,7 @@ export async function POST() {
 
   response.cookies.set("factory_token", "", {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 0,
@@ -13,7 +13,7 @@ export async function POST() {
 
   response.cookies.set("factory_role", "", {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 0,

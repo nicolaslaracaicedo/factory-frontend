@@ -3,12 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 const API_URL =
   process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
-const getAuthHeaders = (token: string | undefined, hasJsonBody = true): HeadersInit => {
-  const headers: HeadersInit = {};
-
-  if (hasJsonBody) {
-    headers["Content-Type"] = "application/json";
-  }
+const getAuthHeaders = (token: string | undefined): HeadersInit => {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -47,8 +45,8 @@ export async function POST(
 
   const backendResponse = await fetch(`${API_URL}/api/notas-debito/${id}/emitir`, {
     method: "POST",
-    headers: getAuthHeaders(token, Boolean(body)),
-    body: body ? JSON.stringify(body) : undefined,
+    headers: getAuthHeaders(token),
+    body: body ? JSON.stringify(body) : JSON.stringify({}),
     cache: "no-store",
   });
 

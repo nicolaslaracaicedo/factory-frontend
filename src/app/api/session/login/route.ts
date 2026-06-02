@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
   response.cookies.set("factory_token", normalized.token, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 8,
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
   response.cookies.set("factory_role", roleSlug, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 8,

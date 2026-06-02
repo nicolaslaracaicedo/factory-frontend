@@ -3,18 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 const API_URL =
   process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
-const getAuthHeaders = (token: string | undefined): HeadersInit => {
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-  };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  return headers;
-};
-
 const readPayload = async (response: Response): Promise<unknown> => {
   return response.json().catch(() => ({}));
 };
@@ -29,31 +17,33 @@ const toMessage = (payload: unknown, fallback: string): string => {
   return fallback;
 };
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const token = request.cookies.get("factory_token")?.value;
-  const { id } = await params;
+const extractToken = (request: NextRequest): string | undefined => {
+  const authHeader = request.headers.get("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.slice(7);
+  }
+  return request.cookies.get("factory_token")?.value;
+};
 
-  let body: unknown = undefined;
-  try {
-    body = await request.json();
-  } catch {
-    body = undefined;
+export async function GET(request: NextRequest) {
+  const token = extractToken(request);
+
+  if (!token) {
+    return NextResponse.json({ message: "No autorizado." }, { status: 401 });
   }
 
-  const backendResponse = await fetch(`${API_URL}/api/notas-credito/${id}/emitir`, {
-    method: "POST",
-    headers: getAuthHeaders(token),
-    body: body ? JSON.stringify(body) : JSON.stringify({}),
+  const backendResponse = await fetch(`${API_URL}/api/dashboard`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
     cache: "no-store",
   });
 
   const payload = await readPayload(backendResponse);
   if (!backendResponse.ok) {
     return NextResponse.json(
-      { message: toMessage(payload, "No se pudo emitir la nota.") },
+      { message: toMessage(payload, "No se pudo obtener el dashboard.") },
       { status: backendResponse.status }
     );
   }

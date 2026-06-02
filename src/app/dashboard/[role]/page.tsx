@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { RoleDashboardTemplate } from "@/src/components/dashboard/role-dashboard-template";
 import { authService } from "@/src/modules/auth/services/auth.service";
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
-import { slugToRole } from "@/src/modules/auth/utils/role.utils";
+import { roleToSlug, slugToRole } from "@/src/modules/auth/utils/role.utils";
 
 export default function RoleDashboardPage() {
   const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated());
@@ -17,6 +17,10 @@ export default function RoleDashboardPage() {
   const currentRole = useMemo(() => {
     return slugToRole[params.role] ?? null;
   }, [params.role]);
+
+  const userRoleSlug = useMemo(() => {
+    return user ? roleToSlug[user.role] : null;
+  }, [user]);
 
   useEffect(() => {
     if (useAuthStore.persist.hasHydrated()) {
@@ -36,12 +40,22 @@ export default function RoleDashboardPage() {
       return;
     }
 
+    if (!user) {
+      router.replace("/auth/login");
+      return;
+    }
+
     if (!currentRole) {
       router.replace("/auth/login");
+      return;
     }
-  }, [currentRole, hydrated, router]);
 
-  if (!hydrated || !currentRole || !user) {
+    if (userRoleSlug && params.role !== userRoleSlug) {
+      router.replace(`/dashboard/${userRoleSlug}`);
+    }
+  }, [currentRole, hydrated, params.role, router, user, userRoleSlug]);
+
+  if (!hydrated || !currentRole || !user || (userRoleSlug && params.role !== userRoleSlug)) {
     return (
       <section className="m-4 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm sm:m-6">
         <div className="h-5 w-40 animate-pulse rounded-md bg-slate-100" />

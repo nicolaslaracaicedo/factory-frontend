@@ -21,18 +21,6 @@ export function middleware(request: NextRequest) {
     }
 
     if (!hasValidRole) {
-      if (requestedRoleSlug && isRoleSlug(requestedRoleSlug)) {
-        const response = NextResponse.next();
-        response.cookies.set("factory_role", requestedRoleSlug, {
-          httpOnly: true,
-          sameSite: "lax",
-          secure: process.env.NODE_ENV === "production",
-          path: "/",
-          maxAge: 60 * 60 * 8,
-        });
-        return response;
-      }
-
       return NextResponse.redirect(new URL("/auth/login", request.url));
     }
 

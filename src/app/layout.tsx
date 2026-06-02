@@ -57,35 +57,7 @@ export default function RootLayout({
     >
       <head>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,0..1&display=swap" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function () {
-                try {
-                  var themeRaw = localStorage.getItem("factory_company_theme_cache");
-                  var companyRaw = localStorage.getItem("factory_company_cache");
-                  var theme = themeRaw ? JSON.parse(themeRaw) : null;
-                  var company = companyRaw ? JSON.parse(companyRaw) : null;
-                  var root = document.documentElement.style;
-                  var primary = theme && theme.color_primario ? theme.color_primario : company && company.color_primario;
-                  var secondary = theme && theme.color_secundario ? theme.color_secundario : company && company.color_secundario;
-                  var accent = theme && theme.color_acento ? theme.color_acento : company && company.color_acento;
-                  if (primary) root.setProperty("--primary", primary);
-                  if (secondary) root.setProperty("--secondary", secondary);
-                  if (accent) root.setProperty("--accent", accent);
-
-                  if (company && company.logo) {
-                    var link = document.createElement("link");
-                    link.rel = "preload";
-                    link.as = "image";
-                    link.href = company.logo;
-                    document.head.appendChild(link);
-                  }
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
+        <script src="/scripts/boot-theme.js" />
       </head>
       <body className="m-0 min-h-full flex flex-col text-app-foreground">
         <CompanyThemeSync />

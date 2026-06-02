@@ -29,15 +29,9 @@ const getErrorMessage = (payload: unknown): string => {
 };
 
 export const companyService = {
-  async getCompany(token?: string): Promise<Company> {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-
+  async getCompany(): Promise<Company> {
     const response = await fetch("/api/empresa", {
       method: "GET",
-      headers,
       cache: "no-store",
     });
 
