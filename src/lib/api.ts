@@ -12,9 +12,8 @@ const api = axios.create({
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (typeof window !== "undefined" && error.response?.status === 401) {
-      void fetch("/api/session/logout", { method: "POST" });
-      window.location.href = "/auth/login";
+    if (error.response?.status === 401) {
+      console.warn("API 401 — la sesión podría haber expirado");
     }
     return Promise.reject(error);
   }

@@ -1189,7 +1189,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <Button type="submit" className="h-10 w-full">
+                <Button onClick={handleSubmit} className="h-10 w-full">
                   {editing ? "Guardar cambios" : "Crear liquidación"}
                 </Button>
               </div>
