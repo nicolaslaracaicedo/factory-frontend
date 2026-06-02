@@ -40,8 +40,11 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Factory | SaaS de Facturacion",
-  description: "Sistema de facturacion modular tipo SaaS para Factory",
+  title: "Factory | Sistema de facturación",
+  description: "Sistema de facturación modular para Factory",
+  icons: {
+    icon: "/favicon-32x32.png",
+  },
 };
 
 export default function RootLayout({

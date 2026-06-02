@@ -54,6 +54,7 @@ import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 import { ClientFormModal } from "@/src/components/clients/client-form-modal";
 import { ProductFormModal } from "@/src/components/products/product-form-modal";
 import { confirmAction } from "@/src/lib/confirm";
+import { roundMoney } from "@/src/lib/money";
 
 const initialDetail = (): FacturaDetalleDraft => ({
   mode: "CATALOGO",
@@ -561,11 +562,11 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
 
     const isCredito = form.tipo_pago === "CREDITO" || form.tipo_pago === "CRÉDITO";
     const isContado = form.tipo_pago === "CONTADO";
-    const totalRounded = Math.round(totales.total * 100) / 100;
+    const totalRounded = roundMoney(totales.total);
     const montoRecibido = isCredito
       ? 0
       : isContado
-        ? (form.monto_recibido > 0 ? form.monto_recibido : totalRounded)
+        ? roundMoney(form.monto_recibido > 0 ? form.monto_recibido : totalRounded)
         : form.monto_recibido;
     const diasPlazo = isContado ? 0 : form.dias_plazo;
     const tipoPago = isCredito ? "CREDITO" : form.tipo_pago;
@@ -774,9 +775,9 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
     const precio = getProductoById(detalle.id_producto)?.precio ?? 0;
     const raw = Math.max(Number(detalle.descuento) || 0, 0);
     if (detalle.tipo_descuento === "PORCENTAJE") {
-      return (cantidad * precio) * (raw / 100);
+      return roundMoney((cantidad * precio) * (raw / 100));
     }
-    return raw;
+    return roundMoney(raw);
   };
 
   const getDetalleSubtotal = (detalle: FacturaDetalleDraft) => {
@@ -784,7 +785,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
     const precio = getProductoById(detalle.id_producto)?.precio ?? 0;
     const descuentoValor = getDescuentoValor(detalle);
     const subtotal = cantidad * precio - descuentoValor;
-    return subtotal < 0 ? 0 : subtotal;
+    return roundMoney(subtotal < 0 ? 0 : subtotal);
   };
 
   const getDetalleIvaPercent = (detalle: FacturaDetalleDraft) => {
@@ -799,14 +800,14 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
     const producto = getProductoById(detalle.id_producto);
     const cantidad = Number(detalle.cantidad) || 0;
     const ice = producto?.tiene_ice
-      ? (base * (producto.porcentaje_ice ?? 0)) / 100
+      ? roundMoney((base * (producto.porcentaje_ice ?? 0)) / 100)
       : 0;
     const baseImponibleIva = base + ice;
-    const iva = (baseImponibleIva * ivaPct) / 100;
+    const iva = roundMoney((baseImponibleIva * ivaPct) / 100);
     const irbpnr = producto?.tiene_irbpnr
-      ? cantidad * (producto.valor_unitario_irbpnr ?? 0)
+      ? roundMoney(cantidad * (producto.valor_unitario_irbpnr ?? 0))
       : 0;
-    return base + ice + iva + irbpnr;
+    return roundMoney(base + ice + iva + irbpnr);
   };
 
   interface PorIvaRate {
@@ -831,30 +832,30 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
       const producto = getProductoById(detalle.id_producto);
       const icePct = producto?.porcentaje_ice ?? 0;
       const ice = producto?.tiene_ice
-        ? (base * icePct) / 100
+        ? roundMoney((base * icePct) / 100)
         : 0;
       const baseImponibleIva = base + ice;
-      const iva = (baseImponibleIva * ivaPct) / 100;
+      const iva = roundMoney((baseImponibleIva * ivaPct) / 100);
       const irbpnrVal = producto?.valor_unitario_irbpnr ?? 0;
       const irbpnr = producto?.tiene_irbpnr
-        ? (Number(detalle.cantidad) || 0) * irbpnrVal
+        ? roundMoney((Number(detalle.cantidad) || 0) * irbpnrVal)
         : 0;
       const key = ivaPct.toString();
       const prev = acc.ivaPorRates[key] ?? { pct: ivaPct, monto: 0 };
       return {
-        subtotal: acc.subtotal + base,
-        descuento: acc.descuento + descuento,
-        iva: acc.iva + iva,
-        ice: acc.ice + ice,
+        subtotal: roundMoney(acc.subtotal + base),
+        descuento: roundMoney(acc.descuento + descuento),
+        iva: roundMoney(acc.iva + iva),
+        ice: roundMoney(acc.ice + ice),
         icePcts: producto?.tiene_ice
           ? acc.icePcts.includes(icePct) ? acc.icePcts : [...acc.icePcts, icePct]
           : acc.icePcts,
-        irbpnr: acc.irbpnr + irbpnr,
+        irbpnr: roundMoney(acc.irbpnr + irbpnr),
         irbpnrValues: producto?.tiene_irbpnr
           ? acc.irbpnrValues.includes(irbpnrVal) ? acc.irbpnrValues : [...acc.irbpnrValues, irbpnrVal]
           : acc.irbpnrValues,
-        total: acc.total + base + ice + iva + irbpnr,
-        ivaPorRates: { ...acc.ivaPorRates, [key]: { ...prev, monto: prev.monto + iva } },
+        total: roundMoney(acc.total + base + ice + iva + irbpnr),
+        ivaPorRates: { ...acc.ivaPorRates, [key]: { ...prev, monto: roundMoney(prev.monto + iva) } },
       };
     },
     { subtotal: 0, descuento: 0, iva: 0, ice: 0, irbpnr: 0, icePcts: [], irbpnrValues: [], total: 0, ivaPorRates: {} }
@@ -862,12 +863,12 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
 
   const isCredito = form.tipo_pago === "CREDITO" || form.tipo_pago === "CRÉDITO";
   const isContado = form.tipo_pago === "CONTADO";
-  const totalRounded = Math.round(totales.total * 100) / 100;
+  const totalRounded = roundMoney(totales.total);
   const totalExceeds50 = form.cliente_mode === "CONSUMIDOR_FINAL" && totalRounded > 50;
   const montoRecibidoDisplay = isContado
-    ? (form.monto_recibido > 0 ? form.monto_recibido : totalRounded)
+    ? roundMoney(form.monto_recibido > 0 ? form.monto_recibido : totalRounded)
     : 0;
-  const cambio = montoRecibidoDisplay - totales.total;
+  const cambio = roundMoney(montoRecibidoDisplay - totalRounded);
   const showPagoCard = (isContado && form.forma_pago === "01") || isCredito;
 
   const filteredPuntos = useMemo(() => puntos.filter((p) => !puntoSearch || p.codigo.toLowerCase().includes(puntoSearch.toLowerCase()) || p.descripcion.toLowerCase().includes(puntoSearch.toLowerCase())), [puntos, puntoSearch]);
@@ -1351,11 +1352,11 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                             </span>
 
                             <span className="text-xs text-amber-600 font-medium">
-                              {producto?.tiene_ice ? formatMoney(getDetalleSubtotal(detalle) * ((producto.porcentaje_ice ?? 0) / 100)) : "-"}
+                              {producto?.tiene_ice ? formatMoney(roundMoney(getDetalleSubtotal(detalle) * ((producto.porcentaje_ice ?? 0) / 100))) : "-"}
                             </span>
 
                             <span className="text-xs text-purple-600 font-medium">
-                              {producto?.tiene_irbpnr ? formatMoney((Number(detalle.cantidad) || 0) * (producto.valor_unitario_irbpnr ?? 0)) : "-"}
+                              {producto?.tiene_irbpnr ? formatMoney(roundMoney((Number(detalle.cantidad) || 0) * (producto.valor_unitario_irbpnr ?? 0))) : "-"}
                             </span>
 
                             <span className="text-xs font-extrabold text-slate-900 tabular-nums">
@@ -1523,7 +1524,7 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                         setMontoStr(cleaned);
                         const parsedVal = cleaned.replace(",", ".");
                         const num = parseFloat(parsedVal);
-                        updateField("monto_recibido", !isNaN(num) && num >= 0 ? Math.round(num * 100) / 100 : 0);
+                        updateField("monto_recibido", !isNaN(num) && num >= 0 ? roundMoney(num) : 0);
                       }}
                       readOnly={isCredito}
                       className={`shadow-none h-9 ${isCredito ? "bg-slate-50 text-slate-500" : "bg-white"}`}

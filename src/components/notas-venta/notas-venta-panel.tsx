@@ -83,6 +83,7 @@ import { useDashboardSection } from "@/src/components/dashboard/dashboard-sectio
 import { useAuthStore } from "@/src/modules/auth/store/auth.store";
 import { ClientFormModal } from "@/src/components/clients/client-form-modal";
 import { confirmAction } from "@/src/lib/confirm";
+import { roundMoney } from "@/src/lib/money";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface DetalleDraft {
@@ -235,9 +236,9 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
       const sub = d.cantidad * d.precio_unitario;
       const dto = getDescuentoValor(d);
       return {
-        subtotal: acc.subtotal + sub,
-        descuento: acc.descuento + dto,
-        total: acc.total + sub - dto,
+        subtotal: roundMoney(acc.subtotal + sub),
+        descuento: roundMoney(acc.descuento + dto),
+        total: roundMoney(acc.total + sub - dto),
       };
     },
     { subtotal: 0, descuento: 0, total: 0 }
@@ -325,7 +326,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
       ),
       cell: ({ row }) => (
         <span className="font-semibold text-slate-900">
-          ${parseFloat(row.original.total || "0").toFixed(2)}
+          ${roundMoney(parseFloat(row.original.total || "0")).toFixed(2)}
         </span>
       ),
     },
@@ -1318,7 +1319,7 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                         setMontoStr(cleaned);
                         const parsedVal = cleaned.replace(",", ".");
                         const num = parseFloat(parsedVal);
-                        setMontoRecibido(!isNaN(num) && num >= 0 ? Math.round(num * 100) / 100 : 0);
+                        setMontoRecibido(!isNaN(num) && num >= 0 ? roundMoney(num) : 0);
                       }}
                       className="bg-white shadow-none h-9"
                       placeholder="0.00"
@@ -1328,13 +1329,13 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
                     <span className="text-sm font-medium text-slate-600">Cambio:</span>
                     <span
                       className={`text-lg font-bold ${
-                        (montoStr !== "" || montoRecibido > 0) && (montoRecibido - totales.total) < 0
+                        (montoStr !== "" || montoRecibido > 0) && roundMoney(montoRecibido - totales.total) < 0
                           ? "text-rose-600"
                           : "text-emerald-600"
                       }`}
                     >
                       {(montoStr !== "" || montoRecibido > 0)
-                        ? formatMoney(montoRecibido - totales.total)
+                        ? formatMoney(roundMoney(montoRecibido - totales.total))
                         : formatMoney(0)}
                     </span>
                   </div>
