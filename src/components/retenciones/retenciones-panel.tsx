@@ -3,7 +3,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Edit, Eye, Plus, PlusCircle, Power, Send, Trash2, Search, ChevronLeft, ChevronRight, FileText, ChevronDown, ListFilter, MoreVertical, ArrowUp, ArrowDown, ChevronsUpDown, X, Receipt, FileCheck, Tag, Trash, RefreshCw, Calculator, Mail } from "lucide-react";
+import { CheckCircle, Edit, Eye, Plus, PlusCircle, Power, Send, Trash2, Search, ChevronLeft, ChevronRight, FileText, ChevronDown, ListFilter, MoreVertical, ArrowUp, ArrowDown, ChevronsUpDown, X, Receipt, FileCheck, Tag, Trash, RefreshCw, Calculator, Mail } from "lucide-react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -139,6 +139,8 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
   const [emailSending, setEmailSending] = useState(false);
   const [puntoSearch, setPuntoSearch] = useState("");
   const [proveedorSearch, setProveedorSearch] = useState("");
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [savedRetencion, setSavedRetencion] = useState<RetencionItem | null>(null);
 
   function SortIcon({ column }: { column: any }) {
     const s = column.getIsSorted();
@@ -391,6 +393,21 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
     setFacturaSearchResults([]);
   };
 
+  const goToList = async () => {
+    setSuccessDialogOpen(false);
+    setSavedRetencion(null);
+    await loadRetenciones();
+    closeEditor();
+  };
+
+  const openCreateFromSuccess = () => {
+    setSuccessDialogOpen(false);
+    setSavedRetencion(null);
+    setForm(initialForm);
+    setFacturaQuery("");
+    setFacturaSearchResults([]);
+  };
+
   const resetForm = () => {
     setForm({
       ...initialForm,
@@ -486,12 +503,14 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
       if (editing) {
         await retencionesService.updateRetencion(editing.id, payload);
         toast.success("Retención actualizada");
+        await loadRetenciones();
+        closeEditor();
       } else {
-        await retencionesService.createRetencion(payload);
+        const result = await retencionesService.createRetencion(payload);
         toast.success("Retención creada");
+        setSavedRetencion(result);
+        setSuccessDialogOpen(true);
       }
-      await loadRetenciones();
-      closeEditor();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al guardar");
     } finally {
@@ -635,14 +654,15 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
 
   if (!showPanel) return null;
 
-  if (editorOpen) {
-    return (
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-        className="space-y-6"
-      >
+  return (
+    <>
+      {editorOpen ? (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+          className="space-y-6"
+        >
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1015,16 +1035,13 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
           </div>
         </motion.form>
       </motion.section>
-    );
-  }
-
-  return (
-    <motion.section
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-      className="space-y-4"
-    >
+      ) : (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+          className="space-y-4"
+        >
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-1 items-center gap-2 min-w-[280px] max-w-md">
@@ -1412,5 +1429,127 @@ export function RetencionesPanel({ showPanel = true, readOnly = false }: Retenci
         </Dialog.Portal>
       </Dialog.Root>
     </motion.section>
+      )}
+      <Dialog.Root open={successDialogOpen} onOpenChange={(open) => { if (!open) { setSuccessDialogOpen(false); } }}>
+          <Dialog.Portal>
+            <Dialog.Overlay asChild>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+              />
+            </Dialog.Overlay>
+            <Dialog.Content
+              className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,440px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden"
+              onPointerDownOutside={(event) => event.preventDefault()}
+              onInteractOutside={(event) => event.preventDefault()}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.99 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.24, ease: [0.25, 0.1, 0.25, 1] }}
+              >
+                <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-5">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 border border-emerald-200 shrink-0">
+                      <CheckCircle className="h-6 w-6 text-emerald-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Dialog.Title className="text-xl font-semibold text-emerald-900">
+                        ¡Retención guardada con éxito!
+                      </Dialog.Title>
+                      <Dialog.Description className="mt-1 text-xs text-emerald-700 leading-relaxed">
+                        La retención se ha guardado como borrador. ¿Qué deseas hacer ahora?
+                      </Dialog.Description>
+                    </div>
+                    <Dialog.Close asChild>
+                      <button
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-400 transition-colors hover:bg-emerald-200 hover:text-emerald-600 outline-none"
+                        aria-label="Cerrar"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </Dialog.Close>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {savedRetencion && (
+                    <div className="bg-emerald-50 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                        <h3 className="text-sm font-semibold text-emerald-800">Resumen</h3>
+                      </div>
+                      <div className="grid gap-3 text-sm">
+                        <div className="rounded-lg bg-white/80 px-3 py-2">
+                          <dt className="text-xs font-semibold text-emerald-600">Número</dt>
+                          <dd className="mt-0.5 font-medium text-emerald-900">{savedRetencion.numero || "-"}</dd>
+                        </div>
+                        <div className="rounded-lg bg-white/80 px-3 py-2">
+                          <dt className="text-xs font-semibold text-emerald-600">Proveedor</dt>
+                          <dd className="mt-0.5 font-medium text-emerald-900">{savedRetencion.proveedor_nombre || "-"}</dd>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-3 border-t border-slate-200 px-6 py-4">
+                  {savedRetencion && canEmitir(savedRetencion) && (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setSuccessDialogOpen(false);
+                        setSavedRetencion(null);
+                        handleEmitir(savedRetencion);
+                      }}
+                      className="h-10 w-full justify-center"
+                    >
+                      <Send size={14} className="mr-1.5" />
+                      Emitir al SRI ahora
+                    </Button>
+                  )}
+                  {savedRetencion && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-10 w-full justify-center"
+                      onClick={() => window.open(`/api/retenciones/${savedRetencion.id}/pdf`, '_blank')}
+                    >
+                      <FileText size={14} className="mr-1.5" />
+                      Descargar PDF
+                    </Button>
+                  )}
+                  {savedRetencion && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-10 w-full justify-center"
+                      onClick={() => {
+                        setSuccessDialogOpen(false);
+                        setSavedRetencion(null);
+                        openEmailDialog(savedRetencion);
+                      }}
+                    >
+                      <Mail size={14} className="mr-1.5" />
+                      Enviar por correo
+                    </Button>
+                  )}
+                  <div className="flex gap-2">
+                    <Button variant="ghost" type="button" onClick={goToList} className="flex-1 h-10 justify-center">
+                      Ir al listado
+                    </Button>
+                    <Button variant="secondary" type="button" onClick={openCreateFromSuccess} className="flex-1 h-10 justify-center">
+                      <PlusCircle size={14} className="mr-1.5" />
+                      Crear otra retención
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+    </>
   );
 }

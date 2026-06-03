@@ -43,6 +43,7 @@ import {
   Calendar,
   CreditCard,
   Calculator,
+  CheckCircle,
   Building2,
   RefreshCw,
   DollarSign,
@@ -187,6 +188,8 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
   const [montoStr, setMontoStr] = useState("");
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [puntoSearch, setPuntoSearch] = useState("");
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [savedNota, setSavedNota] = useState<NotaVentaItem | null>(null);
   const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
   const { setActiveSection } = useDashboardSection();
 
@@ -523,6 +526,43 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
     setMontoRecibido(0);
   };
 
+  const goToList = async () => {
+    setSuccessDialogOpen(false);
+    setSavedNota(null);
+    const notasData = await notasVentaService.listNotasVenta();
+    const filtered = filter === "TODOS" ? notasData : notasData.filter((item) => item.estado === filter);
+    setNotas(filtered);
+    closeEditor();
+  };
+
+  const openCreateFromSuccess = () => {
+    setSuccessDialogOpen(false);
+    setSavedNota(null);
+    setMontoStr("");
+    setMontoRecibido(0);
+    setForm({
+      ...initialForm,
+      id_punto_emision: getDefaultPuntoId(),
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
+    });
+    setClienteQuery("");
+  };
+
+  const emitirNotaVenta = async (nota: NotaVentaItem) => {
+    if (!await confirmAction({ title: "Emitir al SRI", message: "¿Estás seguro de que deseas emitir esta nota de venta al SRI?", confirmText: "Emitir", variant: "info" })) return;
+    try {
+      const emitted = await notasVentaService.emitirNotaVenta(nota.id);
+      const notasData = await notasVentaService.listNotasVenta();
+      const filtered = filter === "TODOS" ? notasData : notasData.filter((item) => item.estado === filter);
+      setNotas(filtered);
+      toast.success("Nota de venta emitida al SRI");
+      setEmissionData(emitted);
+      setEmissionInfoOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al emitir");
+    }
+  };
+
   const openEdit = async (n: NotaVentaItem) => {
     try {
       const fullNota = await notasVentaService.getNotaVenta(n.id);
@@ -719,15 +759,16 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
       if (editing) {
         await notasVentaService.updateNotaVenta(editing.id, payload);
         toast.success("Nota de venta actualizada correctamente");
+        const notasData = await notasVentaService.listNotasVenta();
+        const filtered = filter === "TODOS" ? notasData : notasData.filter((item) => item.estado === filter);
+        setNotas(filtered);
+        closeEditor();
       } else {
-        await notasVentaService.createNotaVenta(payload as NotaVentaCreateInput);
+        const result = await notasVentaService.createNotaVenta(payload as NotaVentaCreateInput);
         toast.success("Nota de venta creada correctamente");
+        setSavedNota(result);
+        setSuccessDialogOpen(true);
       }
-
-      const notasData = await notasVentaService.listNotasVenta();
-      const filtered = filter === "TODOS" ? notasData : notasData.filter((item) => item.estado === filter);
-      setNotas(filtered);
-      closeEditor();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al guardar");
     } finally {
@@ -847,9 +888,10 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
 
   if (!showPanel) return null;
 
-  if (editorOpen) {
-    return (
-      <motion.section
+  return (
+    <>
+      {editorOpen ? (
+        <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
@@ -1383,14 +1425,11 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
           }}
         />
       </motion.section>
-    );
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+    ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
       className="space-y-4"
     >
       {/* Toolbar Principal */}
@@ -1575,6 +1614,8 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
           </div>
         </motion.div>
       )}
+    </motion.div>
+  )}
 
       {/* Modal Detalle */}
       <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
@@ -1901,6 +1942,96 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-    </motion.div>
+
+      <Dialog.Root open={successDialogOpen} onOpenChange={(open) => { if (!open) { setSuccessDialogOpen(false); } }}>
+        <Dialog.Portal>
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,400px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.24, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <div className="p-6 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 mb-4">
+                  <CheckCircle className="h-7 w-7 text-emerald-600" />
+                </div>
+                <Dialog.Title className="text-lg font-semibold text-slate-900">
+                  ¡Nota de venta guardada con éxito!
+                </Dialog.Title>
+                <Dialog.Description className="mt-2 text-sm text-slate-500 leading-relaxed">
+                  La nota de venta se ha guardado como borrador. ¿Qué deseas hacer ahora?
+                </Dialog.Description>
+              </div>
+
+              <div className="px-6 pb-6 space-y-2">
+                <Button
+                  type="button"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    setSuccessDialogOpen(false);
+                    if (savedNota) emitirNotaVenta(savedNota);
+                  }}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Emitir al SRI ahora
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    if (savedNota) window.open(`/api/notas-venta/${savedNota.id}/recibo`, '_blank');
+                  }}
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  Imprimir Recibo
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    if (savedNota) window.open(`/api/notas-venta/${savedNota.id}/pdf`, '_blank');
+                  }}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Descargar PDF
+                </Button>
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 flex-1 text-slate-500 hover:text-slate-700"
+                    onClick={goToList}
+                  >
+                    Ir al listado
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 flex-1 text-slate-500 hover:text-slate-700"
+                    onClick={openCreateFromSuccess}
+                  >
+                    Crear otra nota de venta
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </>
   );
 }

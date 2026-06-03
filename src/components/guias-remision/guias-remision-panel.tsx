@@ -28,6 +28,7 @@ import {
   Radio,
   User,
   Calendar,
+  CheckCircle,
   Package,
   Route,
   Trash,
@@ -115,6 +116,8 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
   const [loading, setLoading] = useState(true);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [savedGuia, setSavedGuia] = useState<GuiaRemisionItem | null>(null);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -380,6 +383,23 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
     setProductoFocus({});
   };
 
+  const goToList = async () => {
+    setSuccessDialogOpen(false);
+    setSavedGuia(null);
+    closeEditor();
+    void loadGuias();
+  };
+
+  const openCreateFromSuccess = () => {
+    setSuccessDialogOpen(false);
+    setSavedGuia(null);
+    setForm(initialFormState);
+    setClienteQuery("");
+    setClienteSearchResults([]);
+    setProductoQueries({});
+    setProductoFocus({});
+  };
+
   const resetForm = () => {
     setForm({
       ...initialFormState,
@@ -491,12 +511,14 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
       if (editing) {
         await guiasRemisionService.updateGuia(editing.id, payload);
         toast.success("Guía de remisión actualizada");
+        await loadGuias();
+        closeEditor();
       } else {
-        await guiasRemisionService.createGuia(payload);
-        toast.success("Guía de remisión creada");
+        const result = await guiasRemisionService.createGuia(payload);
+        toast.success("Guía de remisión creada correctamente.");
+        setSavedGuia(result);
+        setSuccessDialogOpen(true);
       }
-      await loadGuias();
-      closeEditor();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al guardar");
     } finally {
@@ -618,861 +640,940 @@ export function GuiasRemisionPanel({ showPanel = true, readOnly = false }: Guias
 
   if (!showPanel) return null;
 
-  if (editorOpen) {
-    return (
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-        className="space-y-6"
-      >
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3"
-          >
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={closeEditor}
-              className="h-10 w-10 p-0 text-slate-600 bg-slate-100 hover:bg-slate-200"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold text-slate-900">
-                {editing ? "Editar guía de remisión" : "Nueva guía de remisión"}
-              </p>
-              <p className="text-xs text-slate-500">
-                Completa los datos y agrega los productos antes de guardar.
-              </p>
-            </div>
-          </div>
-          <Button variant="secondary" type="button" onClick={resetForm} className="h-9 px-3 text-xs">
-            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-            Limpiar
-          </Button>
-          </motion.div>
-
-        <motion.form
-              initial={{ opacity: 0, y: 10 }}
+  return (
+    <>
+      {editorOpen ? (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+          className="space-y-6"
+        >
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.04, ease: [0.25, 0.1, 0.25, 1] }}
-              className="space-y-6"
-              onSubmit={submitForm}
+              transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+              className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3"
             >
-          <div className="grid gap-6 desktop:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <FileCheck className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Información general</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <Field label="Punto de emisión *" htmlFor="guia-punto">
-                    <SelectPrimitive.Root
-                      value={form.id_punto_emision === 0 ? undefined : form.id_punto_emision.toString()}
-                      onValueChange={(val) => setForm((f) => ({ ...f, id_punto_emision: Number(val) }))}
-                      disabled={Boolean(editing) || loadingCatalogs}
-                    >
-                      <SelectPrimitive.Trigger
-                        id="guia-punto"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
-                      >
-                        <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un punto de emisión..."} />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content
-                          className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <div className="border-b border-slate-100 p-2">
-                            <Input value={puntoSearch} onChange={(e) => setPuntoSearch(e.target.value)} placeholder="Buscar punto..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
-                          </div>
-                          <SelectPrimitive.Viewport className="p-1">
-                            {filteredPuntos.map((p) => (
-                              <SelectPrimitive.Item
-                                key={p.id}
-                                value={p.id.toString()}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{p.codigo} - {p.descripcion}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-
-                  <Field label="Fecha de emisión *" htmlFor="guia-fecha">
-                    <Input
-                      id="guia-fecha"
-                      type="date"
-                      value={form.fecha_emision}
-                      onChange={(event) => setForm((f) => ({ ...f, fecha_emision: event.target.value }))}
-                      className="bg-white shadow-none"
-                    />
-                  </Field>
-                </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={closeEditor}
+                className="h-10 w-10 p-0 text-slate-600 bg-slate-100 hover:bg-slate-200"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-semibold text-slate-900">
+                  {editing ? "Editar guía de remisión" : "Nueva guía de remisión"}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Completa los datos y agrega los productos antes de guardar.
+                </p>
               </div>
+            </div>
+            <Button variant="secondary" type="button" onClick={resetForm} className="h-9 px-3 text-xs">
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+              Limpiar
+            </Button>
+            </motion.div>
 
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <User className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Cliente</h3>
-                </div>
-
-                {form.id_cliente > 0 && clienteSearchResults.length === 0 && !clienteQuery.trim() ? (
-                  <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
-                      <span className="text-sm font-medium text-slate-800 truncate">{getClienteLabel(form.id_cliente)}</span>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForm((prev) => ({ ...prev, id_cliente: 0 }));
-                          setClienteQuery("");
-                          setClienteSearchResults([]);
-                        }}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-                        title="Cambiar cliente"
-                      >
-                        <Search size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1 min-w-0 relative">
-                      <Field label="Buscar cliente *" htmlFor="cliente_search">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                          <input
-                            id="cliente_search"
-                            type="text"
-                            value={clienteQuery}
-                            onChange={handleClienteSearchChange}
-                            placeholder="Buscar por cédula, RUC o razón social..."
-                            className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
-                          />
-                          {clienteSearching && (
-                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
-                            </div>
-                          )}
-                        </div>
-                      </Field>
-                      {clienteSearchResults.length > 0 && (
-                        <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
-                          {clienteSearchResults.map((cliente) => (
-                            <button
-                              key={cliente.id}
-                              type="button"
-                              onClick={() => selectCliente(cliente)}
-                              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
-                            >
-                              <div className="font-medium text-slate-800">{cliente.razon_social}</div>
-                              <div className="text-xs text-slate-500">{cliente.identificacion}</div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Datos del transporte</h3>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <Field label="RUC Transportista *" htmlFor="guia-ruc">
-                    <div className="relative">
-                      <Input
-                        id="guia-ruc"
-                        value={form.ruc_transportista}
-                        onChange={(event) => {
-                          const value = event.target.value.replace(/\D/g, "").slice(0, 13);
-                          setForm((f) => ({ ...f, ruc_transportista: value }));
-                        }}
-                        placeholder="1712345678001"
-                        className="bg-white shadow-none placeholder:text-slate-300 pr-12"
-                      />
-                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
-                        {form.ruc_transportista.length}/13
-                      </span>
-                    </div>
-                  </Field>
-
-                  <Field label="Razón Social Transportista *" htmlFor="guia-razon">
-                    <div className="relative">
-                      <Input
-                        id="guia-razon"
-                        value={form.razon_social_transportista}
-                        onChange={(event) => setForm((f) => ({ ...f, razon_social_transportista: event.target.value.slice(0, 300) }))}
-                        placeholder="Transportes SA"
-                        className="bg-white shadow-none placeholder:text-slate-300 pr-14"
-                      />
-                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
-                        {form.razon_social_transportista.length}/300
-                      </span>
-                    </div>
-                  </Field>
-
-                  <Field label="Placa Vehículo *" htmlFor="guia-placa">
-                    <div className="relative">
-                      <Input
-                        id="guia-placa"
-                        value={form.placa}
-                        onChange={(event) => {
-                          const val = event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 8);
-                          setForm((f) => ({ ...f, placa: val }));
-                        }}
-                        placeholder="ABC-1234"
-                        className="bg-white shadow-none placeholder:text-slate-300 pr-12"
-                      />
-                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
-                        {form.placa.length}/8
-                      </span>
-                    </div>
-                  </Field>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Fecha inicio transporte *" htmlFor="guia-ini">
-                    <Input
-                      id="guia-ini"
-                      type="date"
-                      value={form.fecha_ini_transporte}
-                      onChange={(event) => {
-                        const newIni = event.target.value;
-                        setForm((f) => ({
-                          ...f,
-                          fecha_ini_transporte: newIni,
-                          ...(newIni > f.fecha_fin_transporte && f.fecha_fin_transporte ? { fecha_fin_transporte: newIni } : {})
-                        }));
-                      }}
-                      className="bg-white shadow-none"
-                    />
-                  </Field>
-
-                  <Field label="Fecha fin transporte *" htmlFor="guia-fin">
-                    <Input
-                      id="guia-fin"
-                      type="date"
-                      min={form.fecha_ini_transporte || undefined}
-                      value={form.fecha_fin_transporte}
-                      onChange={(event) => setForm((f) => ({ ...f, fecha_fin_transporte: event.target.value }))}
-                      className="bg-white shadow-none"
-                    />
-                  </Field>
-                </div>
-              </div>
-
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5 text-slate-500" />
-                  <h3 className="text-sm font-semibold text-slate-700">Destino</h3>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Motivo de traslado *" htmlFor="guia-motivo">
-                    <SelectPrimitive.Root
-                      value={form.motivo_traslado}
-                      onValueChange={(val) => setForm((f) => ({ ...f, motivo_traslado: val }))}
-                    >
-                      <SelectPrimitive.Trigger
-                        id="guia-motivo"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
-                      >
-                        <SelectPrimitive.Value />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content
-                          className="z-50 min-w-[280px] max-h-60 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
-                        >
-                          <SelectPrimitive.Viewport className="p-1 max-h-52 overflow-y-auto">
-                            {motivosTraslado.map((m) => (
-                              <SelectPrimitive.Item
-                                key={m}
-                                value={m}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{m}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
-                  </Field>
-
-                  <Field label="Ruta" htmlFor="guia-ruta">
-                    <div className="relative">
-                      <Input
-                        id="guia-ruta"
-                        value={form.ruta}
-                        onChange={(event) => setForm((f) => ({ ...f, ruta: event.target.value.slice(0, 300) }))}
-                        placeholder="Quito - Guayaquil"
-                        className="bg-white shadow-none placeholder:text-slate-300 pr-14"
-                      />
-                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
-                        {form.ruta.length}/300
-                      </span>
-                    </div>
-                  </Field>
-                </div>
-
-                <Field label="Dirección de destino *" htmlFor="guia-dir">
-                  <div className="relative">
-                    <Input
-                      id="guia-dir"
-                      value={form.direccion_destino}
-                      onChange={(event) => setForm((f) => ({ ...f, direccion_destino: event.target.value.slice(0, 300) }))}
-                      placeholder="Av. 9 de Octubre 123"
-                      className="bg-white shadow-none placeholder:text-slate-300 pr-14"
-                    />
-                    <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
-                      {form.direccion_destino.length}/300
-                    </span>
-                  </div>
-                </Field>
-              </div>
-
-              <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center justify-between">
+          <motion.form
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.04, ease: [0.25, 0.1, 0.25, 1] }}
+                className="space-y-6"
+                onSubmit={submitForm}
+              >
+            <div className="grid gap-6 desktop:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-6">
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
                   <div className="flex items-center gap-2">
-                    <Package className="h-3.5 w-3.5 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700">Productos a transportar</h3>
+                    <FileCheck className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Información general</h3>
                   </div>
-                  <Button type="button" variant="secondary" className="h-9 px-3" onClick={addDetalle}>
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    Agregar
-                  </Button>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Field label="Punto de emisión *" htmlFor="guia-punto">
+                      <SelectPrimitive.Root
+                        value={form.id_punto_emision === 0 ? undefined : form.id_punto_emision.toString()}
+                        onValueChange={(val) => setForm((f) => ({ ...f, id_punto_emision: Number(val) }))}
+                        disabled={Boolean(editing) || loadingCatalogs}
+                      >
+                        <SelectPrimitive.Trigger
+                          id="guia-punto"
+                          className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-50"
+                        >
+                          <SelectPrimitive.Value placeholder={loadingCatalogs ? "Cargando..." : "Selecciona un punto de emisión..."} />
+                          <SelectPrimitive.Icon>
+                            <ChevronDown className="h-4 w-4 text-slate-400" />
+                          </SelectPrimitive.Icon>
+                        </SelectPrimitive.Trigger>
+                        <SelectPrimitive.Portal>
+                          <SelectPrimitive.Content
+                            className="z-50 min-w-[280px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                            position="popper"
+                            sideOffset={4}
+                          >
+                            <div className="border-b border-slate-100 p-2">
+                              <Input value={puntoSearch} onChange={(e) => setPuntoSearch(e.target.value)} placeholder="Buscar punto..." className="h-8 bg-white shadow-none w-full" onKeyDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />
+                            </div>
+                            <SelectPrimitive.Viewport className="p-1">
+                              {filteredPuntos.map((p) => (
+                                <SelectPrimitive.Item
+                                  key={p.id}
+                                  value={p.id.toString()}
+                                  className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                >
+                                  <SelectPrimitive.ItemText>{p.codigo} - {p.descripcion}</SelectPrimitive.ItemText>
+                                </SelectPrimitive.Item>
+                              ))}
+                            </SelectPrimitive.Viewport>
+                          </SelectPrimitive.Content>
+                        </SelectPrimitive.Portal>
+                      </SelectPrimitive.Root>
+                    </Field>
+
+                    <Field label="Fecha de emisión *" htmlFor="guia-fecha">
+                      <Input
+                        id="guia-fecha"
+                        type="date"
+                        value={form.fecha_emision}
+                        onChange={(event) => setForm((f) => ({ ...f, fecha_emision: event.target.value }))}
+                        className="bg-white shadow-none"
+                      />
+                    </Field>
+                  </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                  <div className="min-w-[700px]">
-                    <div className="grid grid-cols-[minmax(180px,1fr)_100px_minmax(120px,1fr)_80px_44px] gap-2 bg-slate-50 px-2 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 border-b border-slate-200">
-                      <span>Buscar Producto</span>
-                      <span>Código</span>
-                      <span>Descripción</span>
-                      <span className="text-center">Cant.</span>
-                      <span />
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <User className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Cliente</h3>
+                  </div>
+
+                  {form.id_cliente > 0 && clienteSearchResults.length === 0 && !clienteQuery.trim() ? (
+                    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-100 text-sky-600 text-xs font-bold">✓</span>
+                        <span className="text-sm font-medium text-slate-800 truncate">{getClienteLabel(form.id_cliente)}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm((prev) => ({ ...prev, id_cliente: 0 }));
+                            setClienteQuery("");
+                            setClienteSearchResults([]);
+                          }}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                          title="Cambiar cliente"
+                        >
+                          <Search size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="divide-y divide-slate-100">
-                      {form.detalles.map((detalle, idx) => (
-                        <div key={idx} className="grid grid-cols-[minmax(180px,1fr)_100px_minmax(120px,1fr)_80px_44px] items-center gap-2 bg-white px-2 py-2">
-                          {/* Buscar Producto */}
+                  ) : (
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 min-w-0 relative">
+                        <Field label="Buscar cliente *" htmlFor="cliente_search">
                           <div className="relative">
-                            {detalle.id_producto > 0 ? (
-                              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
-                                <span className="text-xs font-medium text-slate-800 truncate" title={detalle.descripcion}>{detalle.descripcion}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    updateDetalle(idx, { id_producto: 0, codigo: "", descripcion: "" });
-                                    setProductoQuery(idx, "");
-                                  }}
-                                  className="ml-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
-                                >
-                                  <X size={14} />
-                                </button>
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                            <input
+                              id="cliente_search"
+                              type="text"
+                              value={clienteQuery}
+                              onChange={handleClienteSearchChange}
+                              placeholder="Buscar por cédula, RUC o razón social..."
+                              className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all"
+                            />
+                            {clienteSearching && (
+                              <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
                               </div>
-                            ) : (
-                              <>
-                                <Popover.Root
-                                  open={productoFocus[idx]}
-                                  onOpenChange={(open) => setProductoFocus((prev) => ({ ...prev, [idx]: open }))}
-                                >
-                                  <Popover.Anchor asChild>
-                                    <div className="relative">
-                                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                      <input
-                                        type="text"
-                                        value={getProductoQuery(idx)}
-                                        onChange={(e) => setProductoQuery(idx, e.target.value)}
-                                        onFocus={() => setProductoFocus((prev) => ({ ...prev, [idx]: true }))}
-                                        placeholder="Nombre o código..."
-                                        className="w-full pl-8 pr-3 py-1.5 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all shadow-none"
-                                      />
-                                    </div>
-                                  </Popover.Anchor>
-                                  <Popover.Portal>
-                                    <Popover.Content
-                                      className="z-[100] w-[320px] rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto p-0"
-                                      align="start"
-                                      sideOffset={4}
-                                      onOpenAutoFocus={(e) => e.preventDefault()}
-                                      onCloseAutoFocus={(e) => e.preventDefault()}
-                                    >
-                                      {getFilteredProductos(idx).length === 0 ? (
-                                        <div className="px-3 py-2 text-xs text-slate-500">Sin resultados.</div>
-                                      ) : (
-                                        getFilteredProductos(idx).map((p) => (
-                                          <button
-                                            key={p.id}
-                                            type="button"
-                                            onClick={() => {
-                                              updateDetalle(idx, {
-                                                id_producto: p.id,
-                                                codigo: p.codigo || "",
-                                                descripcion: p.descripcion || "",
-                                              });
-                                              setProductoQuery(idx, "");
-                                              setProductoFocus((prev) => ({ ...prev, [idx]: false }));
-                                            }}
-                                            className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
-                                          >
-                                            <span className="font-medium text-slate-800 truncate">{p.descripcion}</span>
-                                          </button>
-                                        ))
-                                      )}
-                                    </Popover.Content>
-                                  </Popover.Portal>
-                                </Popover.Root>
-                              </>
                             )}
                           </div>
-
-                          {/* Código */}
-                          <div className="text-xs font-medium text-slate-700 truncate" title={detalle.codigo || "-"}>
-                            {detalle.codigo || "-"}
+                        </Field>
+                        {clienteSearchResults.length > 0 && (
+                          <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
+                            {clienteSearchResults.map((cliente) => (
+                              <button
+                                key={cliente.id}
+                                type="button"
+                                onClick={() => selectCliente(cliente)}
+                                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
+                              >
+                                <div className="font-medium text-slate-800">{cliente.razon_social}</div>
+                                <div className="text-xs text-slate-500">{cliente.identificacion}</div>
+                              </button>
+                            ))}
                           </div>
-
-                          {/* Descripción */}
-                          <div className="text-xs font-medium text-slate-700 truncate" title={detalle.descripcion || "-"}>
-                            {detalle.descripcion || "-"}
-                          </div>
-
-                          {/* Cantidad */}
-                          <div>
-                              <Input
-                                type="number"
-                                min={1}
-                                value={detalle.cantidad}
-                                onChange={(event) => updateDetalle(idx, { cantidad: Number(event.target.value) })}
-                                className="h-9 bg-white shadow-none text-xs text-center"
-                              />
-                          </div>
-
-                          {/* Delete */}
-                          <div className="flex justify-center">
-                            <button
-                              type="button"
-                              onClick={() => removeDetalle(idx)}
-                              disabled={form.detalles.length === 1}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-                              title="Eliminar"
-                            >
-                              <Trash className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <aside className="space-y-4 desktop:sticky desktop:top-6">
-              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="h-3.5 w-3.5 text-slate-500" />
-                  <h4 className="text-sm font-semibold text-slate-700">Resumen</h4>
-                </div>
-                <div className="space-y-3 text-sm">
-                  <div className="flex flex-col">
-                    <span className="text-xs text-slate-500">Cliente</span>
-                    <span className="font-medium text-slate-800">{form.id_cliente ? getClienteLabel(form.id_cliente) : "No seleccionado"}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs text-slate-500">Destino</span>
-                    <span className="font-medium text-slate-800 truncate" title={form.direccion_destino}>{form.direccion_destino || "-"}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs text-slate-500">Transportista</span>
-                    <span className="font-medium text-slate-800">{form.razon_social_transportista || "-"}</span>
-                  </div>
-                  <div className="flex justify-between items-center border-t border-slate-200 pt-3 mt-3">
-                    <span className="text-slate-600 font-medium">Total Productos</span>
-                    <span className="font-bold text-slate-800">{form.detalles.reduce((acc, d) => acc + (Number(d.cantidad) || 0), 0)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <Button type="submit" disabled={saving} className="h-10 w-full">
-                  {saving ? "Guardando..." : editing ? "Guardar guía" : "Crear guía"}
-                </Button>
-              </div>
-            </aside>
-          </div>
-        </motion.form>
-      </motion.section>
-    );
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <section className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-1 items-center gap-2 min-w-[280px] max-w-md">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-            <input type="text" value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Buscar guía..." className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all" />
-            {globalFilter && <button onClick={() => setGlobalFilter("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={13} /></button>}
-          </div>
-          <Button variant="secondary" className={`h-9 shadow-none text-xs px-3 shrink-0 border-slate-200 ${showFilters ? "bg-slate-100" : "bg-white"}`} onClick={() => setShowFilters(!showFilters)}>
-            <ListFilter size={15} className="mr-1.5" />{showFilters ? "Ocultar" : "Filtros"}
-          </Button>
-        </div>
-        {!readOnly && (
-          <div className="ml-auto">
-            <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap" disabled={loadingCatalogs}>
-              <Plus size={15} className="mr-1.5" /> Nueva Guía
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <AnimatePresence>
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg"
-          >
-            <div className="text-xs font-medium text-slate-500">Filtrar por:</div>
-            <SelectPrimitive.Root value={filterEstado} onValueChange={(val) => setFilterEstado(val)}>
-            <SelectPrimitive.Trigger className="inline-flex h-8 min-w-[160px] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-200">
-              <SelectPrimitive.Value placeholder="Todos los estados" />
-              <SelectPrimitive.Icon><ChevronDown size={14} className="text-slate-400" /></SelectPrimitive.Icon>
-            </SelectPrimitive.Trigger>
-            <SelectPrimitive.Portal>
-              <SelectPrimitive.Content className="z-50 min-w-[160px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm" position="popper" sideOffset={4}>
-                <SelectPrimitive.Viewport className="p-1">
-                  <SelectPrimitive.Item value="TODOS" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                    <SelectPrimitive.ItemText>Todos los estados</SelectPrimitive.ItemText>
-                  </SelectPrimitive.Item>
-                  <SelectPrimitive.Item value="BORRADOR" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                    <SelectPrimitive.ItemText>Borrador</SelectPrimitive.ItemText>
-                  </SelectPrimitive.Item>
-                  <SelectPrimitive.Item value="AUTORIZADO" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                    <SelectPrimitive.ItemText>Autorizado</SelectPrimitive.ItemText>
-                  </SelectPrimitive.Item>
-                  <SelectPrimitive.Item value="RECHAZADA" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                    <SelectPrimitive.ItemText>Rechazada</SelectPrimitive.ItemText>
-                  </SelectPrimitive.Item>
-                  <SelectPrimitive.Item value="ENVIADO" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                    <SelectPrimitive.ItemText>Enviado</SelectPrimitive.ItemText>
-                  </SelectPrimitive.Item>
-                  <SelectPrimitive.Item value="ANULADA" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
-                    <SelectPrimitive.ItemText>Anulada</SelectPrimitive.ItemText>
-                  </SelectPrimitive.Item>
-                </SelectPrimitive.Viewport>
-              </SelectPrimitive.Content>
-            </SelectPrimitive.Portal>
-            </SelectPrimitive.Root>
-          </motion.div>
-      )}
-      </AnimatePresence>
-
-      {loading ? (
-        <div className="py-12"><Loader label="Cargando guías..." /></div>
-      ) : table.getFilteredRowModel().rows.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
-          className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center"
-        >
-          <Truck size={32} className="mx-auto mb-3 text-slate-300" />
-          <p className="text-sm text-slate-600">No hay guías para este filtro.</p>
-          {!readOnly && <Button className="mt-3 h-9 shadow-none" onClick={openCreate} disabled={loadingCatalogs}><Plus size={15} className="mr-1.5" /> Nueva Guía</Button>}
-        </motion.div>
-      ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
-          className="rounded-xl border border-slate-200 bg-white overflow-hidden"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                {table.getHeaderGroups().map((hg) => (
-                  <tr key={hg.id}>{hg.headers.map((h) => <th key={h.id} className="px-4 py-3 text-xs text-slate-500">{flexRender(h.column.columnDef.header, h.getContext())}</th>)}</tr>
-                ))}
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className={`hover:bg-slate-50/60 transition-colors${row.original.estado?.toUpperCase() === "ANULADA" ? " bg-slate-50" : ""}`}>
-                    {row.getVisibleCells().map((cell) => <td key={cell.id} className="px-4 py-3 align-top">{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between px-4 py-2 border-t border-slate-100 bg-white">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span>Filas:</span>
-              <SelectPrimitive.Root value={table.getState().pagination.pageSize.toString()} onValueChange={(v) => table.setPageSize(Number(v))}>
-                <SelectPrimitive.Trigger className="inline-flex h-7 min-w-[60px] items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 hover:bg-slate-50 focus:outline-none">
-                  <SelectPrimitive.Value /><SelectPrimitive.Icon><ChevronDown size={12} className="text-slate-400" /></SelectPrimitive.Icon>
-                </SelectPrimitive.Trigger>
-                <SelectPrimitive.Portal>
-                  <SelectPrimitive.Content className="z-50 min-w-[60px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm" position="popper" sideOffset={4}>
-                    <SelectPrimitive.Viewport className="p-1">
-                      {[10, 20, 50].map((ps) => <SelectPrimitive.Item key={ps} value={ps.toString()} className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"><SelectPrimitive.ItemText>{ps}</SelectPrimitive.ItemText></SelectPrimitive.Item>)}
-                    </SelectPrimitive.Viewport>
-                  </SelectPrimitive.Content>
-                </SelectPrimitive.Portal>
-              </SelectPrimitive.Root>
-              <span className="text-slate-300">·</span>
-              <span className="font-medium text-slate-600">Total: {table.getFilteredRowModel().rows.length}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ChevronLeft size={14} /></button>
-              <span className="px-2 text-xs text-slate-500 font-medium">{table.getState().pagination.pageIndex + 1} / {table.getPageCount()}</span>
-              <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ChevronRight size={14} /></button>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay asChild>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.25 }}
-              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
-            />
-          </Dialog.Overlay>
-          <Dialog.Content 
-            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
-            onPointerDownOutside={(event) => event.preventDefault()}
-            onInteractOutside={(event) => event.preventDefault()}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            >
-              {/* Header con icono y título */}
-              <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
-                    <Eye className="h-6 w-6 text-app-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <Dialog.Title className="text-xl font-semibold text-slate-900">
-                      Guía de Remisión {viewing?.numero_comprobante || viewing?.numero}
-                    </Dialog.Title>
-                    <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
-                      Información completa de la guía de remisión registrada.
-                    </Dialog.Description>
-                  </div>
-                <Dialog.Close asChild>
-                  <button
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
-                    aria-label="Cerrar"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </Dialog.Close>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
-                {viewing && (
-                  <>
-                  {viewing.estado?.toUpperCase() === "ANULADA" && (
-                    <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-                      <X className="h-4 w-4 text-amber-600 shrink-0" />
-                      <p className="text-xs font-semibold text-amber-800">
-                        Este documento fue marcado como <strong>Anulado</strong> y no puede ser modificado.
-                      </p>
+                        )}
+                      </div>
                     </div>
                   )}
-                  {/* SECCIÓN: Información general */}
-                  <div className="bg-slate-100 rounded-xl p-4 space-y-4">
-                    <div className="flex items-center gap-2">
-                      <FileCheck className="h-3.5 w-3.5 text-slate-500" />
-                      <h3 className="text-sm font-semibold text-slate-700">Información general</h3>
-                    </div>
-                    <div className="grid gap-3 text-sm sm:grid-cols-3">
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Número</div>
-                        <div className="font-semibold text-slate-800">{viewing.numero_comprobante || viewing.numero || "-"}</div>
-                      </div>
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Estado</div>
-                        <div>
-                          <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold ${getEstadoClasses(viewing.estado)}`}>
-                            {viewing.estado || "N/A"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Fecha emisión</div>
-                        <div className="text-slate-800">{viewing.fecha_emision}</div>
-                      </div>
-                      {viewing.clave_acceso && (
-                        <div className="sm:col-span-3 bg-white rounded-lg p-2.5 border border-slate-200">
-                          <div className="text-xs text-slate-500 mb-0.5">Clave de acceso</div>
-                          <div className="text-xs text-slate-800 break-all font-mono">{viewing.clave_acceso}</div>
-                        </div>
-                      )}
-                    </div>
+                </div>
+
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Datos del transporte</h3>
                   </div>
 
-                  {/* SECCIÓN: Datos del transporte */}
-                  <div className="bg-slate-100 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Truck className="h-3.5 w-3.5 text-slate-500" />
-                      <h3 className="text-sm font-semibold text-slate-700">Datos del transporte</h3>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">RUC Transportista</div>
-                        <div className="text-sm font-medium text-slate-800">{viewing.ruc_transportista}</div>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <Field label="RUC Transportista *" htmlFor="guia-ruc">
+                      <div className="relative">
+                        <Input
+                          id="guia-ruc"
+                          value={form.ruc_transportista}
+                          onChange={(event) => {
+                            const value = event.target.value.replace(/\D/g, "").slice(0, 13);
+                            setForm((f) => ({ ...f, ruc_transportista: value }));
+                          }}
+                          placeholder="1712345678001"
+                          className="bg-white shadow-none placeholder:text-slate-300 pr-12"
+                        />
+                        <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                          {form.ruc_transportista.length}/13
+                        </span>
                       </div>
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Razón Social</div>
-                        <div className="text-sm font-medium text-slate-800">{viewing.razon_social_transportista}</div>
+                    </Field>
+
+                    <Field label="Razón Social Transportista *" htmlFor="guia-razon">
+                      <div className="relative">
+                        <Input
+                          id="guia-razon"
+                          value={form.razon_social_transportista}
+                          onChange={(event) => setForm((f) => ({ ...f, razon_social_transportista: event.target.value.slice(0, 300) }))}
+                          placeholder="Transportes SA"
+                          className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                        />
+                        <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                          {form.razon_social_transportista.length}/300
+                        </span>
                       </div>
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Placa</div>
-                        <div className="text-sm font-medium text-slate-800">{viewing.placa}</div>
+                    </Field>
+
+                    <Field label="Placa Vehículo *" htmlFor="guia-placa">
+                      <div className="relative">
+                        <Input
+                          id="guia-placa"
+                          value={form.placa}
+                          onChange={(event) => {
+                            const val = event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 8);
+                            setForm((f) => ({ ...f, placa: val }));
+                          }}
+                          placeholder="ABC-1234"
+                          className="bg-white shadow-none placeholder:text-slate-300 pr-12"
+                        />
+                        <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                          {form.placa.length}/8
+                        </span>
                       </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Inicio transporte</div>
-                        <div className="text-sm text-slate-800">{viewing.fecha_ini_transporte}</div>
-                      </div>
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Fin transporte</div>
-                        <div className="text-sm text-slate-800">{viewing.fecha_fin_transporte}</div>
-                      </div>
-                    </div>
+                    </Field>
                   </div>
 
-                  {/* SECCIÓN: Destino */}
-                  <div className="bg-slate-100 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-3.5 w-3.5 text-slate-500" />
-                      <h3 className="text-sm font-semibold text-slate-700">Destino</h3>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Motivo de traslado</div>
-                        <div className="text-sm font-medium text-slate-800">{viewing.motivo_traslado}</div>
-                      </div>
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Ruta</div>
-                        <div className="text-sm text-slate-800">{viewing.ruta || "-"}</div>
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Cliente</div>
-                        <div className="text-sm font-medium text-slate-800">{getClienteLabel(viewing.id_cliente)}</div>
-                      </div>
-                      <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <div className="text-xs text-slate-500 mb-0.5">Dirección de destino</div>
-                        <div className="text-sm text-slate-800">{viewing.direccion_destino}</div>
-                      </div>
-                    </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Fecha inicio transporte *" htmlFor="guia-ini">
+                      <Input
+                        id="guia-ini"
+                        type="date"
+                        value={form.fecha_ini_transporte}
+                        onChange={(event) => {
+                          const newIni = event.target.value;
+                          setForm((f) => ({
+                            ...f,
+                            fecha_ini_transporte: newIni,
+                            ...(newIni > f.fecha_fin_transporte && f.fecha_fin_transporte ? { fecha_fin_transporte: newIni } : {})
+                          }));
+                        }}
+                        className="bg-white shadow-none"
+                      />
+                    </Field>
+
+                    <Field label="Fecha fin transporte *" htmlFor="guia-fin">
+                      <Input
+                        id="guia-fin"
+                        type="date"
+                        min={form.fecha_ini_transporte || undefined}
+                        value={form.fecha_fin_transporte}
+                        onChange={(event) => setForm((f) => ({ ...f, fecha_fin_transporte: event.target.value }))}
+                        className="bg-white shadow-none"
+                      />
+                    </Field>
+                  </div>
+                </div>
+
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-3.5 w-3.5 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">Destino</h3>
                   </div>
 
-                  {/* SECCIÓN: Productos */}
-                  {viewing.detalles && viewing.detalles.length > 0 && (
-                    <div className="bg-slate-100 rounded-xl p-4 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Package className="h-3.5 w-3.5 text-slate-500" />
-                        <h3 className="text-sm font-semibold text-slate-700">Productos a transportar ({viewing.detalles.length})</h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Motivo de traslado *" htmlFor="guia-motivo">
+                      <SelectPrimitive.Root
+                        value={form.motivo_traslado}
+                        onValueChange={(val) => setForm((f) => ({ ...f, motivo_traslado: val }))}
+                      >
+                        <SelectPrimitive.Trigger
+                          id="guia-motivo"
+                          className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                        >
+                          <SelectPrimitive.Value />
+                          <SelectPrimitive.Icon>
+                            <ChevronDown className="h-4 w-4 text-slate-400" />
+                          </SelectPrimitive.Icon>
+                        </SelectPrimitive.Trigger>
+                        <SelectPrimitive.Portal>
+                          <SelectPrimitive.Content
+                            className="z-50 min-w-[280px] max-h-60 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                            position="popper"
+                            sideOffset={4}
+                          >
+                            <SelectPrimitive.Viewport className="p-1 max-h-52 overflow-y-auto">
+                              {motivosTraslado.map((m) => (
+                                <SelectPrimitive.Item
+                                  key={m}
+                                  value={m}
+                                  className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                >
+                                  <SelectPrimitive.ItemText>{m}</SelectPrimitive.ItemText>
+                                </SelectPrimitive.Item>
+                              ))}
+                            </SelectPrimitive.Viewport>
+                          </SelectPrimitive.Content>
+                        </SelectPrimitive.Portal>
+                      </SelectPrimitive.Root>
+                    </Field>
+
+                    <Field label="Ruta" htmlFor="guia-ruta">
+                      <div className="relative">
+                        <Input
+                          id="guia-ruta"
+                          value={form.ruta}
+                          onChange={(event) => setForm((f) => ({ ...f, ruta: event.target.value.slice(0, 300) }))}
+                          placeholder="Quito - Guayaquil"
+                          className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                        />
+                        <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                          {form.ruta.length}/300
+                        </span>
                       </div>
-                      <div className="space-y-2">
-                        {viewing.detalles.map((d, idx) => (
-                          <div key={idx} className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3 items-center">
-                            <div className="w-24 shrink-0">
-                              <div className="text-xs text-slate-500 mb-0.5">Código</div>
-                              <div className="text-sm font-medium text-slate-800">{d.codigo || "-"}</div>
+                    </Field>
+                  </div>
+
+                  <Field label="Dirección de destino *" htmlFor="guia-dir">
+                    <div className="relative">
+                      <Input
+                        id="guia-dir"
+                        value={form.direccion_destino}
+                        onChange={(event) => setForm((f) => ({ ...f, direccion_destino: event.target.value.slice(0, 300) }))}
+                        placeholder="Av. 9 de Octubre 123"
+                        className="bg-white shadow-none placeholder:text-slate-300 pr-14"
+                      />
+                      <span className="absolute right-2 bottom-1/2 translate-y-1/2 text-[10px] text-slate-400 pointer-events-none select-none">
+                        {form.direccion_destino.length}/300
+                      </span>
+                    </div>
+                  </Field>
+                </div>
+
+                <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-3.5 w-3.5 text-slate-500" />
+                      <h3 className="text-sm font-semibold text-slate-700">Productos a transportar</h3>
+                    </div>
+                    <Button type="button" variant="secondary" className="h-9 px-3" onClick={addDetalle}>
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      Agregar
+                    </Button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                    <div className="min-w-[700px]">
+                      <div className="grid grid-cols-[minmax(180px,1fr)_100px_minmax(120px,1fr)_80px_44px] gap-2 bg-slate-50 px-2 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 border-b border-slate-200">
+                        <span>Buscar Producto</span>
+                        <span>Código</span>
+                        <span>Descripción</span>
+                        <span className="text-center">Cant.</span>
+                        <span />
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                        {form.detalles.map((detalle, idx) => (
+                          <div key={idx} className="grid grid-cols-[minmax(180px,1fr)_100px_minmax(120px,1fr)_80px_44px] items-center gap-2 bg-white px-2 py-2">
+                            {/* Buscar Producto */}
+                            <div className="relative">
+                              {detalle.id_producto > 0 ? (
+                                <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
+                                  <span className="text-xs font-medium text-slate-800 truncate" title={detalle.descripcion}>{detalle.descripcion}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateDetalle(idx, { id_producto: 0, codigo: "", descripcion: "" });
+                                      setProductoQuery(idx, "");
+                                    }}
+                                    className="ml-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <>
+                                  <Popover.Root
+                                    open={productoFocus[idx]}
+                                    onOpenChange={(open) => setProductoFocus((prev) => ({ ...prev, [idx]: open }))}
+                                  >
+                                    <Popover.Anchor asChild>
+                                      <div className="relative">
+                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                        <input
+                                          type="text"
+                                          value={getProductoQuery(idx)}
+                                          onChange={(e) => setProductoQuery(idx, e.target.value)}
+                                          onFocus={() => setProductoFocus((prev) => ({ ...prev, [idx]: true }))}
+                                          placeholder="Nombre o código..."
+                                          className="w-full pl-8 pr-3 py-1.5 h-9 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all shadow-none"
+                                        />
+                                      </div>
+                                    </Popover.Anchor>
+                                    <Popover.Portal>
+                                      <Popover.Content
+                                        className="z-[100] w-[320px] rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto p-0"
+                                        align="start"
+                                        sideOffset={4}
+                                        onOpenAutoFocus={(e) => e.preventDefault()}
+                                        onCloseAutoFocus={(e) => e.preventDefault()}
+                                      >
+                                        {getFilteredProductos(idx).length === 0 ? (
+                                          <div className="px-3 py-2 text-xs text-slate-500">Sin resultados.</div>
+                                        ) : (
+                                          getFilteredProductos(idx).map((p) => (
+                                            <button
+                                              key={p.id}
+                                              type="button"
+                                              onClick={() => {
+                                                updateDetalle(idx, {
+                                                  id_producto: p.id,
+                                                  codigo: p.codigo || "",
+                                                  descripcion: p.descripcion || "",
+                                                });
+                                                setProductoQuery(idx, "");
+                                                setProductoFocus((prev) => ({ ...prev, [idx]: false }));
+                                              }}
+                                              className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-b-0"
+                                            >
+                                              <span className="font-medium text-slate-800 truncate">{p.descripcion}</span>
+                                            </button>
+                                          ))
+                                        )}
+                                      </Popover.Content>
+                                    </Popover.Portal>
+                                  </Popover.Root>
+                                </>
+                              )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs text-slate-500 mb-0.5">Descripción</div>
-                              <div className="text-sm text-slate-800 truncate">{d.descripcion || "-"}</div>
+
+                            {/* Código */}
+                            <div className="text-xs font-medium text-slate-700 truncate" title={detalle.codigo || "-"}>
+                              {detalle.codigo || "-"}
                             </div>
-                            <div className="w-20 shrink-0 text-right">
-                              <div className="text-xs text-slate-500 mb-0.5">Cantidad</div>
-                              <div className="text-sm font-medium text-slate-800">{d.cantidad || 1}</div>
+
+                            {/* Descripción */}
+                            <div className="text-xs font-medium text-slate-700 truncate" title={detalle.descripcion || "-"}>
+                              {detalle.descripcion || "-"}
+                            </div>
+
+                            {/* Cantidad */}
+                            <div>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  value={detalle.cantidad}
+                                  onChange={(event) => updateDetalle(idx, { cantidad: Number(event.target.value) })}
+                                  className="h-9 bg-white shadow-none text-xs text-center"
+                                />
+                            </div>
+
+                            {/* Delete */}
+                            <div className="flex justify-center">
+                              <button
+                                type="button"
+                                onClick={() => removeDetalle(idx)}
+                                disabled={form.detalles.length === 1}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Eliminar"
+                              >
+                                <Trash className="h-4 w-4" />
+                              </button>
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
-                  )}
-
-                  {/* Botones de acción */}
-                  <div className="flex justify-end gap-3 pt-2">
-                    {viewing.estado === "AUTORIZADO" && (
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          const url = `http://185.214.135.60:3000/api/guias-remision/${viewing.id}/pdf`;
-                          window.open(url, "_blank");
-                        }}
-                        className="h-10 px-4"
-                      >
-                        <Download className="mr-1.5 h-4 w-4" />
-                        Descargar PDF
-                      </Button>
-                    )}
-                    <Button 
-                      variant="secondary" 
-                      onClick={closeDetail}
-                      className="h-10 px-4"
-                    >
-                      Cerrar
-                    </Button>
                   </div>
-                  </>
-                )}
+                </div>
+              </div>
+
+              <aside className="space-y-4 desktop:sticky desktop:top-6">
+                <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="h-3.5 w-3.5 text-slate-500" />
+                    <h4 className="text-sm font-semibold text-slate-700">Resumen</h4>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-slate-500">Cliente</span>
+                      <span className="font-medium text-slate-800">{form.id_cliente ? getClienteLabel(form.id_cliente) : "No seleccionado"}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-slate-500">Destino</span>
+                      <span className="font-medium text-slate-800 truncate" title={form.direccion_destino}>{form.direccion_destino || "-"}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-slate-500">Transportista</span>
+                      <span className="font-medium text-slate-800">{form.razon_social_transportista || "-"}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-slate-200 pt-3 mt-3">
+                      <span className="text-slate-600 font-medium">Total Productos</span>
+                      <span className="font-bold text-slate-800">{form.detalles.reduce((acc, d) => acc + (Number(d.cantidad) || 0), 0)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <Button type="submit" disabled={saving} className="h-10 w-full">
+                    {saving ? "Guardando..." : editing ? "Guardar guía" : "Crear guía"}
+                  </Button>
+                </div>
+              </aside>
+            </div>
+          </motion.form>
+        </motion.section>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <section className="space-y-4">
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-1 items-center gap-2 min-w-[280px] max-w-md">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                <input type="text" value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Buscar guía..." className="w-full pl-9 pr-8 py-2 h-9 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all" />
+                {globalFilter && <button onClick={() => setGlobalFilter("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={13} /></button>}
+              </div>
+              <Button variant="secondary" className={`h-9 shadow-none text-xs px-3 shrink-0 border-slate-200 ${showFilters ? "bg-slate-100" : "bg-white"}`} onClick={() => setShowFilters(!showFilters)}>
+                <ListFilter size={15} className="mr-1.5" />{showFilters ? "Ocultar" : "Filtros"}
+              </Button>
+            </div>
+            {!readOnly && (
+              <div className="ml-auto">
+                <Button onClick={openCreate} className="h-9 shadow-none whitespace-nowrap" disabled={loadingCatalogs}>
+                  <Plus size={15} className="mr-1.5" /> Nueva Guía
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg"
+              >
+                <div className="text-xs font-medium text-slate-500">Filtrar por:</div>
+                <SelectPrimitive.Root value={filterEstado} onValueChange={(val) => setFilterEstado(val)}>
+                <SelectPrimitive.Trigger className="inline-flex h-8 min-w-[160px] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-200">
+                  <SelectPrimitive.Value placeholder="Todos los estados" />
+                  <SelectPrimitive.Icon><ChevronDown size={14} className="text-slate-400" /></SelectPrimitive.Icon>
+                </SelectPrimitive.Trigger>
+                <SelectPrimitive.Portal>
+                  <SelectPrimitive.Content className="z-50 min-w-[160px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm" position="popper" sideOffset={4}>
+                    <SelectPrimitive.Viewport className="p-1">
+                      <SelectPrimitive.Item value="TODOS" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                        <SelectPrimitive.ItemText>Todos los estados</SelectPrimitive.ItemText>
+                      </SelectPrimitive.Item>
+                      <SelectPrimitive.Item value="BORRADOR" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                        <SelectPrimitive.ItemText>Borrador</SelectPrimitive.ItemText>
+                      </SelectPrimitive.Item>
+                      <SelectPrimitive.Item value="AUTORIZADO" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                        <SelectPrimitive.ItemText>Autorizado</SelectPrimitive.ItemText>
+                      </SelectPrimitive.Item>
+                      <SelectPrimitive.Item value="RECHAZADA" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                        <SelectPrimitive.ItemText>Rechazada</SelectPrimitive.ItemText>
+                      </SelectPrimitive.Item>
+                      <SelectPrimitive.Item value="ENVIADO" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                        <SelectPrimitive.ItemText>Enviado</SelectPrimitive.ItemText>
+                      </SelectPrimitive.Item>
+                      <SelectPrimitive.Item value="ANULADA" className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-3 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white">
+                        <SelectPrimitive.ItemText>Anulada</SelectPrimitive.ItemText>
+                      </SelectPrimitive.Item>
+                    </SelectPrimitive.Viewport>
+                  </SelectPrimitive.Content>
+                </SelectPrimitive.Portal>
+                </SelectPrimitive.Root>
+              </motion.div>
+          )}
+          </AnimatePresence>
+
+          {loading ? (
+            <div className="py-12"><Loader label="Cargando guías..." /></div>
+          ) : table.getFilteredRowModel().rows.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center"
+            >
+              <Truck size={32} className="mx-auto mb-3 text-slate-300" />
+              <p className="text-sm text-slate-600">No hay guías para este filtro.</p>
+              {!readOnly && <Button className="mt-3 h-9 shadow-none" onClick={openCreate} disabled={loadingCatalogs}><Plus size={15} className="mr-1.5" /> Nueva Guía</Button>}
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="rounded-xl border border-slate-200 bg-white overflow-hidden"
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    {table.getHeaderGroups().map((hg) => (
+                      <tr key={hg.id}>{hg.headers.map((h) => <th key={h.id} className="px-4 py-3 text-xs text-slate-500">{flexRender(h.column.columnDef.header, h.getContext())}</th>)}</tr>
+                    ))}
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {table.getRowModel().rows.map((row) => (
+                      <tr key={row.id} className={`hover:bg-slate-50/60 transition-colors${row.original.estado?.toUpperCase() === "ANULADA" ? " bg-slate-50" : ""}`}>
+                        {row.getVisibleCells().map((cell) => <td key={cell.id} className="px-4 py-3 align-top">{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex items-center justify-between px-4 py-2 border-t border-slate-100 bg-white">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span>Filas:</span>
+                  <SelectPrimitive.Root value={table.getState().pagination.pageSize.toString()} onValueChange={(v) => table.setPageSize(Number(v))}>
+                    <SelectPrimitive.Trigger className="inline-flex h-7 min-w-[60px] items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 hover:bg-slate-50 focus:outline-none">
+                      <SelectPrimitive.Value /><SelectPrimitive.Icon><ChevronDown size={12} className="text-slate-400" /></SelectPrimitive.Icon>
+                    </SelectPrimitive.Trigger>
+                    <SelectPrimitive.Portal>
+                      <SelectPrimitive.Content className="z-50 min-w-[60px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm" position="popper" sideOffset={4}>
+                        <SelectPrimitive.Viewport className="p-1">
+                          {[10, 20, 50].map((ps) => <SelectPrimitive.Item key={ps} value={ps.toString()} className="flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-xs font-medium text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"><SelectPrimitive.ItemText>{ps}</SelectPrimitive.ItemText></SelectPrimitive.Item>)}
+                        </SelectPrimitive.Viewport>
+                      </SelectPrimitive.Content>
+                    </SelectPrimitive.Portal>
+                  </SelectPrimitive.Root>
+                  <span className="text-slate-300">·</span>
+                  <span className="font-medium text-slate-600">Total: {table.getFilteredRowModel().rows.length}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ChevronLeft size={14} /></button>
+                  <span className="px-2 text-xs text-slate-500 font-medium">{table.getState().pagination.pageIndex + 1} / {table.getPageCount()}</span>
+                  <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ChevronRight size={14} /></button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
+            <Dialog.Portal>
+              <Dialog.Overlay asChild>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.25 }}
+                  className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+                />
+              </Dialog.Overlay>
+              <Dialog.Content 
+                className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl max-h-[90vh] overflow-hidden"
+                onPointerDownOutside={(event) => event.preventDefault()}
+                onInteractOutside={(event) => event.preventDefault()}
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                >
+                  {/* Header con icono y título */}
+                  <div className="bg-slate-100 border-b border-slate-200 px-6 py-5">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0">
+                        <Eye className="h-6 w-6 text-app-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <Dialog.Title className="text-xl font-semibold text-slate-900">
+                          Guía de Remisión {viewing?.numero_comprobante || viewing?.numero}
+                        </Dialog.Title>
+                        <Dialog.Description className="mt-1 text-xs text-slate-600 leading-relaxed">
+                          Información completa de la guía de remisión registrada.
+                        </Dialog.Description>
+                      </div>
+                    <Dialog.Close asChild>
+                      <button
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 outline-none"
+                        aria-label="Cerrar"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </Dialog.Close>
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
+                    {viewing && (
+                      <>
+                      {viewing.estado?.toUpperCase() === "ANULADA" && (
+                        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                          <X className="h-4 w-4 text-amber-600 shrink-0" />
+                          <p className="text-xs font-semibold text-amber-800">
+                            Este documento fue marcado como <strong>Anulado</strong> y no puede ser modificado.
+                          </p>
+                        </div>
+                      )}
+                      {/* SECCIÓN: Información general */}
+                      <div className="bg-slate-100 rounded-xl p-4 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <FileCheck className="h-3.5 w-3.5 text-slate-500" />
+                          <h3 className="text-sm font-semibold text-slate-700">Información general</h3>
+                        </div>
+                        <div className="grid gap-3 text-sm sm:grid-cols-3">
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">Número</div>
+                            <div className="font-semibold text-slate-800">{viewing.numero_comprobante || viewing.numero || "-"}</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">Estado</div>
+                            <div>
+                              <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold ${getEstadoClasses(viewing.estado)}`}>
+                                {viewing.estado || "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">Fecha emisión</div>
+                            <div className="text-slate-800">{viewing.fecha_emision}</div>
+                          </div>
+                          {viewing.clave_acceso && (
+                            <div className="sm:col-span-3 bg-white rounded-lg p-2.5 border border-slate-200">
+                              <div className="text-xs text-slate-500 mb-0.5">Clave de acceso</div>
+                              <div className="text-xs text-slate-800 break-all font-mono">{viewing.clave_acceso}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* SECCIÓN: Datos del transporte */}
+                      <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Truck className="h-3.5 w-3.5 text-slate-500" />
+                          <h3 className="text-sm font-semibold text-slate-700">Datos del transporte</h3>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">RUC Transportista</div>
+                            <div className="text-sm font-medium text-slate-800">{viewing.ruc_transportista}</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">Razón Social</div>
+                            <div className="text-sm font-medium text-slate-800">{viewing.razon_social_transportista}</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">Placa</div>
+                            <div className="text-sm font-medium text-slate-800">{viewing.placa}</div>
+                          </div>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">Inicio transporte</div>
+                            <div className="text-sm text-slate-800">{viewing.fecha_ini_transporte}</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">Fin transporte</div>
+                            <div className="text-sm text-slate-800">{viewing.fecha_fin_transporte}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* SECCIÓN: Destino */}
+                      <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-3.5 w-3.5 text-slate-500" />
+                          <h3 className="text-sm font-semibold text-slate-700">Destino</h3>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">Motivo de traslado</div>
+                            <div className="text-sm font-medium text-slate-800">{viewing.motivo_traslado}</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">Ruta</div>
+                            <div className="text-sm text-slate-800">{viewing.ruta || "-"}</div>
+                          </div>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">Cliente</div>
+                            <div className="text-sm font-medium text-slate-800">{getClienteLabel(viewing.id_cliente)}</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <div className="text-xs text-slate-500 mb-0.5">Dirección de destino</div>
+                            <div className="text-sm text-slate-800">{viewing.direccion_destino}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* SECCIÓN: Productos */}
+                      {viewing.detalles && viewing.detalles.length > 0 && (
+                        <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Package className="h-3.5 w-3.5 text-slate-500" />
+                            <h3 className="text-sm font-semibold text-slate-700">Productos a transportar ({viewing.detalles.length})</h3>
+                          </div>
+                          <div className="space-y-2">
+                            {viewing.detalles.map((d, idx) => (
+                              <div key={idx} className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3 items-center">
+                                <div className="w-24 shrink-0">
+                                  <div className="text-xs text-slate-500 mb-0.5">Código</div>
+                                  <div className="text-sm font-medium text-slate-800">{d.codigo || "-"}</div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs text-slate-500 mb-0.5">Descripción</div>
+                                  <div className="text-sm text-slate-800 truncate">{d.descripcion || "-"}</div>
+                                </div>
+                                <div className="w-20 shrink-0 text-right">
+                                  <div className="text-xs text-slate-500 mb-0.5">Cantidad</div>
+                                  <div className="text-sm font-medium text-slate-800">{d.cantidad || 1}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Botones de acción */}
+                      <div className="flex justify-end gap-3 pt-2">
+                        {viewing.estado === "AUTORIZADO" && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              const url = `http://185.214.135.60:3000/api/guias-remision/${viewing.id}/pdf`;
+                              window.open(url, "_blank");
+                            }}
+                            className="h-10 px-4"
+                          >
+                            <Download className="mr-1.5 h-4 w-4" />
+                            Descargar PDF
+                          </Button>
+                        )}
+                        <Button 
+                          variant="secondary" 
+                          onClick={closeDetail}
+                          className="h-10 px-4"
+                        >
+                          Cerrar
+                        </Button>
+                      </div>
+                      </>
+                    )}
+                  </div>
+                </motion.div>
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
+          </section>
+        </motion.div>
+      )}
+
+      <Dialog.Root open={successDialogOpen} onOpenChange={(open) => { if (!open) { setSuccessDialogOpen(false); } }}>
+        <Dialog.Portal>
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,400px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.24, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <div className="p-6 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 mb-4">
+                  <CheckCircle className="h-7 w-7 text-emerald-600" />
+                </div>
+                <Dialog.Title className="text-lg font-semibold text-slate-900">
+                  ¡Guía de remisión guardada con éxito!
+                </Dialog.Title>
+                <Dialog.Description className="mt-2 text-sm text-slate-500 leading-relaxed">
+                  La guía de remisión se ha guardado como borrador. ¿Qué deseas hacer ahora?
+                </Dialog.Description>
+              </div>
+
+              <div className="px-6 pb-6 space-y-2">
+                <Button
+                  type="button"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    setSuccessDialogOpen(false);
+                    if (savedGuia) handleEmitir(savedGuia);
+                  }}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Emitir al SRI ahora
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    if (savedGuia) window.open(`/api/guias-remision/${savedGuia.id}/pdf`, '_blank');
+                  }}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Descargar PDF
+                </Button>
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 flex-1 text-slate-500 hover:text-slate-700"
+                    onClick={goToList}
+                  >
+                    Ir al listado
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 flex-1 text-slate-500 hover:text-slate-700"
+                    onClick={openCreateFromSuccess}
+                  >
+                    Crear otra guía de remisión
+                  </Button>
+                </div>
               </div>
             </motion.div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-      </section>
-    </motion.div>
+    </>
   );
 }

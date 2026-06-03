@@ -45,6 +45,7 @@ import {
   Mail,
   Box,
   PlusCircle,
+  CheckCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -134,6 +135,8 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
   const [emailAddress, setEmailAddress] = useState("");
   const [codigosIva, setCodigosIva] = useState<CodigoIva[]>([]);
   const [emailSending, setEmailSending] = useState(false);
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [savedLiquidacion, setSavedLiquidacion] = useState<LiquidacionCompraItem | null>(null);
   const [puntoSearch, setPuntoSearch] = useState("");
   const [proveedorSearch, setProveedorSearch] = useState("");
 
@@ -399,6 +402,21 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
     setProductoFocus({});
   };
 
+  const goToList = async () => {
+    setSuccessDialogOpen(false);
+    setSavedLiquidacion(null);
+    closeEditor();
+    void loadLiquidaciones();
+  };
+
+  const openCreateFromSuccess = () => {
+    setSuccessDialogOpen(false);
+    setSavedLiquidacion(null);
+    setForm(initialFormState);
+    setProductoQueries({});
+    setProductoFocus({});
+  };
+
   const resetForm = () => {
     setForm({
       ...initialFormState,
@@ -468,12 +486,14 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
       if (editing) {
         await liquidacionesCompraService.updateLiquidacion(editing.id, payload);
         toast.success("Liquidación actualizada");
+        closeEditor();
+        void loadLiquidaciones();
       } else {
-        await liquidacionesCompraService.createLiquidacion(payload);
-        toast.success("Liquidación creada");
+        const result = await liquidacionesCompraService.createLiquidacion(payload);
+        toast.success("Liquidación de compra creada correctamente.");
+        setSavedLiquidacion(result);
+        setSuccessDialogOpen(true);
       }
-      closeEditor();
-      loadLiquidaciones();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al guardar");
     }
@@ -688,9 +708,9 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
       transition={{ duration: 0.3 }}
     >
       <section className="space-y-4">
-      {!editorOpen && (
-        <>
-          {/* Toolbar */}
+        {!editorOpen ? (
+          <>
+            {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-1 items-center gap-2 min-w-[280px] max-w-md">
           <div className="relative flex-1">
@@ -806,9 +826,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
       )}
 
         </>
-      )}
-
-      {editorOpen && (
+        ) : (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1197,6 +1215,7 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
           </motion.div>
         </motion.div>
       )}
+      </section>
 
       <ProductFormModal
         open={productModalOpen}
@@ -1496,7 +1515,100 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-      </section>
+
+      <Dialog.Root open={successDialogOpen} onOpenChange={(open) => { if (!open) { setSuccessDialogOpen(false); } }}>
+        <Dialog.Portal>
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,400px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.24, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <div className="p-6 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 mb-4">
+                  <CheckCircle className="h-7 w-7 text-emerald-600" />
+                </div>
+                <Dialog.Title className="text-lg font-semibold text-slate-900">
+                  ¡Liquidación de compra guardada con éxito!
+                </Dialog.Title>
+                <Dialog.Description className="mt-2 text-sm text-slate-500 leading-relaxed">
+                  La liquidación de compra se ha guardado como borrador. ¿Qué deseas hacer ahora?
+                </Dialog.Description>
+              </div>
+
+              <div className="px-6 pb-6 space-y-2">
+                <Button
+                  type="button"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    setSuccessDialogOpen(false);
+                    if (savedLiquidacion) handleEmitir(savedLiquidacion);
+                  }}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Emitir al SRI ahora
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    if (savedLiquidacion) window.open(`/api/liquidaciones-compra/${savedLiquidacion.id}/pdf`, '_blank');
+                  }}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Descargar PDF
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    setSuccessDialogOpen(false);
+                    if (savedLiquidacion) {
+                      setSavedLiquidacion(null);
+                      openEmailDialog(savedLiquidacion);
+                    }
+                  }}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Enviar por correo
+                </Button>
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 flex-1 text-slate-500 hover:text-slate-700"
+                    onClick={goToList}
+                  >
+                    Ir al listado
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 flex-1 text-slate-500 hover:text-slate-700"
+                    onClick={openCreateFromSuccess}
+                  >
+                    Crear otra liquidación
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </motion.div>
   );
 }
