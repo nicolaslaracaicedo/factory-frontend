@@ -816,9 +816,9 @@ export function NotasVentaPanel({ showPanel = true, readOnly = false }: NotasVen
     const baseCents = Math.round(base * 100);
     const ivaPct = getProductoIvaPorcentaje(productoId);
     const iceCents = producto.tiene_ice ? Math.round(baseCents * (producto.porcentaje_ice ?? 0) / 100) : 0;
-    const baseImpCents = baseCents + iceCents;
-    const ivaCents = Math.round(baseImpCents * ivaPct / 100);
     const irbpnrCents = producto.tiene_irbpnr ? Math.round((producto.valor_unitario_irbpnr ?? 0) * 100) : 0;
+    const baseImpCents = baseCents + iceCents + irbpnrCents;
+    const ivaCents = Math.round(baseImpCents * ivaPct / 100);
     return (baseCents + iceCents + ivaCents + irbpnrCents) / 100;
   };
 

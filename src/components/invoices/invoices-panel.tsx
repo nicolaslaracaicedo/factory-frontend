@@ -16,7 +16,7 @@ import {
 } from "@tanstack/react-table";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Eye, Edit3, Plus, PlusCircle, Send, Trash2, Search, ChevronLeft, ChevronRight, X, FileCheck, Copy, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, MoreVertical, Printer, Trash, Package, User, Calculator, Tag, Box, RefreshCw, DollarSign, Mail } from "lucide-react";
+import { FileText, Eye, Edit3, Plus, PlusCircle, Send, Trash2, Search, ChevronLeft, ChevronRight, X, FileCheck, Copy, ChevronsUpDown, ArrowUp, ArrowDown, ChevronDown, ListFilter, MoreVertical, Printer, Trash, Package, User, Calculator, Tag, Box, RefreshCw, DollarSign, Mail, CheckCircle } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -137,6 +137,8 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
   const [emailAddress, setEmailAddress] = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const [puntoSearch, setPuntoSearch] = useState("");
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [savedFactura, setSavedFactura] = useState<FacturaItem | null>(null);
   const { setBreadcrumbs, setHeaderVisible } = useBreadcrumbs();
   const { setActiveSection } = useDashboardSection();
 
@@ -630,12 +632,14 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
       if (editing) {
         await invoiceService.updateFactura(editing.id, payload);
         toast.success("Factura actualizada.");
+        await refresh();
+        closeEditor();
       } else {
-        await invoiceService.createFactura(payload);
+        const result = await invoiceService.createFactura(payload);
         toast.success("Factura creada.");
+        setSavedFactura(result);
+        setSuccessDialogOpen(true);
       }
-      await refresh();
-      closeEditor();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "No se pudo guardar la factura.";
@@ -671,6 +675,27 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
         error instanceof Error ? error.message : "No se pudo emitir la factura.";
       toast.error(message);
     }
+  };
+
+  const goToList = async () => {
+    setSuccessDialogOpen(false);
+    setSavedFactura(null);
+    await refresh();
+    closeEditor();
+  };
+
+  const openCreateFromSuccess = () => {
+    setSuccessDialogOpen(false);
+    setSavedFactura(null);
+    setMontoStr("");
+    setForm({
+      ...initialForm,
+      id_punto_emision: getDefaultPuntoId(),
+      fecha_emision: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
+      detalles: [initialDetail()],
+    });
+    setClienteQuery("");
+    setProductoQueries({});
   };
 
   const viewEmissionInfo = (factura: FacturaItem) => {
@@ -802,11 +827,11 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
     const ice = producto?.tiene_ice
       ? roundMoney((base * (producto.porcentaje_ice ?? 0)) / 100)
       : 0;
-    const baseImponibleIva = base + ice;
-    const iva = roundMoney((baseImponibleIva * ivaPct) / 100);
     const irbpnr = producto?.tiene_irbpnr
       ? roundMoney(cantidad * (producto.valor_unitario_irbpnr ?? 0))
       : 0;
+    const baseImponibleIva = base + ice + irbpnr;
+    const iva = roundMoney((baseImponibleIva * ivaPct) / 100);
     return roundMoney(base + ice + iva + irbpnr);
   };
 
@@ -834,12 +859,12 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
       const ice = producto?.tiene_ice
         ? roundMoney((base * icePct) / 100)
         : 0;
-      const baseImponibleIva = base + ice;
-      const iva = roundMoney((baseImponibleIva * ivaPct) / 100);
       const irbpnrVal = producto?.valor_unitario_irbpnr ?? 0;
       const irbpnr = producto?.tiene_irbpnr
         ? roundMoney((Number(detalle.cantidad) || 0) * irbpnrVal)
         : 0;
+      const baseImponibleIva = base + ice + irbpnr;
+      const iva = roundMoney((baseImponibleIva * ivaPct) / 100);
       const key = ivaPct.toString();
       const prev = acc.ivaPorRates[key] ?? { pct: ivaPct, monto: 0 };
       return {
@@ -911,9 +936,10 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
 
   if (!showPanel) return null;
 
-  if (editorOpen) {
-    return (
-      <motion.section
+  return (
+    <>
+      {editorOpen ? (
+        <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
@@ -1571,16 +1597,13 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
           }}
         />
       </motion.section>
-    );
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-      className="space-y-4"
-    >
+    ) : (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+        className="space-y-4"
+      >
       {/* Toolbar Principal */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Búsqueda global y Filtros */}
@@ -1795,8 +1818,10 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
           </div>
         </motion.div>
       )}
+    </motion.div>
+  )}
 
-      <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
+  <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
         <Dialog.Portal>
           <Dialog.Overlay asChild>
             <motion.div
@@ -2317,6 +2342,85 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
         </Dialog.Portal>
       </Dialog.Root>
 
+      <Dialog.Root open={successDialogOpen} onOpenChange={(open) => { if (!open) { setSuccessDialogOpen(false); } }}>
+        <Dialog.Portal>
+          <Dialog.Overlay asChild>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[4px]"
+            />
+          </Dialog.Overlay>
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,400px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.24, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <div className="p-6 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 mb-4">
+                  <CheckCircle className="h-7 w-7 text-emerald-600" />
+                </div>
+                <Dialog.Title className="text-lg font-semibold text-slate-900">
+                  ¡Factura guardada con éxito!
+                </Dialog.Title>
+                <Dialog.Description className="mt-2 text-sm text-slate-500 leading-relaxed">
+                  La factura se ha guardado como borrador. ¿Qué deseas hacer ahora?
+                </Dialog.Description>
+              </div>
+
+              <div className="px-6 pb-6 space-y-2">
+                <Button
+                  type="button"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    setSuccessDialogOpen(false);
+                    if (savedFactura) emitirFactura(savedFactura);
+                  }}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Emitir al SRI ahora
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    if (savedFactura) window.open(`/api/facturas/${savedFactura.id}/recibo`, '_blank');
+                  }}
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  Imprimir Recibo
+                </Button>
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 flex-1 text-slate-500 hover:text-slate-700"
+                    onClick={goToList}
+                  >
+                    Ir al listado
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 flex-1 text-slate-500 hover:text-slate-700"
+                    onClick={openCreateFromSuccess}
+                  >
+                    Crear otra factura
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       <Dialog.Root open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
         <Dialog.Portal>
           <Dialog.Overlay asChild>
@@ -2408,6 +2512,6 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-    </motion.div>
+    </>
   );
 }

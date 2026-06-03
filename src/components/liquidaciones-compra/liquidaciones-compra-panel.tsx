@@ -607,11 +607,11 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
     const ice = producto?.tiene_ice
       ? (base * (producto.porcentaje_ice ?? 0)) / 100
       : 0;
-    const baseImponibleIva = base + ice;
-    const iva = (baseImponibleIva * ivaPct) / 100;
     const irbpnr = producto?.tiene_irbpnr
       ? cantidad * (producto.valor_unitario_irbpnr ?? 0)
       : 0;
+    const baseImponibleIva = base + ice + irbpnr;
+    const iva = (baseImponibleIva * ivaPct) / 100;
     return base + ice + iva + irbpnr;
   };
 
@@ -624,11 +624,11 @@ export function LiquidacionesCompraPanel({ showPanel = true, readOnly = false }:
         const ivaPct = d.porcentaje_iva;
         const icePct = producto?.porcentaje_ice ?? 0;
         const ice = producto?.tiene_ice ? (base * icePct) / 100 : 0;
-        const baseImponibleIva = base + ice;
-        const iva = (baseImponibleIva * ivaPct) / 100;
         const cantidad = Number(d.cantidad) || 0;
         const irbpnrVal = producto?.valor_unitario_irbpnr ?? 0;
         const irbpnr = producto?.tiene_irbpnr ? cantidad * irbpnrVal : 0;
+        const baseImponibleIva = base + ice + irbpnr;
+        const iva = (baseImponibleIva * ivaPct) / 100;
         const total = base + ice + iva + irbpnr;
         return {
           subtotal: acc.subtotal + base,

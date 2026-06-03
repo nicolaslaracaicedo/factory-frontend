@@ -577,11 +577,11 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
       const producto = getProductoById(d.id_producto);
       const icePct = producto?.porcentaje_ice ?? 0;
       const ice = producto?.tiene_ice ? (base * icePct) / 100 : 0;
-      const baseImponibleIva = base + ice;
-      const ivaPct = d.porcentaje_iva;
-      const iva = (baseImponibleIva * ivaPct) / 100;
       const irbpnrVal = producto?.valor_unitario_irbpnr ?? 0;
       const irbpnr = producto?.tiene_irbpnr ? d.cantidad * irbpnrVal : 0;
+      const baseImponibleIva = base + ice + irbpnr;
+      const ivaPct = d.porcentaje_iva;
+      const iva = (baseImponibleIva * ivaPct) / 100;
       const total = base + ice + iva + irbpnr;
       return {
         subtotal: acc.subtotal + sub,
@@ -988,9 +988,9 @@ export function RecurrentesPanel({ showPanel = true, readOnly = false }: Recurre
                         const dto = getDescuentoValor(detalle);
                         const base = sub - dto;
                         const iceTotal = producto?.tiene_ice ? (base * (producto.porcentaje_ice ?? 0)) / 100 : 0;
-                        const baseImponibleIva = base + iceTotal;
-                        const ivaTotal = (baseImponibleIva * detalle.porcentaje_iva) / 100;
                         const irbpnrTotal = producto?.tiene_irbpnr ? detalle.cantidad * (producto.valor_unitario_irbpnr ?? 0) : 0;
+                        const baseImponibleIva = base + iceTotal + irbpnrTotal;
+                        const ivaTotal = (baseImponibleIva * detalle.porcentaje_iva) / 100;
                         const subtotalLinea = base;
                         return (
                           <div key={`det-${idx}`} className="grid items-center gap-2 bg-white px-2 py-2 lg:grid-cols-[55px_minmax(130px,1fr)_50px_75px_52px_72px_58px_62px_65px_40px]">

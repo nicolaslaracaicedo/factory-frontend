@@ -782,7 +782,8 @@ export function CreditNotesPanel({ showPanel = true, readOnly = false }: CreditN
       const base = d.cantidad * d.precio_unitario - getDescuentoValor(d);
       const baseCents = Math.round(base * 100);
       const iceCents = d.porcentaje_ice ? Math.round(baseCents * d.porcentaje_ice / 100) : 0;
-      const baseImpCents = baseCents + iceCents;
+      const irbpnrCents = Math.round(d.cantidad * d.valor_unitario_irbpnr * 100);
+      const baseImpCents = baseCents + iceCents + irbpnrCents;
       const ivaCents = Math.round(baseImpCents * d.porcentaje_iva / 100);
       return sum + ivaCents / 100;
     }, 0);
