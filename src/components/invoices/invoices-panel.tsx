@@ -1041,7 +1041,10 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                   <Field label="Tipo de pago *" htmlFor="tipo_pago">
                     <SelectPrimitive.Root
                       value={form.tipo_pago === "CRÉDITO" ? "CREDITO" : form.tipo_pago}
-                      onValueChange={(val) => updateField("tipo_pago", val)}
+                      onValueChange={(val) => {
+                        updateField("tipo_pago", val);
+                        if (val === "CREDITO") updateField("forma_pago", "20");
+                      }}
                     >
                       <SelectPrimitive.Trigger
                         id="tipo_pago"
@@ -1077,39 +1080,45 @@ export function InvoicesPanel({ showPanel = true, readOnly = false }: InvoicesPa
                   </Field>
 
                   <Field label="Forma de pago *" htmlFor="forma_pago">
-                    <SelectPrimitive.Root
-                      value={form.forma_pago}
-                      onValueChange={(val) => updateField("forma_pago", val)}
-                    >
-                      <SelectPrimitive.Trigger
-                        id="forma_pago"
-                        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                    {isCredito ? (
+                      <div className="flex h-9 w-full items-center rounded-lg border border-slate-300 bg-slate-100 px-3 text-sm text-slate-500 select-none">
+                        20 - Crédito / Venta a Plazo
+                      </div>
+                    ) : (
+                      <SelectPrimitive.Root
+                        value={form.forma_pago}
+                        onValueChange={(val) => updateField("forma_pago", val)}
                       >
-                        <SelectPrimitive.Value />
-                        <SelectPrimitive.Icon>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        </SelectPrimitive.Icon>
-                      </SelectPrimitive.Trigger>
-                      <SelectPrimitive.Portal>
-                        <SelectPrimitive.Content
-                          className="z-50 min-w-[340px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-                          position="popper"
-                          sideOffset={4}
+                        <SelectPrimitive.Trigger
+                          id="forma_pago"
+                          className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
                         >
-                          <SelectPrimitive.Viewport className="p-1">
-                            {formaPagoOptions.map((option) => (
-                              <SelectPrimitive.Item
-                                key={option.value}
-                                value={option.value}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
-                              >
-                                <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
-                              </SelectPrimitive.Item>
-                            ))}
-                          </SelectPrimitive.Viewport>
-                        </SelectPrimitive.Content>
-                      </SelectPrimitive.Portal>
-                    </SelectPrimitive.Root>
+                          <SelectPrimitive.Value />
+                          <SelectPrimitive.Icon>
+                            <ChevronDown className="h-4 w-4 text-slate-400" />
+                          </SelectPrimitive.Icon>
+                        </SelectPrimitive.Trigger>
+                        <SelectPrimitive.Portal>
+                          <SelectPrimitive.Content
+                            className="z-50 min-w-[340px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                            position="popper"
+                            sideOffset={4}
+                          >
+                            <SelectPrimitive.Viewport className="p-1">
+                              {formaPagoOptions.map((option) => (
+                                <SelectPrimitive.Item
+                                  key={option.value}
+                                  value={option.value}
+                                  className="relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-app-primary data-[state=checked]:text-white"
+                                >
+                                  <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                                </SelectPrimitive.Item>
+                              ))}
+                            </SelectPrimitive.Viewport>
+                          </SelectPrimitive.Content>
+                        </SelectPrimitive.Portal>
+                      </SelectPrimitive.Root>
+                    )}
                   </Field>
 
                   {isCredito ? (
